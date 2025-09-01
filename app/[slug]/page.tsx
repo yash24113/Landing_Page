@@ -337,6 +337,10 @@ function buildLocalBusinessLdFromParts(seo: SeoDocFull) {
   return {
     "@context": "https://schema.org",
     "@type": "LocalBusiness",
+    "parentOrganization": {
+      "@type": "Organization",
+      "@id": "https://amritafashions.com/#organization"
+    },
     name: nonEmpty(seo.LocalBusinessJsonLdname) || "Amrita Fashions",
     url: nonEmpty(seo.canonical_url) || "https://amritafashions.com",
     telephone: nonEmpty(seo.LocalBusinessJsonLdtelephone) || "+919925155141",
@@ -421,6 +425,8 @@ function productJsonLd(seo: SeoDocFull, productName?: string) {
     images.push("https://amritafashions.com/wp-content/uploads/amrita-fashions-small-logo-india.webp");
   }
 
+  const orgId = "https://amritafashions.com/#organization";
+
   const ld: any = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -436,8 +442,7 @@ function productJsonLd(seo: SeoDocFull, productName?: string) {
     "category": "Textile & Fabric",
     "manufacturer": {
       "@type": "Organization",
-      "name": "Amrita Fashions",
-      "url": "https://amritafashions.com"
+      "@id": orgId
     },
     "mpn": nonEmpty(seo.productIdentifier) || undefined,
     "gtin": nonEmpty(seo.sku) || undefined
@@ -452,7 +457,7 @@ function productJsonLd(seo: SeoDocFull, productName?: string) {
       "availability": "https://schema.org/InStock",
       "seller": {
         "@type": "Organization",
-        "name": "Amrita Fashions"
+        "@id": orgId
       },
       "priceValidUntil": new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       "deliveryLeadTime": {
@@ -496,6 +501,7 @@ function organizationJsonLd(seo: SeoDocFull) {
   return {
     "@context": "https://schema.org",
     "@type": "Organization",
+    "@id": "https://amritafashions.com/#organization",
     "name": "Amrita Fashions",
     "url": "https://amritafashions.com",
     "logo": {
@@ -538,6 +544,7 @@ function websiteJsonLd(seo: SeoDocFull) {
   return {
     "@context": "https://schema.org",
     "@type": "WebSite",
+    "@id": "https://amritafashions.com/#website",
     "name": "Amrita Fashions",
     "url": "https://amritafashions.com",
     "description": "Leading B2B Fabric Supplier Worldwide - Premium Quality Textiles",
@@ -551,7 +558,7 @@ function websiteJsonLd(seo: SeoDocFull) {
     },
     "publisher": {
       "@type": "Organization",
-      "name": "Amrita Fashions"
+      "@id": "https://amritafashions.com/#organization"
     }
   };
 }
