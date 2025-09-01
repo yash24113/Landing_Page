@@ -296,28 +296,35 @@ export function Chatbot() {
   return (
     <div className={`fixed z-50 ${containerPosition}`}>
       {/* Hide toggle when open to avoid second X */}
-      {!isChatOpen && (
-        <button
-          onClick={() => setIsChatOpen(true)}
-          className={`group relative flex items-center justify-center w-16 h-16 rounded-full shadow-2xl transition-all duration-500 transform hover:scale-110 animate-bounce
-                      bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 hover:from-blue-600 hover:via-purple-600 hover:to-pink-600 text-white`}
-          style={{
-            animation: 'rainbow 3s ease-in-out infinite',
-            boxShadow: '0 8px 32px rgba(59, 130, 246, 0.4)'
-          }}
-        >
-          <div className="absolute inset-0 rounded-full bg-white opacity-0 group-hover:opacity-20 group-hover:scale-150 transition-all duration-300" />
-          <div className="absolute inset-0 rounded-full border-2 border-white/30 animate-ping" />
-          <div className="absolute inset-0 rounded-full border-2 border-white/20 animate-ping" style={{ animationDelay: '0.5s' }} />
-          <div className="relative z-10">
-            <Bot className="w-7 h-7 animate-bounce" />
-          </div>
-          <>
-            <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full animate-ping" />
-            <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full" />
-          </>
-        </button>
-      )}
+{!isChatOpen && (
+  <button
+    type="button"
+    onClick={() => setIsChatOpen(true)}
+    className={`group relative flex items-center justify-center w-16 h-16 rounded-full shadow-2xl transition-all duration-500 transform hover:scale-110 animate-bounce
+                bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 hover:from-blue-600 hover:via-purple-600 hover:to-pink-600 text-white`}
+    style={{
+      animation: 'rainbow 3s ease-in-out infinite',
+      boxShadow: '0 8px 32px rgba(59, 130, 246, 0.4)',
+    }}
+    /* 👇 Accessible name for the icon-only button */
+    aria-label="Open chat assistant"
+    title="Open chat assistant"
+  >
+    <span className="sr-only">Open chat assistant</span>
+
+    <div className="absolute inset-0 rounded-full bg-white opacity-0 group-hover:opacity-20 group-hover:scale-150 transition-all duration-300" aria-hidden="true" />
+    <div className="absolute inset-0 rounded-full border-2 border-white/30 animate-ping" aria-hidden="true" />
+    <div className="absolute inset-0 rounded-full border-2 border-white/20 animate-ping" style={{ animationDelay: '0.5s' }} aria-hidden="true" />
+    <div className="relative z-10">
+      <Bot className="w-7 h-7 animate-bounce" aria-hidden="true" focusable="false" />
+    </div>
+    <>
+      <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full animate-ping" aria-hidden="true" />
+      <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full" aria-hidden="true" />
+    </>
+  </button>
+)}
+
 
       {/* Chat Window */}
       {isChatOpen && (

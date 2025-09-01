@@ -386,103 +386,104 @@ export default async function Page() {
   return (
     <main className="min-h-screen bg-white">
       {/* HERO */}
-      <section className="hero relative bg-white text-slate-900 overflow-hidden pt-4 pb-8 sm:pt-8">
-        <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
-          <div className="flex flex-col lg:grid lg:grid-cols-2 gap-8 items-center">
-            {/* Left */}
-            <div className="space-y-8 w-full mt-6 lg:mt-0">
-              <h1 className="text-3xl sm:text-4xl lg:text-6xl font-bold leading-tight">
-                <>
-                  Premium{" "}
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">
-                    {heroName}
-                  </span>{" "}
-                  for Global Manufacturers
-                </>
-              </h1>
+<section className="hero relative bg-white text-slate-900 overflow-hidden pt-4 pb-8 sm:pt-8">
+  <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
+    <div className="flex flex-col lg:grid lg:grid-cols-2 gap-8 items-center">
+      {/* Left */}
+      <div className="space-y-8 w-full mt-6 lg:mt-0">
+        <h1 className="text-3xl sm:text-4xl lg:text-6xl font-bold leading-tight">
+          <>
+            Premium{" "}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-700 to-emerald-700">
+              {heroName}
+            </span>{" "}
+            for Global Manufacturers
+          </>
+        </h1>
 
-              <p className="text-base sm:text-xl text-slate-600 max-w-2xl">
-                Connect with leading fabric suppliers worldwide. Quality textiles,
-                competitive pricing, and reliable supply chains.
-              </p>
+        <p className="text-base sm:text-xl text-slate-700 max-w-2xl">
+          Connect with leading fabric suppliers worldwide. Quality textiles,
+          competitive pricing, and reliable supply chains.
+        </p>
 
-              {firstCardSeo && (
-                <div className="bg-slate-100 rounded-lg p-4 grid grid-cols-2 gap-4 text-sm">
-                  {typeof firstCardSeo.sku !== "undefined" && (
-                    <div>
-                      <span className="text-slate-500">SKU:</span>
-                      <span className="ml-2">{firstCardSeo.sku}</span>
-                    </div>
-                  )}
-                  {typeof firstCardSeo.salesPrice !== "undefined" && (
-                    <div>
-                      <span className="text-slate-500">Price:</span>
-                      <span className="ml-2">${firstCardSeo.salesPrice}</span>
-                    </div>
-                  )}
-                  {typeof firstCardSeo.rating_value !== "undefined" && (
-                    <div>
-                      <span className="text-slate-500">Rating:</span>
-                      <span className="ml-2">{firstCardSeo.rating_value}/5</span>
-                    </div>
-                  )}
-                  {typeof firstCardSeo.rating_count !== "undefined" && (
-                    <div>
-                      <span className="text-slate-500">Reviews:</span>
-                      <span className="ml-2">{firstCardSeo.rating_count}</span>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div className="flex flex-col sm:flex-row gap-4">
-                <a href="#contact" className="px-8 py-4 btn-primary">
-                  Get Quote Now
-                </a>
-                <a href="tel:+1234567890" className="px-8 py-4 btn-secondary">
-                  📞 Call Now
-                </a>
-                <a
-                  href="#catalog"
-                  className="px-6 py-3 border-2 border-emerald-400 text-emerald-400 hover:bg-emerald-400 hover:text-white rounded-lg font-semibold transition-all duration-200"
-                >
-                  📋 Free Catalog
-                </a>
+        {firstCardSeo && (
+          <div className="bg-slate-100 rounded-lg p-4 grid grid-cols-2 gap-4 text-sm">
+            {typeof firstCardSeo.sku !== "undefined" && (
+              <div>
+                <span className="text-slate-700">SKU:</span>
+                <span className="ml-2 text-slate-900">{firstCardSeo.sku}</span>
               </div>
-
-              <div className="flex flex-wrap gap-4 text-sm text-slate-500 mt-2">
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-emerald-400 rounded-full" />
-                  <span>ISO Certified</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-emerald-400 rounded-full" />
-                  <span>Global Shipping</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-emerald-400 rounded-full" />
-                  <span>24/7 Support</span>
-                </div>
+            )}
+            {typeof firstCardSeo.salesPrice !== "undefined" && (
+              <div>
+                <span className="text-slate-700">Price:</span>
+                <span className="ml-2 text-slate-900">${firstCardSeo.salesPrice}</span>
               </div>
-            </div>
-
-            {/* Right (Image) */}
-            <div className="relative flex items-center justify-center w-full min-h-[220px] sm:min-h-[320px] lg:min-h-[400px]">
-              <div className="relative z-10 w-full h-56 sm:h-80 lg:h-[420px] rounded-2xl overflow-hidden shadow-lg">
-                <Image
-                  key={heroImage}
-                  src={heroImage}
-                  alt={heroAlt}
-                  fill
-                  priority
-                  className="object-cover"
-                  sizes="(max-width: 1024px) 100vw, 800px"
-                />
+            )}
+            {typeof firstCardSeo.rating_value !== "undefined" && (
+              <div>
+                <span className="text-slate-700">Rating:</span>
+                <span className="ml-2 text-slate-900">{firstCardSeo.rating_value}/5</span>
               </div>
-            </div>
+            )}
+            {typeof firstCardSeo.rating_count !== "undefined" && (
+              <div>
+                <span className="text-slate-700">Reviews:</span>
+                <span className="ml-2 text-slate-900">{firstCardSeo.rating_count}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="flex flex-col sm:flex-row gap-4">
+          <a href="#contact" className="px-8 py-4 btn-primary">
+            Get Quote Now
+          </a>
+          <a href="tel:+1234567890" className="px-8 py-4 btn-secondary">
+            📞 Call Now
+          </a>
+          <a
+            href="#catalog"
+            className="px-6 py-3 border-2 border-emerald-600 text-emerald-700 hover:bg-emerald-700 hover:text-white rounded-lg font-semibold transition-all duration-200"
+          >
+            📋 Free Catalog
+          </a>
+        </div>
+
+        <div className="flex flex-wrap gap-4 text-sm text-slate-700 mt-2">
+          <div className="flex items-center space-x-2">
+            <div className="w-2 h-2 bg-emerald-400 rounded-full" />
+            <span>ISO Certified</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-2 h-2 bg-emerald-400 rounded-full" />
+            <span>Global Shipping</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-2 h-2 bg-emerald-400 rounded-full" />
+            <span>24/7 Support</span>
           </div>
         </div>
-      </section>
+      </div>
+
+      {/* Right (Image) */}
+      <div className="relative flex items-center justify-center w-full min-h-[220px] sm:min-h-[320px] lg:min-h-[400px]">
+        <div className="relative z-10 w-full h-56 sm:h-80 lg:h-[420px] rounded-2xl overflow-hidden shadow-lg">
+          <Image
+            key={heroImage}
+            src={heroImage}
+            alt={heroAlt}
+            fill
+            priority
+            className="object-cover"
+            sizes="(max-width: 1024px) 100vw, 800px"
+          />
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 
       {/* COMPANY OVERVIEW */}
       <section className="py-20 bg-slate-50">
@@ -555,20 +556,21 @@ export default async function Page() {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 items-center opacity-60">
-            <div className="bg-slate-100 h-16 rounded-lg flex items-center justify-center">
-              <span className="text-slate-500 font-semibold">ACME APPAREL</span>
-            </div>
-            <div className="bg-slate-100 h-16 rounded-lg flex items-center justify-center">
-              <span className="text-slate-500 font-semibold">FASHION CORP</span>
-            </div>
-            <div className="bg-slate-100 h-16 rounded-lg flex items-center justify-center">
-              <span className="text-slate-500 font-semibold">TEXTILE PLUS</span>
-            </div>
-            <div className="bg-slate-100 h-16 rounded-lg flex items-center justify-center">
-              <span className="text-slate-500 font-semibold">GLOBAL WEAR</span>
-            </div>
-          </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 items-center">
+  <div className="bg-slate-100 h-16 rounded-lg flex items-center justify-center">
+    <span className="text-slate-800 font-semibold">ACME APPAREL</span>
+  </div>
+  <div className="bg-slate-100 h-16 rounded-lg flex items-center justify-center">
+    <span className="text-slate-800 font-semibold">FASHION CORP</span>
+  </div>
+  <div className="bg-slate-100 h-16 rounded-lg flex items-center justify-center">
+    <span className="text-slate-800 font-semibold">TEXTILE PLUS</span>
+  </div>
+  <div className="bg-slate-100 h-16 rounded-lg flex items-center justify-center">
+    <span className="text-slate-800 font-semibold">GLOBAL WEAR</span>
+  </div>
+</div>
+
 
           {/* Case Study */}
           <div className="mt-16 bg-gradient-to-r from-blue-50 to-emerald-50 p-8 rounded-2xl border border-blue-100">

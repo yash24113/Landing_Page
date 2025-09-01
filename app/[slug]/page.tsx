@@ -825,12 +825,13 @@ export default async function SlugPage({ params }: Props) {
                   <a href="tel:+1234567890" className="inline-flex items-center justify-center px-8 py-4 btn-secondary">
                     📞 Call Now
                   </a>
-                  <a
-                    href="#catalog"
-                    className="inline-flex items-center justify-center px-6 py-3 border-2 border-emerald-400 text-emerald-400 hover:bg-emerald-400 hover:text-white rounded-lg font-semibold transition-all duration-200"
-                  >
-                    📋 Free Catalog
-                  </a>
+              <a
+  href="#catalog"
+  className="inline-flex items-center justify-center px-6 py-3 border-2 border-emerald-600 text-emerald-700 hover:bg-emerald-700 hover:text-white rounded-lg font-semibold transition-all duration-200"
+>
+  📋 Free Catalog
+</a>
+
                 </div>
 
                 <div className="flex flex-wrap gap-4 text-sm text-slate-500 mt-2">
