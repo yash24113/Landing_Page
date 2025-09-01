@@ -226,6 +226,7 @@ function buildOtherMeta(seo: SeoDocFull) {
   set("apple-mobile-web-app-capable", seo.mobileWebAppCapable);
   set("apple-mobile-web-app-status-bar-style", seo.appleStatusBarStyle);
   set("format-detection", seo.formatDetection);
+  
 
   // Open Graph (visibility mirror)
   set("og:url", seo.ogUrl);
@@ -258,6 +259,7 @@ function buildOtherMeta(seo: SeoDocFull) {
   set("x-default", seo.x_default);
   set("author_name", seo.author_name);
 
+
   return other;
 }
 
@@ -285,8 +287,6 @@ function buildLogoLdFromParts(seo: SeoDocFull) {
 
 // Build LocalBusiness JSON-LD from parts
 function buildLocalBusinessLdFromParts(seo: SeoDocFull) {
-  if (!seo.LocalBusinessJsonLdcontext && !seo.LocalBusinessJsonLdname) return null;
-  
   const address = {
     "@type": "PostalAddress",
     streetAddress: nonEmpty(seo.LocalBusinessJsonLdaddressstreetAddress) || "404, Safal Prelude, Corporate Rd, Prahlad Nagar",
@@ -370,8 +370,16 @@ function buildLocalBusinessLdFromParts(seo: SeoDocFull) {
 
 // Build Breadcrumb JSON-LD from parts
 function buildBreadcrumbLdFromParts(seo: SeoDocFull) {
-  if (!seo.BreadcrumbJsonLdcontext && !seo.BreadcrumbJsonLdtype && !seo.BreadcrumbJsonLdname) return null;
-  
+  // Determine the product category based on the product type or slug
+  let productCategory = "Fabrics";
+  if (seo.slug) {
+    if (seo.slug.includes('cotton')) productCategory = "Cotton Fabrics";
+    else if (seo.slug.includes('silk')) productCategory = "Silk Fabrics";
+    else if (seo.slug.includes('wool')) productCategory = "Wool Fabrics";
+    else if (seo.slug.includes('polyester')) productCategory = "Polyester Fabrics";
+    else if (seo.slug.includes('linen')) productCategory = "Linen Fabrics";
+  }
+
   const itemListElement = [
     {
       "@type": "ListItem",
@@ -382,15 +390,26 @@ function buildBreadcrumbLdFromParts(seo: SeoDocFull) {
     {
       "@type": "ListItem",
       "position": 2,
-      "name": nonEmpty(seo.BreadcrumbJsonLdname) || "Products",
-      "item": nonEmpty(seo.canonical_url) || "https://amritafashions.com"
+      "name": "Products",
+      "item": "https://amritafashions.com/products"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": productCategory,
+      "item": `https://amritafashions.com/products/${productCategory.toLowerCase().replace(/\s+/g, '-')}`
+    },
+    {
+      "@type": "ListItem",
+      "position": 4,
+      "name": nonEmpty(seo.BreadcrumbJsonLdname) || nonEmpty(seo.title) || "Fabric Details",
+      "item": nonEmpty(seo.canonical_url) || `https://amritafashions.com/${seo.slug}`
     }
   ];
 
   return {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
-    "name": nonEmpty(seo.BreadcrumbJsonLdname) || "Breadcrumb",
     "itemListElement": itemListElement
   };
 }
@@ -419,7 +438,9 @@ function productJsonLd(seo: SeoDocFull, productName?: string) {
       "@type": "Organization",
       "name": "Amrita Fashions",
       "url": "https://amritafashions.com"
-    }
+    },
+    "mpn": nonEmpty(seo.productIdentifier) || undefined,
+    "gtin": nonEmpty(seo.sku) || undefined
   };
 
   // Add offers if pricing is available
@@ -433,7 +454,12 @@ function productJsonLd(seo: SeoDocFull, productName?: string) {
         "@type": "Organization",
         "name": "Amrita Fashions"
       },
-      "priceValidUntil": new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      "priceValidUntil": new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      "deliveryLeadTime": {
+        "@type": "QuantitativeValue",
+        "value": 7,
+        "unitCode": "DAY"
+      }
     };
   }
 
@@ -445,6 +471,15 @@ function productJsonLd(seo: SeoDocFull, productName?: string) {
       "reviewCount": seo.rating_count,
       "bestRating": 5,
       "worstRating": 1
+    };
+  }
+
+  // Add additional product properties
+  if (seo.popularproduct) {
+    ld.additionalProperty = {
+      "@type": "PropertyValue",
+      "name": "Popular Product",
+      "value": "Yes"
     };
   }
 
@@ -498,6 +533,72 @@ function organizationJsonLd(seo: SeoDocFull) {
   };
 }
 
+// WebSite JSON-LD
+function websiteJsonLd(seo: SeoDocFull) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "Amrita Fashions",
+    "url": "https://amritafashions.com",
+    "description": "Leading B2B Fabric Supplier Worldwide - Premium Quality Textiles",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": {
+        "@type": "EntryPoint",
+        "urlTemplate": "https://amritafashions.com/search?q={search_term_string}"
+      },
+      "query-input": "required name=search_term_string"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "Amrita Fashions"
+    }
+  };
+}
+
+// FAQ JSON-LD
+function faqJsonLd() {
+  const faqs = [
+    {
+      question: "What is your minimum order quantity for bulk fabric orders?",
+      answer: "Our minimum order quantity varies by fabric type, typically starting from 500 meters for standard fabrics and 1000 meters for custom specifications. We work with garment manufacturers and retailers of all sizes to accommodate their specific needs."
+    },
+    {
+      question: "Do you provide fabric samples before placing bulk orders?",
+      answer: "Yes, we provide free fabric samples for all our products. Sample orders are processed within 3-5 business days and shipped worldwide. This allows fabric importers and manufacturers to evaluate quality before committing to larger orders."
+    },
+    {
+      question: "What are your payment terms for B2B fabric orders?",
+      answer: "We offer flexible payment terms including T/T (Telegraphic Transfer), L/C (Letter of Credit), and for established clients, we provide 30-60 day payment terms. All transactions are secure and comply with international trade regulations."
+    },
+    {
+      question: "How do you ensure consistent quality across large fabric orders?",
+      answer: "We maintain strict quality control processes including pre-production samples, in-line inspection during manufacturing, and final quality checks before shipment. All our facilities are ISO certified and follow international quality standards."
+    },
+    {
+      question: "What is your typical lead time for fabric manufacturing and delivery?",
+      answer: "Lead times vary based on fabric type and order quantity. Standard fabrics: 15-20 days, custom fabrics: 25-35 days. We provide detailed production schedules and regular updates throughout the manufacturing process."
+    },
+    {
+      question: "Do you offer custom fabric development services?",
+      answer: "Yes, we specialize in custom fabric development for clothing brands and manufacturers. Our R&D team works closely with clients to develop unique fabric compositions, colors, and finishes that meet specific requirements."
+    }
+  ];
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": faqs.map(faq => ({
+      "@type": "Question",
+      "name": faq.question,
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": faq.answer
+      }
+    }))
+  };
+}
+
 // ---------- Metadata ----------
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
@@ -521,6 +622,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const localBusinessLd = buildLocalBusinessLdFromParts(seo);
   const productLd = productJsonLd(seo, "Pique Knit Fabric");
   const organizationLd = organizationJsonLd(seo);
+  const websiteLd = websiteJsonLd(seo);
+  const faqLd = faqJsonLd();
 
   // Create JSON-LD scripts for head injection
   const jsonLdScripts = [
@@ -529,7 +632,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     breadcrumbLd && { type: "application/ld+json", content: JSON.stringify(breadcrumbLd) },
     localBusinessLd && { type: "application/ld+json", content: JSON.stringify(localBusinessLd) },
     { type: "application/ld+json", content: JSON.stringify(productLd) },
-    { type: "application/ld+json", content: JSON.stringify(organizationLd) }
+    { type: "application/ld+json", content: JSON.stringify(organizationLd) },
+    { type: "application/ld+json", content: JSON.stringify(websiteLd) },
+    { type: "application/ld+json", content: JSON.stringify(faqLd) }
   ].filter(Boolean);
 
   // Build metadata object with proper typing
@@ -652,6 +757,8 @@ export default async function SlugPage({ params }: Props) {
   const localBusinessLd = buildLocalBusinessLdFromParts(seo);
   const productLd = productJsonLd(seo, matchingProduct?.name);
   const organizationLd = organizationJsonLd(seo);
+  const websiteLd = websiteJsonLd(seo);
+  const faqLd = faqJsonLd();
 
   return (
     <>
@@ -663,6 +770,8 @@ export default async function SlugPage({ params }: Props) {
         localBusinessLd={localBusinessLd}
         productLd={productLd}
         organizationLd={organizationLd}
+        websiteLd={websiteLd}
+        faqLd={faqLd}
       />
 
       <main className="min-h-screen bg-white">
@@ -925,10 +1034,10 @@ export default async function SlugPage({ params }: Props) {
           </div>
         </section>
 
-        {/* Floating actions */}
-        <WhatsAppButton />
-        <Chatbot />
-      </main>
-    </>
-  );
+              {/* Floating actions */}
+      <WhatsAppButton />
+      <Chatbot />
+    </main>
+  </>
+);
 }
