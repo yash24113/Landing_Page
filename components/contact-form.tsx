@@ -5,21 +5,15 @@ import { useState, useEffect, useCallback } from "react";
 
 interface ContactFormProps {
   onSuccess?: () => void;
-
-  /** Optional server actions injected from page.tsx */
   submitAction?: (fd: FormData) => Promise<any>;
   saveDraftAction?: (fd: FormData) => Promise<any>;
-
-  /** Client-side fallback target + headers (now supported) */
   submitUrl?: string;
   submitHeaders?: Record<string, string>;
-
   draftKey?: string; // e.g. "contact_draft_id"
 }
 
 const STORAGE_KEY = "fabricpro_contact_form";
 
-// Build env-based defaults (used only if props aren’t provided)
 const RAW_BASE =
   (process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:7000/landing")
     .replace(/\/+$/, "");
@@ -30,12 +24,9 @@ const API_KEY_HEADER =
 const ADMIN_EMAIL_HEADER =
   process.env.NEXT_PUBLIC_ADMIN_EMAIL_HEADER || "x-admin-email";
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
-// IMPORTANT: this must match backend Role_Management_Key_Value
 const ADMIN_EMAIL =
-  process.env.NEXT_PUBLIC_ADMIN_EMAIL ||
-  "";
+  process.env.NEXT_PUBLIC_ADMIN_EMAIL || "";
 
-/** Merge provided submitHeaders with env defaults */
 function buildAuthHeaders(extra?: Record<string, string>) {
   const h: Record<string, string> = {
     "Content-Type": "application/json",
@@ -73,10 +64,8 @@ export function ContactForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
-  /** backend draft id we create on step-1 save and reuse later */
   const [draftId, setDraftId] = useState<string>("");
 
-  // Load saved form data + draft id
   useEffect(() => {
     const loadSavedData = () => {
       try {
@@ -99,7 +88,6 @@ export function ContactForm({
     loadSavedData();
   }, [draftKey]);
 
-  // Auto-save to localStorage (UI only)
   const saveFormData = useCallback(() => {
     try {
       const dataToSave = {
@@ -142,29 +130,27 @@ export function ContactForm({
     }));
   };
 
-  /** Map UI -> backend schema keys (names stay the same in the UI) */
   function toBackendPayload(status: "draft" | "submitted", stepCompleted: number) {
     return {
       companyName: formData.companyName,
       contactPerson: formData.contactPerson,
       email: formData.email,
-      phoneNumber: formData.phone, // map
+      phoneNumber: formData.phone,
       businessType: formData.businessType,
-      annualFabricVolume: formData.annualVolume, // map
+      annualFabricVolume: formData.annualVolume,
       primaryMarkets: formData.primaryMarkets,
-      fabricTypesOfInterest: formData.fabricTypes, // map (array)
-      specificationsRequirements: formData.specifications, // map
+      fabricTypesOfInterest: formData.fabricTypes,
+      specificationsRequirements: formData.specifications,
       timeline: formData.timeline,
-      additionalMessage: formData.message, // map
+      additionalMessage: formData.message,
       status,
       stepCompleted,
-      draftId, // benign on backend; will be ignored by schema
+      draftId,
     };
   }
 
-  /** Save partial data to backend when moving steps (if you wired a server action) */
   const doSaveDraft = async (nextStepCompleted: number) => {
-    if (!saveDraftAction) return; // not wired -> no network draft save
+    if (!saveDraftAction) return;
     const payload = toBackendPayload("draft", nextStepCompleted);
     const fd = new FormData();
     Object.entries(payload).forEach(([k, v]) => {
@@ -190,7 +176,6 @@ export function ContactForm({
     setCurrentStep(prev);
   };
 
-  /** ---- NEW: client-side fallback POST if server action is missing/fails ---- */
   async function postDirectToBackend(payload: any) {
     const res = await fetch(submitUrl || DEFAULT_CONTACT_URL, {
       method: "POST",
@@ -206,13 +191,12 @@ export function ContactForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (currentStep !== 3) return; // only final step submits
+    if (currentStep !== 3) return;
 
     setIsSubmitting(true);
     try {
       const payload = toBackendPayload("submitted", 3);
 
-      // 1) Try server action if provided
       if (submitAction) {
         const fd = new FormData();
         Object.entries(payload).forEach(([k, v]) => {
@@ -221,15 +205,12 @@ export function ContactForm({
         });
         const res = await submitAction(fd);
         if (!res?.ok) {
-          // If server action complains (or you run locally without it), fallback to direct POST
           await postDirectToBackend(payload);
         }
       } else {
-        // 2) No server action — use direct POST
         await postDirectToBackend(payload);
       }
 
-      // Clear local progress and draft id
       localStorage.removeItem(STORAGE_KEY);
       localStorage.removeItem(draftKey);
       setShowSuccess(true);
@@ -273,22 +254,21 @@ export function ContactForm({
     );
   }
 
-  /* ---------- UI unchanged below ---------- */
   return (
     <div className="bg-white rounded-2xl shadow-xl p-8">
-      {/* Auto-save indicator */}
-      <div className="mb-6">
+      {/* Auto-save indicator — FIXED CONTRAST + A11Y */}
+      <div className="mb-6" role="status" aria-live="polite">
         <div className="flex items-center justify-between text-sm">
           <div className="flex items-center space-x-2">
             {hasUnsavedChanges ? (
               <>
-                <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
-                <span className="text-yellow-600">Saving...</span>
+                <div className="w-2 h-2 bg-amber-600 rounded-full animate-pulse"></div>
+                <span className="text-amber-900">Saving...</span>
               </>
             ) : lastSaved ? (
               <>
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span className="text-green-600">
+                <div className="w-2 h-2 bg-emerald-600 rounded-full"></div>
+                <span className="text-emerald-900">
                   Saved {lastSaved.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                 </span>
               </>
