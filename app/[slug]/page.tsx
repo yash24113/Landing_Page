@@ -795,26 +795,29 @@ export default async function SlugPage({ params }: Props) {
 
                   <p className="text-base sm:text-xl text-slate-600 leading-relaxed max-w-2xl">{locationTagline}</p>
 
-                  <div className="bg-slate-100 rounded-lg p-4 mt-4">
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-slate-500">SKU:</span>
-                        <span className="text-slate-900 ml-2">{seo.sku}</span>
-                      </div>
-                      <div>
-                        <span className="text-slate-500">Price:</span>
-                        <span className="text-slate-900 ml-2">${seo.salesPrice}</span>
-                      </div>
-                      <div>
-                        <span className="text-slate-500">Rating:</span>
-                        <span className="text-slate-900 ml-2">{seo.rating_value}/5</span>
-                      </div>
-                      <div>
-                        <span className="text-slate-500">Reviews:</span>
-                        <span className="text-slate-900 ml-2">{seo.rating_count}</span>
-                      </div>
-                    </div>
-                  </div>
+   <div className="bg-slate-100 rounded-lg p-4 mt-4">
+  <dl className="grid grid-cols-2 gap-4 text-sm">
+    <div className="flex items-baseline">
+      <dt className="text-slate-800 font-medium">SKU:</dt>
+      <dd className="ml-2 text-slate-950">{seo.sku ?? "—"}</dd>
+    </div>
+
+    <div className="flex items-baseline">
+      <dt className="text-slate-800 font-medium">Price:</dt>
+      <dd className="ml-2 text-slate-950">${seo.salesPrice}</dd>
+    </div>
+
+    <div className="flex items-baseline">
+      <dt className="text-slate-800 font-medium">Rating:</dt>
+      <dd className="ml-2 text-slate-950">{seo.rating_value}/5</dd>
+    </div>
+
+    <div className="flex items-baseline">
+      <dt className="text-slate-800 font-medium">Reviews:</dt>
+      <dd className="ml-2 text-slate-950">{seo.rating_count}</dd>
+    </div>
+  </dl>
+</div>
                 </div>
 
                 {/* Buttons */}
@@ -826,7 +829,7 @@ export default async function SlugPage({ params }: Props) {
                     📞 Call Now
                   </a>
               <a
-  href="#catalog"
+  href="https://n8n.egport.com/webhook-test/pdf"
   className="inline-flex items-center justify-center px-6 py-3 border-2 border-emerald-600 text-emerald-700 hover:bg-emerald-700 hover:text-white rounded-lg font-semibold transition-all duration-200"
 >
   📋 Free Catalog
@@ -919,20 +922,20 @@ export default async function SlugPage({ params }: Props) {
               <p className="text-slate-600">Ships to 50+ countries • MOQ 100 meters • 24-hour response time</p>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 items-center opacity-60">
-              <div className="bg-slate-100 h-16 rounded-lg flex items-center justify-center">
-                <span className="text-slate-500 font-semibold">ACME APPAREL</span>
-              </div>
-              <div className="bg-slate-100 h-16 rounded-lg flex items-center justify-center">
-                <span className="text-slate-500 font-semibold">FASHION CORP</span>
-              </div>
-              <div className="bg-slate-100 h-16 rounded-lg flex items-center justify-center">
-                <span className="text-slate-500 font-semibold">TEXTILE PLUS</span>
-              </div>
-              <div className="bg-slate-100 h-16 rounded-lg flex items-center justify-center">
-                <span className="text-slate-500 font-semibold">GLOBAL WEAR</span>
-              </div>
-            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 items-center">
+  <div className="bg-slate-100 h-16 rounded-lg flex items-center justify-center">
+    <span className="text-slate-800 font-semibold">ACME APPAREL</span>
+  </div>
+  <div className="bg-slate-100 h-16 rounded-lg flex items-center justify-center">
+    <span className="text-slate-800 font-semibold">FASHION CORP</span>
+  </div>
+  <div className="bg-slate-100 h-16 rounded-lg flex items-center justify-center">
+    <span className="text-slate-800 font-semibold">TEXTILE PLUS</span>
+  </div>
+  <div className="bg-slate-100 h-16 rounded-lg flex items-center justify-center">
+    <span className="text-slate-800 font-semibold">GLOBAL WEAR</span>
+  </div>
+</div>
 
             {/* Case Study */}
             <div className="mt-16 bg-gradient-to-r from-blue-50 to-emerald-50 p-8 rounded-2xl border border-blue-100">
