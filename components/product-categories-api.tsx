@@ -40,6 +40,16 @@ type LocationDoc = {
   slug?: string
 }
 
+// NEW: Props so the parent (page.tsx) can pass an Ahmedabad-filtered list directly
+type Props = {
+  /** Optional: ready-to-render products (e.g., Ahmedabad-only from server) */
+  initialProducts?: Product[]
+  /** Optional: default location id (e.g., Ahmedabad _id) */
+  defaultLocationId?: string
+  /** Optional: default location name (used only if id not given), default "ahmedabad" */
+  defaultLocationName?: string
+}
+
 // ---------------------------
 // API URLs
 // ---------------------------
@@ -50,7 +60,8 @@ const LOC_URL = RAW_BASE ? `${RAW_BASE}/locations` : "http://localhost:7000/land
 
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY ?? ""
 const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? ""
-const API_KEY_HEADER = process.env.NEXT_PUBLIC_API_KEY_HEADER ?? "x-api-key"
+// Align default header name with your server-side default
+const API_KEY_HEADER = process.env.NEXT_PUBLIC_API_KEY_HEADER ?? "x-api-key-yash"
 const ADMIN_EMAIL_HEADER = process.env.NEXT_PUBLIC_ADMIN_EMAIL_HEADER ?? "x-admin-email"
 
 // ---------------------------
@@ -75,7 +86,11 @@ function extractId(v: IdLike): string {
   return ""
 }
 
-export function ProductCategoriesApi() {
+export function ProductCategoriesApi({
+  initialProducts,
+  defaultLocationId,
+  defaultLocationName = "ahmedabad",
+}: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const pageSlug = useMemo(() => getPageSlugFromPath(pathname), [pathname]) // "" on "/"
@@ -101,24 +116,31 @@ export function ProductCategoriesApi() {
         if (API_KEY) headers[API_KEY_HEADER] = API_KEY
         if (ADMIN_EMAIL) headers[ADMIN_EMAIL_HEADER] = ADMIN_EMAIL
 
-        const [seoRes, prodRes, locRes] = await Promise.all([
+        // If parent already gave products, we can skip fetching /product for performance
+        const needProductFetch = !initialProducts || initialProducts.length === 0
+
+        const [seoRes, locRes, prodRes] = await Promise.all([
           fetch(SEO_URL, { headers, signal: controller.signal }),
-          fetch(PRODUCT_URL, { headers, signal: controller.signal }),
           fetch(LOC_URL, { headers, signal: controller.signal }),
+          needProductFetch ? fetch(PRODUCT_URL, { headers, signal: controller.signal }) : Promise.resolve(null as any),
         ])
 
         if (!seoRes.ok) throw new Error(`SEO fetch failed: ${seoRes.status}`)
-        if (!prodRes.ok) throw new Error(`Product fetch failed: ${prodRes.status}`)
         if (!locRes.ok) throw new Error(`Locations fetch failed: ${locRes.status}`)
-
         const seoJson = await seoRes.json()
-        const prodJson = await prodRes.json()
         const locJson = await locRes.json()
+        const prodJson = needProductFetch ? await prodRes.json() : null
 
         if (!alive) return
         setSeos(Array.isArray(seoJson?.data) ? seoJson.data : [])
-        setProducts(Array.isArray(prodJson?.data) ? prodJson.data : [])
         setLocations(Array.isArray(locJson?.data?.locations) ? locJson.data.locations : [])
+        setProducts(
+          initialProducts && initialProducts.length > 0
+            ? initialProducts
+            : Array.isArray(prodJson?.data)
+            ? prodJson.data
+            : []
+        )
       } catch (e: any) {
         if (!alive) return
         setError(e?.message || "Failed to load data")
@@ -132,7 +154,7 @@ export function ProductCategoriesApi() {
       alive = false
       controller.abort()
     }
-  }, [pageSlug])
+  }, [pageSlug, initialProducts])
 
   // Current SEO (only when we are on a slug page); null on "/"
   const currentSeo = useMemo(() => {
@@ -145,9 +167,14 @@ export function ProductCategoriesApi() {
   const targetLocationId = useMemo(() => {
     if (currentSeo) return extractId(currentSeo.location)
 
-    // home page (no slug) -> ahmedabad
-    const ahm = locations.find((l) => String(l?.name ?? "").toLowerCase() === "ahmedabad")
-    if (ahm?._id) return ahm._id
+    // use explicit id from parent if provided
+    if (defaultLocationId) return defaultLocationId
+
+    // home page (no slug) -> find by name (default "ahmedabad")
+    const byName = locations.find(
+      (l) => String(l?.name ?? "").trim().toLowerCase() === defaultLocationName.toLowerCase()
+    )
+    if (byName?._id) return byName._id
 
     // fallback: first location from any SEO
     for (const s of seos) {
@@ -155,20 +182,7 @@ export function ProductCategoriesApi() {
       if (id) return id
     }
     return ""
-  }, [currentSeo, locations, seos])
-
-  // Set of product IDs that belong to the target location
-  const targetLocationProductIds = useMemo(() => {
-    if (!targetLocationId) return new Set<string>()
-    const ids = new Set<string>()
-    for (const s of seos) {
-      if (extractId(s.location) === targetLocationId) {
-        const pid = extractId(s.product)
-        if (pid) ids.add(pid)
-      }
-    }
-    return ids
-  }, [seos, targetLocationId])
+  }, [currentSeo, locations, seos, defaultLocationId, defaultLocationName])
 
   // productId -> slug map (from any SEO row)
   const productSlugById = useMemo(() => {
@@ -181,18 +195,42 @@ export function ProductCategoriesApi() {
     return m
   }, [seos])
 
+  // Set of product IDs that belong to the target location (from SEO rows)
+  const targetLocationProductIds = useMemo(() => {
+    if (!targetLocationId) return new Set<string>()
+    const ids = new Set<string>()
+    for (const s of seos) {
+      if (extractId(s.location) === targetLocationId) {
+        const pid = extractId(s.product)
+        if (pid) ids.add(pid)
+      }
+    }
+    return ids
+  }, [seos, targetLocationId])
+
   // Current page's product (only if on slug page)
   const currentProductId = useMemo(() => extractId(currentSeo?.product), [currentSeo])
 
   // Build the list to render
   const listToShow = useMemo(() => {
+    // If parent already passed a curated list (e.g., Ahmedabad),
+    // use it directly and (on a slug page) hide the current product card.
+    if (initialProducts && initialProducts.length > 0) {
+      const base = initialProducts
+      if (currentSeo && currentProductId) {
+        return base.filter((p) => p._id.trim() !== currentProductId)
+      }
+      return base
+    }
+
+    // Fallback: derive from SEO rows for the target location
     if (targetLocationProductIds.size === 0) return []
     const inLocation = products.filter((p) => targetLocationProductIds.has(p._id.trim()))
     if (currentSeo && currentProductId) {
       return inLocation.filter((p) => p._id.trim() !== currentProductId)
     }
     return inLocation
-  }, [products, targetLocationProductIds, currentSeo, currentProductId])
+  }, [initialProducts, products, targetLocationProductIds, currentSeo, currentProductId])
 
   // Group for carousel
   const grouped = useMemo(() => {

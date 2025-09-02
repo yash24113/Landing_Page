@@ -3,8 +3,8 @@ interface JsonLdInjectorProps {
   logoLd?: any;
   breadcrumbLd?: any;
   localBusinessLd?: any;
-  productLd: any;
-  organizationLd: any;
+  productLd?: any;
+  organizationLd?: any;
   websiteLd?: any;
   faqLd?: any;
 }
@@ -30,6 +30,8 @@ export default function JsonLdInjector({
     websiteLd,
     faqLd
   ].filter(Boolean);
+
+  if (allItems.length === 0) return null;
 
   const graphData = {
     "@context": "https://schema.org",
