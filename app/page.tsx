@@ -347,7 +347,7 @@ function productJsonLd(seo: any, productName?: string) {
     image: images,
     url: nonEmpty(seo?.canonical_url) ,
     category: "Textile & Fabric",
-    manufacturer: { "@type": "Organization", name: "Amrita Fashions", url: "https://amritafashions.com" },
+    manufacturer: { "@type": "Organization", name: "Amrita Fashions", url: seo?.canonical_url || "https://abc.com" },
     mpn: nonEmpty(seo?.productIdentifier) || undefined,
     gtin: nonEmpty(seo?.sku) || undefined,
   };
@@ -391,7 +391,7 @@ function organizationJsonLd(seo: any) {
     "@context": "https://schema.org",
     "@type": "Organization",
     name: "Amrita Fashions",
-    url: "https://amritafashions.com",
+    url: seo?.canonical_url ,
     logo: {
       "@type": "ImageObject",
       url: "https://amritafashions.com/wp-content/uploads/amrita-fashions-small-logo-india.webp",
@@ -428,7 +428,7 @@ function websiteJsonLd(_: any) {
     "@context": "https://schema.org",
     "@type": "WebSite",
     name: "Amrita Fashions",
-    url: "https://amritafashions.com",
+    url: _?.canonical_url || "https://abc.com",
     description: "Leading B2B Fabric Supplier Worldwide - Premium Quality Textiles",
     potentialAction: {
       "@type": "SearchAction",

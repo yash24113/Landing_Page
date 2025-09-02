@@ -36,14 +36,14 @@ type LocationDoc = {
 // API URLs + headers (public)
 // ---------------------------
 const RAW_BASE = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, "") ?? "";
-const PRODUCT_URL = RAW_BASE ? `${RAW_BASE}/product` : "http://localhost:7000/landing/product";
-const SEO_URL = RAW_BASE ? `${RAW_BASE}/seo/landing-page` : "http://localhost:7000/landing/seo/landing-page";
-const LOC_URL = RAW_BASE ? `${RAW_BASE}/locations` : "http://localhost:7000/landing/locations";
+const PRODUCT_URL = RAW_BASE ? `${RAW_BASE}/product` : '';
+const SEO_URL = RAW_BASE ? `${RAW_BASE}/seo` : '';
+const LOC_URL = RAW_BASE ? `${RAW_BASE}/locations` : '';
 
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY ?? "";
 const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? "";
-const API_KEY_HEADER = process.env.NEXT_PUBLIC_API_KEY_HEADER ?? "x-api-key";
-const ADMIN_EMAIL_HEADER = process.env.NEXT_PUBLIC_ADMIN_EMAIL_HEADER ?? "x-admin-email";
+const API_KEY_HEADER = process.env.NEXT_PUBLIC_API_KEY_HEADER ?? "";
+const ADMIN_EMAIL_HEADER = process.env.NEXT_PUBLIC_ADMIN_EMAIL_HEADER ?? "";
 
 // ---------------------------
 // Helpers (same as categories)
