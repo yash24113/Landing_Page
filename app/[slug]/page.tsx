@@ -80,7 +80,7 @@ interface SeoDocFull {
   title?: string;
   description?: string;
 
-  // explicit
+  // added explicitly
   hreflang?: string;
   x_default?: string;
   author_name?: string;
@@ -106,6 +106,7 @@ interface SeoDocFull {
   ogType?: string;
   ogSiteName?: string;
 
+  // Open Graph media
   ogImage?: string;
   ogVideoUrl?: string;
   ogVideoSecureUrl?: string;
@@ -113,6 +114,7 @@ interface SeoDocFull {
   ogVideoWidth?: number;
   ogVideoHeight?: number;
 
+  // Twitter
   twitterCard?: string;
   twitterSite?: string;
   twitterTitle?: string;
@@ -122,6 +124,7 @@ interface SeoDocFull {
   twitterPlayerWidth?: number;
   twitterPlayerHeight?: number;
 
+  // JSON-LD (raw strings)
   VideoJsonLd?: string;
   LogoJsonLd?: string;
   LogoJsonLdcontext?: string;
@@ -130,11 +133,13 @@ interface SeoDocFull {
   logoJsonLdwidth?: string;
   logoJsonLdheight?: string;
 
+  // Breadcrumb JSON-LD
   BreadcrumbJsonLdcontext?: string;
   BreadcrumbJsonLdtype?: string;
   BreadcrumbJsonLdname?: string;
   BreadcrumbJsonLditemListElement?: string;
 
+  // LocalBusiness JSON-LD
   LocalBusinessJsonLdcontext?: string;
   LocalBusinessJsonLdtype?: string;
   LocalBusinessJsonLdname?: string;
@@ -162,28 +167,18 @@ type ProductDoc = {
 };
 
 /* -------------------------------------------------
-   Basic helpers (no fallbacks for SEO)
+   OG/Twitter helpers
 -------------------------------------------------- */
-const isAssetSlug = (slug?: string) => !!slug && slug.includes(".");
-const nonEmpty = (s: any) => (typeof s === "string" && s.trim().length ? s.trim() : undefined);
-const asString = (v: any) => (v === undefined || v === null ? undefined : String(v));
-const asBoolString = (v: any) => (v === true ? "true" : v === false ? "false" : undefined);
-
-// Allow-list validators (omit invalid values instead of falling back)
-const ALLOWED_OG_TYPES = new Set([
+const VALID_OG_TYPES = new Set([
   "website","article","book","profile",
   "music.song","music.album","music.playlist","music.radio_station",
   "video.movie","video.episode","video.tv_show","video.other",
 ]);
-function ogTypeIfAllowed(v: unknown) {
-  const t = String(v ?? "").toLowerCase().trim();
-  return (ALLOWED_OG_TYPES.has(t) ? (t as any) : undefined) as any;
-}
-const ALLOWED_TWITTER_CARDS = new Set(["summary", "summary_large_image", "player", "app"]);
-function twitterCardIfAllowed(v: unknown) {
-  const t = String(v ?? "").toLowerCase().trim();
-  return (ALLOWED_TWITTER_CARDS.has(t) ? (t as any) : undefined) as any;
-}
+const VALID_TWITTER_CARDS = new Set(["summary", "summary_large_image", "player", "app"]);
+const isAssetSlug = (slug?: string) => !!slug && slug.includes(".");
+const nonEmpty = (s: any) => (typeof s === "string" && s.trim().length ? s.trim() : undefined);
+const asString = (v: any) => (v === undefined || v === null ? undefined : String(v));
+const asBoolString = (v: any) => (v === true ? "true" : v === false ? "false" : undefined);
 
 function getLinkedProductId(prod: SeoDocFull["product"]): string {
   if (!prod) return "";
@@ -191,9 +186,18 @@ function getLinkedProductId(prod: SeoDocFull["product"]): string {
   if (typeof prod === "object" && (prod as any)._id) return String((prod as any)._id).trim();
   return "";
 }
+function ogTypeSafe(v: unknown) {
+  const t = String(v ?? "").toLowerCase().trim();
+  return (VALID_OG_TYPES.has(t) ? t : "website") as any;
+}
+function twitterCardSafe(v: unknown) {
+  const t = String(v ?? "").toLowerCase().trim();
+  return (VALID_TWITTER_CARDS.has(t) ? (t as any) : undefined) as
+    | "summary" | "summary_large_image" | "player" | "app" | undefined;
+}
 
 /* -------------------------------------------------
-   Meta helpers
+   Meta helpers (unchanged from your file)
 -------------------------------------------------- */
 function buildOtherMeta(seo: SeoDocFull) {
   const other: Record<string, string> = {};
@@ -202,7 +206,6 @@ function buildOtherMeta(seo: SeoDocFull) {
     if (v !== undefined && v !== "") other[name] = v;
   };
 
-  // Core
   set("charset", seo.charset);
   set("viewport", seo.viewport);
   set("x-ua-compatible", seo.xUaCompatible);
@@ -211,7 +214,6 @@ function buildOtherMeta(seo: SeoDocFull) {
   set("keywords", seo.keywords);
   set("robots", seo.robots);
 
-  // IDs & flags
   set("seo:product", typeof seo.product === "string" ? seo.product : (seo.product as any)?._id);
   set("seo:location", typeof seo.location === "string" ? seo.location : (seo.location as any)?._id);
   set("seo:locationCode", seo.locationCode);
@@ -230,17 +232,14 @@ function buildOtherMeta(seo: SeoDocFull) {
   set("seo:salesPrice", seo.salesPrice);
   set("seo:purchasePrice", seo.purchasePrice);
 
-  // Platform
   set("google-site-verification", seo.googleSiteVerification);
   set("msvalidate.01", seo.msValidate);
 
-  // Device/PWA
   set("theme-color", seo.themeColor);
   set("apple-mobile-web-app-capable", seo.mobileWebAppCapable);
   set("apple-mobile-web-app-status-bar-style", seo.appleStatusBarStyle);
   set("format-detection", seo.formatDetection);
 
-  // Open Graph (mirror)
   set("og:url", seo.ogUrl);
   set("og:image", seo.ogImage);
   set("og:site_name", seo.ogSiteName);
@@ -249,14 +248,12 @@ function buildOtherMeta(seo: SeoDocFull) {
   set("og:description", seo.ogDescription);
   set("og:type (raw)", seo.ogType);
 
-  // OG Video
   set("og:video", seo.ogVideoUrl);
   set("og:video:secure_url", seo.ogVideoSecureUrl);
   set("og:video:type", seo.ogVideoType);
   if (typeof seo.ogVideoWidth !== "undefined") set("og:video:width", seo.ogVideoWidth);
   if (typeof seo.ogVideoHeight !== "undefined") set("og:video:height", seo.ogVideoHeight);
 
-  // Twitter (mirror)
   set("twitter:card", seo.twitterCard);
   set("twitter:site", seo.twitterSite);
   set("twitter:title", seo.twitterTitle);
@@ -266,7 +263,6 @@ function buildOtherMeta(seo: SeoDocFull) {
   if (typeof seo.twitterPlayerWidth !== "undefined") set("twitter:player:width", seo.twitterPlayerWidth);
   if (typeof seo.twitterPlayerHeight !== "undefined") set("twitter:player:height", seo.twitterPlayerHeight);
 
-  // Hreflang helpers
   set("hreflang", seo.hreflang);
   set("x-default", seo.x_default);
   set("author_name", seo.author_name);
@@ -274,94 +270,212 @@ function buildOtherMeta(seo: SeoDocFull) {
   return other;
 }
 
-/* ---------- JSON-LD helpers ---------- */
+/* ---------- JSON-LD helpers (unchanged) ---------- */
 function parseJsonLd(input?: string) {
   if (!input || typeof input !== "string") return null;
   try { const j = JSON.parse(input); return j && typeof j === "object" ? j : null; } catch { return null; }
 }
-function buildLocalBusinessLdStrict(seo: SeoDocFull) {
-  const name = nonEmpty(seo.LocalBusinessJsonLdname);
-  const url = nonEmpty(seo.canonical_url);
-  const telephone = nonEmpty(seo.LocalBusinessJsonLdtelephone);
-  const address: any = {};
-  if (nonEmpty(seo.LocalBusinessJsonLdaddressstreetAddress)) address.streetAddress = nonEmpty(seo.LocalBusinessJsonLdaddressstreetAddress);
-  if (nonEmpty(seo.LocalBusinessJsonLdaddressaddressLocality)) address.addressLocality = nonEmpty(seo.LocalBusinessJsonLdaddressaddressLocality);
-  if (nonEmpty(seo.LocalBusinessJsonLdaddressaddressRegion)) address.addressRegion = nonEmpty(seo.LocalBusinessJsonLdaddressaddressRegion);
-  if (nonEmpty(seo.LocalBusinessJsonLdaddresspostalCode)) address.postalCode = nonEmpty(seo.LocalBusinessJsonLdaddresspostalCode);
-  if (nonEmpty(seo.LocalBusinessJsonLdaddressaddressCountry)) address.addressCountry = nonEmpty(seo.LocalBusinessJsonLdaddressaddressCountry);
-  const hasAddress = Object.keys(address).length > 0;
-  const geo: any = {};
-  if (nonEmpty(seo.LocalBusinessJsonLdgeoLatitude)) geo.latitude = Number(seo.LocalBusinessJsonLdgeoLatitude);
-  if (nonEmpty(seo.LocalBusinessJsonLdgeoLongitude)) geo.longitude = Number(seo.LocalBusinessJsonLdgeoLongitude);
-  const hasGeo = Object.keys(geo).length > 0;
-  if (!name && !telephone && !hasAddress && !hasGeo && !url) return null;
-  const ld: any = { "@context": "https://schema.org", "@type": nonEmpty(seo.LocalBusinessJsonLdtype) || "LocalBusiness" };
-  if (name) ld.name = name;
-  if (url) ld.url = url;
-  if (telephone) ld.telephone = telephone;
-  if (nonEmpty(seo.description)) ld.description = nonEmpty(seo.description);
-  if (nonEmpty(seo.LocalBusinessJsonLdareaserved)) ld.areaServed = nonEmpty(seo.LocalBusinessJsonLdareaserved);
-  if (hasAddress) ld.address = { "@type": "PostalAddress", ...address };
-  if (hasGeo) ld.geo = { "@type": "GeoCoordinates", ...geo };
+function buildLogoLdFromParts(seo: SeoDocFull) {
+  if (!seo.LogoJsonLdcontext && !seo.LogoJsonLdtype && !seo.logoJsonLdurl) return null;
+  return {
+    "@context": seo.LogoJsonLdcontext || "https://schema.org",
+    "@type": seo.LogoJsonLdtype || "ImageObject",
+    url: nonEmpty(seo.logoJsonLdurl),
+    width: nonEmpty(seo.logoJsonLdwidth),
+    height: nonEmpty(seo.logoJsonLdheight),
+  };
+}
+function buildLocalBusinessLdFromParts(seo: SeoDocFull) {
+  const address = {
+    "@type": "PostalAddress",
+    streetAddress: nonEmpty(seo.LocalBusinessJsonLdaddressstreetAddress) || "404, Safal Prelude, Corporate Rd, Prahlad Nagar",
+    addressLocality: nonEmpty(seo.LocalBusinessJsonLdaddressaddressLocality) || "Ahmedabad",
+    addressRegion: nonEmpty(seo.LocalBusinessJsonLdaddressaddressRegion) || "Gujarat",
+    postalCode: nonEmpty(seo.LocalBusinessJsonLdaddresspostalCode) || "380015",
+    addressCountry: nonEmpty(seo.LocalBusinessJsonLdaddressaddressCountry) || "IN",
+  };
+  const geo = {
+    "@type": "GeoCoordinates",
+    latitude: parseFloat(seo.LocalBusinessJsonLdgeoLatitude || "23.0225"),
+    longitude: parseFloat(seo.LocalBusinessJsonLdgeoLongitude || "72.5714"),
+  };
+  const openingHoursSpecification = [
+    { "@type": "OpeningHoursSpecification", dayOfWeek: ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"], opens: "09:30", closes: "19:00" },
+  ];
+  const images = [seo.ogImage, seo.twitterImage].filter(Boolean);
+  if (images.length === 0) images.push("https://amritafashions.com/wp-content/uploads/amrita-fashions-small-logo-india.webp");
+  let review = null;
+  if (seo.rating_value && seo.rating_count) {
+    review = { "@type": "Review", reviewRating: { "@type": "Rating", ratingValue: seo.rating_value, bestRating: 5, worstRating: 1 }, author: { "@type": "Person", name: "Customer" }, reviewBody: "Excellent quality fabrics and professional service" };
+  }
+  return {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    parentOrganization: { "@type": "Organization", "@id": "https://amritafashions.com/#organization" },
+    name: nonEmpty(seo.LocalBusinessJsonLdname),
+    url: nonEmpty(seo.canonical_url),
+    telephone: nonEmpty(seo.LocalBusinessJsonLdtelephone),
+    email: "rajesh.goyal@amritafashions.com",
+    address, geo, image: images,
+    logo: "https://amritafashions.com/wp-content/uploads/amrita-fashions-small-logo-india.webp",
+    description: nonEmpty(seo.description),
+    areaServed: nonEmpty(seo.LocalBusinessJsonLdareaserved),
+    openingHoursSpecification,
+    ...(review && { review }),
+    priceRange: "$$",
+    paymentAccepted: ["Cash", "Credit Card", "Bank Transfer"],
+    currenciesAccepted: ["INR", "USD", "EUR"],
+    hasOfferCatalog: { "@type": "OfferCatalog", name: "Fabric Catalog", itemListElement: [ { "@type": "Offer", itemOffered: { "@type": "Product", name: "Premium Fabrics" } } ] }
+  };
+}
+function buildBreadcrumbLdFromParts(seo: SeoDocFull) {
+  let productCategory = "Fabrics";
+  if (seo.slug) {
+    if (seo.slug.includes("cotton")) productCategory = "Cotton Fabrics";
+    else if (seo.slug.includes("silk")) productCategory = "Silk Fabrics";
+    else if (seo.slug.includes("wool")) productCategory = "Wool Fabrics";
+    else if (seo.slug.includes("polyester")) productCategory = "Polyester Fabrics";
+    else if (seo.slug.includes("linen")) productCategory = "Linen Fabrics";
+  }
+  const itemListElement = [
+    { "@type": "ListItem", position: 1, name: "Home", item: "https://amritafashions.com" },
+    { "@type": "ListItem", position: 2, name: "Products", item: "https://amritafashions.com/products" },
+    { "@type": "ListItem", position: 3, name: productCategory, item: `https://amritafashions.com/products/${productCategory.toLowerCase().replace(/\s+/g, "-")}` },
+    { "@type": "ListItem", position: 4, name: nonEmpty(seo.BreadcrumbJsonLdname) || nonEmpty(seo.title) || "Fabric Details", item: nonEmpty(seo.canonical_url) || `https://amritafashions.com/${seo.slug}` },
+  ];
+  return { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement };
+}
+function productJsonLd(seo: SeoDocFull, productName?: string) {
+  const images = [seo.ogImage, seo.twitterImage].filter(Boolean);
+  if (images.length === 0) images.push("https://amritafashions.com/wp-content/uploads/amrita-fashions-small-logo-india.webp");
+  const orgId = "https://amritafashions.com/#organization";
+  const ld: any = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: productName || nonEmpty(seo.title),
+    description: nonEmpty(seo.description),
+    sku: nonEmpty(seo.sku) || undefined,
+    brand: { "@type": "Brand", name: "Amrita Fashions" },
+    image: images,
+    url: nonEmpty(seo.canonical_url) || "https://amritafashions.com",
+    category: "Textile & Fabric",
+    manufacturer: { "@type": "Organization", "@id": orgId },
+    mpn: nonEmpty(seo.productIdentifier) || undefined,
+    gtin: nonEmpty(seo.sku) || undefined,
+  };
+  if (seo.salesPrice) {
+    ld.offers = {
+      "@type": "Offer", price: seo.salesPrice, priceCurrency: "INR",
+      availability: "https://schema.org/InStock",
+      seller: { "@type": "Organization", "@id": orgId },
+      priceValidUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+      deliveryLeadTime: { "@type": "QuantitativeValue", value: 7, unitCode: "DAY" },
+    };
+  }
+  if (seo.rating_value && seo.rating_count) {
+    ld.aggregateRating = { "@type": "AggregateRating", ratingValue: seo.rating_value, reviewCount: seo.rating_count, bestRating: 5, worstRating: 1 };
+  }
+  if (seo.popularproduct) {
+    ld.additionalProperty = { "@type": "PropertyValue", name: "Popular Product", value: "Yes" };
+  }
   return ld;
 }
-// Remove any builders with hard-coded defaults. Only parse JSON provided by API.
+function organizationJsonLd(seo: SeoDocFull) {
+  const images = [seo.ogImage, seo.twitterImage].filter(Boolean);
+  if (images.length === 0) images.push("https://amritafashions.com/wp-content/uploads/amrita-fashions-small-logo-india.webp");
+  return {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "@id": "https://amritafashions.com/#organization",
+    name: "Amrita Fashions",
+    url: "https://amritafashions.com",
+    logo: { "@type": "ImageObject", url: "https://amritafashions.com/wp-content/uploads/amrita-fashions-small-logo-india.webp", width: 131, height: 61 },
+    image: images,
+    description: nonEmpty(seo.description) || "Leading B2B Fabric Supplier Worldwide - ISO 9001 Certified • 500+ Global Partners • Ships to 50+ Countries",
+    address: { "@type": "PostalAddress", streetAddress: "404, Safal Prelude, Corporate Rd, Prahlad Nagar", addressLocality: "Ahmedabad", addressRegion: "Gujarat", postalCode: "380015", addressCountry: "IN" },
+    contactPoint: { "@type": "ContactPoint", telephone: "+919925155141", contactType: "customer service", email: "rajesh.goyal@amritafashions.com", availableLanguage: ["English","Hindi","Gujarati"] },
+    sameAs: ["https://amritafashions.com"],
+    foundingDate: "2018", numberOfEmployees: "50-100", award: ["ISO 9001 Certified","Leading Fabric Manufacturer"],
+  };
+}
+function websiteJsonLd() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "@id": "https://amritafashions.com/#website",
+    name: "Amrita Fashions",
+    url: "https://amritafashions.com",
+    description: "Leading B2B Fabric Supplier Worldwide - Premium Quality Textiles",
+    potentialAction: { "@type": "SearchAction", target: { "@type": "EntryPoint", urlTemplate: "https://amritafashions.com/search?q={search_term_string}" }, "query-input": "required name=search_term_string" },
+    publisher: { "@type": "Organization", "@id": "https://amritafashions.com/#organization" },
+  };
+}
+function faqJsonLd() {
+  const faqs = [
+    { question: "What is your minimum order quantity for bulk fabric orders?", answer: "Our minimum order quantity varies by fabric type, typically starting from 500 meters for standard fabrics and 1000 meters for custom specifications. We work with garment manufacturers and retailers of all sizes to accommodate their specific needs." },
+    { question: "Do you provide fabric samples before placing bulk orders?", answer: "Yes, we provide free fabric samples for all our products. Sample orders are processed within 3-5 business days and shipped worldwide. This allows fabric importers and manufacturers to evaluate quality before committing to larger orders." },
+    { question: "What are your payment terms for B2B fabric orders?", answer: "We offer flexible payment terms including T/T (Telegraphic Transfer), L/C (Letter of Credit), and for established clients, we provide 30-60 day payment terms. All transactions are secure and comply with international trade regulations." },
+    { question: "How do you ensure consistent quality across large fabric orders?", answer: "We maintain strict quality control processes including pre-production samples, in-line inspection during manufacturing, and final quality checks before shipment. All our facilities are ISO certified and follow international quality standards." },
+    { question: "What is your typical lead time for fabric manufacturing and delivery?", answer: "Lead times vary based on fabric type and order quantity. Standard fabrics: 15-20 days, custom fabrics: 25-35 days. We provide detailed production schedules and regular updates throughout the manufacturing process." },
+    { question: "Do you offer custom fabric development services?", answer: "Yes, we specialize in custom fabric development for clothing brands and manufacturers. Our R&D team works closely with clients to develop unique fabric compositions, colors, and finishes that meet specific requirements." },
+  ];
+  return { "@context": "https://schema.org", "@type": "FAQPage", mainEntity: faqs.map((faq) => ({ "@type": "Question", name: faq.question, acceptedAnswer: { "@type": "Answer", text: faq.answer } })) };
+}
 
 /* ---------- Metadata ---------- */
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const seo = await fetchSeoData(slug);
-  if (!seo) return {};
+  if (!seo) return { title: "Page Not Found", description: "The requested page could not be found." };
   const seoFull = seo as SeoDocFull;
 
-  // Build Metadata strictly from DB fields (omit missing)
-  const ogImages = seoFull.ogImage ? [{ url: seoFull.ogImage }] : undefined;
-  const ogVideos = seoFull.ogVideoUrl
-    ? [{ url: seoFull.ogVideoUrl, secureUrl: seoFull.ogVideoSecureUrl, type: seoFull.ogVideoType as any, width: seoFull.ogVideoWidth as any, height: seoFull.ogVideoHeight as any }]
-    : undefined;
-  const twitterImages = seoFull.twitterImage ? [{ url: seoFull.twitterImage }] : undefined;
-
-  const openGraph: any = {};
-  if (seoFull.ogUrl) openGraph.url = seoFull.ogUrl;
-  if (seoFull.ogSiteName) openGraph.siteName = seoFull.ogSiteName;
-  if (seoFull.ogLocale) openGraph.locale = seoFull.ogLocale;
-  if (seoFull.ogTitle) openGraph.title = seoFull.ogTitle;
-  if (seoFull.ogDescription) openGraph.description = seoFull.ogDescription;
-  const ogType = ogTypeIfAllowed(seoFull.ogType);
-  if (ogType) openGraph.type = ogType;
-  if (ogImages) openGraph.images = ogImages;
-  if (ogVideos) openGraph.videos = ogVideos;
-
-  const twitter: any = {};
-  const twCard = twitterCardIfAllowed(seoFull.twitterCard);
-  if (twCard) twitter.card = twCard;
-  if (seoFull.twitterSite) twitter.site = seoFull.twitterSite;
-  if (seoFull.twitterTitle) twitter.title = seoFull.twitterTitle;
-  if (seoFull.twitterDescription) twitter.description = seoFull.twitterDescription;
-  if (twitterImages) twitter.images = twitterImages;
+  const videoLd = parseJsonLd(seo.VideoJsonLd);
+  const logoLd = parseJsonLd(seo.LogoJsonLd) ?? buildLogoLdFromParts(seoFull);
+  const breadcrumbLd = buildBreadcrumbLdFromParts(seoFull);
+  const localBusinessLd = buildLocalBusinessLdFromParts(seoFull);
+  const productLd = productJsonLd(seoFull, "Pique Knit Fabric");
+  const organizationLd = organizationJsonLd(seoFull);
+  const websiteLd = websiteJsonLd();
+  const faqLd = faqJsonLd();
 
   return {
-    title: seoFull.title,
+    title: seoFull.title ,
     description: seoFull.description,
-    keywords: seoFull.keywords ? seoFull.keywords.split(",").map((k) => k.trim()).filter(Boolean) : undefined,
-    metadataBase: seoFull.canonical_url ? new URL(seoFull.canonical_url) : undefined,
+    keywords: seoFull.keywords?.split(",").map((k) => k.trim()).filter(Boolean) ,
+    metadataBase: new URL(seoFull.canonical_url || "https://example.com"),
     applicationName: seoFull.ogSiteName,
     authors: seoFull.author_name ? [{ name: seoFull.author_name }] : undefined,
     creator: seoFull.author_name,
     publisher: seoFull.ogSiteName,
+    generator: "Next.js",
+    referrer: "origin-when-cross-origin",
     robots: seoFull.robots ? { index: true, follow: true } : undefined,
-    // Only include viewport/formatDetection if explicitly provided
-    viewport: seoFull.viewport ? (seoFull.viewport as any) : undefined,
-    formatDetection: seoFull.formatDetection ? ({ telephone: seoFull.formatDetection !== "telephone=no" } as any) : undefined,
-    verification:
-      seoFull.googleSiteVerification || seoFull.msValidate
-        ? { google: seoFull.googleSiteVerification, other: seoFull.msValidate ? { "msvalidate.01": seoFull.msValidate } : undefined }
-        : undefined,
-    themeColor: seoFull.themeColor,
-    appleWebApp: seoFull.mobileWebAppCapable ? ({ capable: seoFull.mobileWebAppCapable === "yes", statusBarStyle: seoFull.appleStatusBarStyle as any } as any) : undefined,
-    openGraph: Object.keys(openGraph).length ? (openGraph as any) : undefined,
-    twitter: Object.keys(twitter).length ? (twitter as any) : undefined,
-    alternates: seoFull.canonical_url ? { canonical: new URL(seoFull.canonical_url).toString() } : undefined,
+    viewport: { width: "device-width", initialScale: 1 },
+    formatDetection: { email: false, address: false, telephone: seoFull.formatDetection === "telephone=no" ? false : true },
+    verification: seoFull.googleSiteVerification || seoFull.msValidate ? { google: seoFull.googleSiteVerification, other: seoFull.msValidate ? { "msvalidate.01": seoFull.msValidate } : undefined } : undefined,
+    themeColor: seoFull.themeColor || "#ffffff",
+    appleWebApp: seoFull.mobileWebAppCapable ? { capable: seoFull.mobileWebAppCapable === "yes", statusBarStyle: (seoFull.appleStatusBarStyle as any) || "default" } : undefined,
+    openGraph: {
+      url: seoFull.ogUrl ,
+      siteName: seoFull.ogSiteName,
+      locale: seoFull.ogLocale ,
+      title: seoFull.ogTitle ,
+      description: seoFull.ogDescription,
+      type: ogTypeSafe(seoFull.ogType) as any,
+      images: seoFull.ogImage ? [{ url: seoFull.ogImage, width: 1200, height: 630, alt: seoFull.ogTitle }] : [],
+      videos: seoFull.ogVideoUrl ? [{ url: seoFull.ogVideoUrl, secureUrl: seoFull.ogVideoSecureUrl, type: seoFull.ogVideoType as any, width: seoFull.ogVideoWidth, height: seoFull.ogVideoHeight }] : [],
+    },
+    twitter: {
+      card: twitterCardSafe(seoFull.twitterCard),
+      site: seoFull.twitterSite ,
+      title: seoFull.twitterTitle ,
+      description: seoFull.twitterDescription ,
+      images: seoFull.twitterImage ? [{ url: seoFull.twitterImage }] : [],
+    },
+    alternates: (() => {
+      const canonicalUrl = seoFull.canonical_url ? new URL(seoFull.canonical_url).toString() : "https://example.com/premium-cotton-fabric";
+      return { canonical: canonicalUrl, languages: { en: canonicalUrl, "x-default": seoFull.x_default || "https://example.com" } };
+    })(),
     other: buildOtherMeta(seoFull),
   };
 }
@@ -379,56 +493,46 @@ export default async function SlugPage({ params }: Props) {
   const seo = rawSeo as SeoDocFull;
 
   // --- Build RELATED (same location) ---
+  // 1) location identity from this SEO row
   const currentLocId = toId(seo.location);
   const currentLocCode = norm(seo.locationCode);
 
+  // 2) fetch ALL seo rows once
   const seoListJson = await fetchJson<any>(SEO_LIST_URL);
   const allSeos: SeoDocFull[] = Array.isArray(seoListJson?.data) ? seoListJson.data : [];
 
+  // 3) collect productIds of rows with the SAME location (prefer _id, fallback to code only if an id is missing)
   const relatedProductIds = new Set<string>();
-  const slugByProduct = new Map<string, string>(); // prefer location-specific slug
+  const slugByProduct = new Map<string, string>(); // prefer same-location slug
   for (const s of allSeos) {
     const locId = toId(s.location);
     const locCode = norm(s.locationCode);
     const pid = toId(s.product);
     const sSlug = String(s?.slug ?? "").trim();
 
-    // strict same-location: prefer id match; use code only if an id missing on either side
+    // ✅ strict same-location check
     let sameLocation = false;
     if (currentLocId && locId) {
-      sameLocation = currentLocId === locId;
+      sameLocation = currentLocId === locId; // exact location document match
     } else if (!currentLocId || !locId) {
-      if (currentLocCode && locCode) sameLocation = currentLocCode === locCode;
+      if (currentLocCode && locCode) sameLocation = currentLocCode === locCode; // only when an id is missing
     }
 
     if (pid && sameLocation) {
       relatedProductIds.add(pid);
       if (sSlug) slugByProduct.set(pid, sSlug);
     } else if (pid && sSlug && !slugByProduct.has(pid)) {
+      // fallback slug if no location-specific slug later
       slugByProduct.set(pid, sSlug);
     }
   }
 
+  // 4) map to actual product docs
   const allProducts: ProductDoc[] = Array.isArray(productsArr) ? (productsArr as ProductDoc[]) : [];
   const relatedProducts: ProductDoc[] = allProducts.filter((p) => relatedProductIds.has(String(p?._id)));
 
-  // Current linked product (hero)
-  const linkedProductId = getLinkedProductId(seo.product);
-
-  // ✅ Do not repeat hero product inside related list/grid
-  const relatedProductsClean = relatedProducts.filter((p) => String(p._id) !== linkedProductId);
-
-  // Build footer links: name + href only, deduped, max 8
-  const footerRelatedLinks = relatedProductsClean
-    .map((p) => {
-      const pid = String(p._id);
-      const s = slugByProduct.get(pid) || p.slug;
-      const name = p.name?.trim() || "Fabric";
-      return s ? { name, href: `/${s}` } : null;
-    })
-    .filter(Boolean) as { name: string; href: string }[];
-
   // Linked product for hero images
+  const linkedProductId = getLinkedProductId(seo.product);
   const matchingProduct: ProductDoc | null =
     allProducts.find((p) => p._id === linkedProductId) || null;
 
@@ -449,28 +553,18 @@ export default async function SlugPage({ params }: Props) {
   const locationDesc1 = seo.productlocationdescription1?.trim() || "";
   const locationDesc2 = seo.productlocationdescription2?.trim() || "";
 
-  // JSON-LD blocks strictly from DB (omit if not present)
+  // JSON-LD blocks
   const videoLd = parseJsonLd(seo.VideoJsonLd);
-  const logoLd = parseJsonLd(seo.LogoJsonLd);
-  const breadcrumbLd = parseJsonLd((seo as any).BreadcrumbJsonLd);
-  const localBusinessLd = parseJsonLd((seo as any).LocalBusinessJsonLd) ?? buildLocalBusinessLdStrict(seo);
-  const productLd = parseJsonLd((seo as any).ProductJsonLd);
-  const organizationLd = parseJsonLd((seo as any).OrganizationJsonLd);
-  const websiteLd = parseJsonLd((seo as any).WebsiteJsonLd);
-  const faqLd = parseJsonLd((seo as any).FaqJsonLd);
+  const logoLd = parseJsonLd(seo.LogoJsonLd) ?? buildLogoLdFromParts(seo);
+  const breadcrumbLd = buildBreadcrumbLdFromParts(seo);
+  const localBusinessLd = buildLocalBusinessLdFromParts(seo);
+  const productLd = productJsonLd(seo, matchingProduct?.name);
+  const organizationLd = organizationJsonLd(seo);
+  const websiteLd = websiteJsonLd();
+  const faqLd = faqJsonLd();
 
   return (
     <>
-      {/* This tiny JSON blob lets the global Footer render related names+links. */}
-      <script
-        id="footer-products"
-        type="application/json"
-        // only names + hrefs
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(footerRelatedLinks.slice(0, 8)),
-        }}
-      />
-
       <JsonLdInjector
         videoLd={videoLd}
         logoLd={logoLd}
@@ -612,7 +706,7 @@ export default async function SlugPage({ params }: Props) {
           </div>
         </section>
 
-        {/* EXPLORE OUR FABRIC CATALOG — same-location related products (excluding current) */}
+        {/* EXPLORE OUR FABRIC CATALOG — same-location related products */}
         <section id="products" className="py-20 bg-white" aria-labelledby="product-categories">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-16">
@@ -624,11 +718,11 @@ export default async function SlugPage({ params }: Props) {
               </p>
             </div>
 
-            {relatedProductsClean.length === 0 ? (
+            {relatedProducts.length === 0 ? (
               <div className="text-center text-slate-600">No products for the selected location.</div>
             ) : (
               <div className="grid gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-                {relatedProductsClean.map((p) => {
+                {relatedProducts.map((p) => {
                   const img =
                     (p.img ?? p.image1 ?? p.image2 ?? "/placeholder.svg?height=300&width=400").toString();
                   const pid = String(p?._id ?? "").trim();

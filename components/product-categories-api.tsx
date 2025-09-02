@@ -40,11 +40,11 @@ type LocationDoc = {
   slug?: string
 }
 
-// NEW: Props so the parent (page.tsx) can pass an Ahmedabad-filtered list directly
+// Props so the parent (page.tsx) can pass a same-location list directly
 type Props = {
-  /** Optional: ready-to-render products (e.g., Ahmedabad-only from server) */
+  /** Optional: ready-to-render products (e.g., same-location, hero excluded) */
   initialProducts?: Product[]
-  /** Optional: default location id (e.g., Ahmedabad _id) */
+  /** Optional: default location id (if you want to force a location on non-slug pages) */
   defaultLocationId?: string
   /** Optional: default location name (used only if id not given), default "ahmedabad" */
   defaultLocationName?: string
@@ -93,7 +93,7 @@ export function ProductCategoriesApi({
 }: Props) {
   const router = useRouter()
   const pathname = usePathname()
-  const pageSlug = useMemo(() => getPageSlugFromPath(pathname), [pathname]) // "" on "/"
+  const pageSlug = useMemo(() => getPageSlugFromPath(pathname), [pathname])
 
   const isMobile = useIsMobile()
   const groupSize = isMobile ? 1 : 4
@@ -129,16 +129,16 @@ export function ProductCategoriesApi({
         if (!locRes.ok) throw new Error(`Locations fetch failed: ${locRes.status}`)
         const seoJson = await seoRes.json()
         const locJson = await locRes.json()
-        const prodJson = needProductFetch ? await prodRes.json() : null
+        const prodJson = needProductFetch ? await (prodRes as Response).json() : null
 
         if (!alive) return
-        setSeos(Array.isArray(seoJson?.data) ? seoJson.data : [])
-        setLocations(Array.isArray(locJson?.data?.locations) ? locJson.data.locations : [])
+        setSeos(Array.isArray(seoJson?.data) ? (seoJson.data as Seo[]) : [])
+        setLocations(Array.isArray(locJson?.data?.locations) ? (locJson.data.locations as LocationDoc[]) : [])
         setProducts(
           initialProducts && initialProducts.length > 0
             ? initialProducts
             : Array.isArray(prodJson?.data)
-            ? prodJson.data
+            ? (prodJson.data as Product[])
             : []
         )
       } catch (e: any) {
@@ -163,20 +163,18 @@ export function ProductCategoriesApi({
     return seos.find((s) => normalizeSlug(s.slug) === slug) || null
   }, [seos, pageSlug])
 
-  // Determine the target Location ID
+  // Target Location ID
   const targetLocationId = useMemo(() => {
     if (currentSeo) return extractId(currentSeo.location)
-
-    // use explicit id from parent if provided
     if (defaultLocationId) return defaultLocationId
 
-    // home page (no slug) -> find by name (default "ahmedabad")
+    // Non-slug page: find by name (default "ahmedabad")
     const byName = locations.find(
       (l) => String(l?.name ?? "").trim().toLowerCase() === defaultLocationName.toLowerCase()
     )
     if (byName?._id) return byName._id
 
-    // fallback: first location from any SEO
+    // Fallback: first available from any SEO
     for (const s of seos) {
       const id = extractId(s.location)
       if (id) return id
@@ -184,16 +182,25 @@ export function ProductCategoriesApi({
     return ""
   }, [currentSeo, locations, seos, defaultLocationId, defaultLocationName])
 
-  // productId -> slug map (from any SEO row)
+  // Map productId -> slug (prefer SEO slug; fallback to product.slug so navigation always works)
   const productSlugById = useMemo(() => {
-    const m = new Map<string, string>()
+    const map = new Map<string, string>()
+
+    // 1) from product list
+    for (const p of products) {
+      if (p?._id && p.slug) {
+        const id = p._id.trim()
+        if (id && !map.has(id)) map.set(id, p.slug.trim())
+      }
+    }
+    // 2) overlay SEO slugs (if present)
     for (const s of seos) {
       const pid = extractId(s.product)
       const sl = s.slug?.trim()
-      if (pid && sl && !m.has(pid)) m.set(pid, sl)
+      if (pid && sl) map.set(pid, sl)
     }
-    return m
-  }, [seos])
+    return map
+  }, [products, seos])
 
   // Set of product IDs that belong to the target location (from SEO rows)
   const targetLocationProductIds = useMemo(() => {
@@ -211,26 +218,23 @@ export function ProductCategoriesApi({
   // Current page's product (only if on slug page)
   const currentProductId = useMemo(() => extractId(currentSeo?.product), [currentSeo])
 
-  // Build the list to render
+  // The location name (for header suffix)
+  const locationName = useMemo(() => {
+    if (!targetLocationId) return ""
+    const found = locations.find((l) => l._id === targetLocationId)
+    return found?.name || found?.slug || ""
+  }, [locations, targetLocationId])
+
+  // Build the list to render (exclude hero/current product)
   const listToShow = useMemo(() => {
-    // If parent already passed a curated list (e.g., Ahmedabad),
-    // use it directly and (on a slug page) hide the current product card.
     if (initialProducts && initialProducts.length > 0) {
-      const base = initialProducts
-      if (currentSeo && currentProductId) {
-        return base.filter((p) => p._id.trim() !== currentProductId)
-      }
-      return base
+      return currentProductId ? initialProducts.filter((p) => p._id.trim() !== currentProductId) : initialProducts
     }
 
-    // Fallback: derive from SEO rows for the target location
     if (targetLocationProductIds.size === 0) return []
     const inLocation = products.filter((p) => targetLocationProductIds.has(p._id.trim()))
-    if (currentSeo && currentProductId) {
-      return inLocation.filter((p) => p._id.trim() !== currentProductId)
-    }
-    return inLocation
-  }, [initialProducts, products, targetLocationProductIds, currentSeo, currentProductId])
+    return currentProductId ? inLocation.filter((p) => p._id.trim() !== currentProductId) : inLocation
+  }, [initialProducts, products, targetLocationProductIds, currentProductId])
 
   // Group for carousel
   const grouped = useMemo(() => {
@@ -249,12 +253,15 @@ export function ProductCategoriesApi({
     router.push(`/${sl}`)
   }
 
+  const titleSuffix =
+    listToShow.length > 0 && locationName ? ` — Related in ${locationName}` : ""
+
   return (
     <section id="products" className="py-20 bg-white" aria-labelledby="product-categories">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <h2 id="product-categories" className="text-3xl sm:text-4xl font-bold text-slate-900 mb-6">
-            Explore Our Fabric Catalog
+            Explore Our Fabric Catalog{titleSuffix}
           </h2>
           <p className="text-xl text-slate-600 max-w-3xl mx-auto">
             Comprehensive range of premium fabrics for every manufacturing need
@@ -285,7 +292,6 @@ export function ProductCategoriesApi({
                       const targetSlug = productSlugById.get(p._id)
                       const disabled = !targetSlug
 
-                      // Handlers to make the WHOLE CARD clickable & keyboard accessible
                       const handleClick = () => {
                         if (!disabled) goToProduct(p._id)
                       }
@@ -329,7 +335,6 @@ export function ProductCategoriesApi({
                                 {p.productdescription || "—"}
                               </p>
 
-                              {/* Keep the button for explicit affordance; card click also works */}
                               <button
                                 type="button"
                                 onClick={(e) => {
