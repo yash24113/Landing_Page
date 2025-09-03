@@ -395,7 +395,7 @@ function organizationJsonLd(seo: SeoDocFull) {
     address: { "@type": "PostalAddress", streetAddress: "404, Safal Prelude, Corporate Rd, Prahlad Nagar", addressLocality: "Ahmedabad", addressRegion: "Gujarat", postalCode: "380015", addressCountry: "IN" },
     contactPoint: { "@type": "ContactPoint", telephone: "+919925155141", contactType: "customer service", email: "rajesh.goyal@amritafashions.com", availableLanguage: ["English","Hindi","Gujarati"] },
     sameAs: ["https://amritafashions.com"],
-    foundingDate: "2018", numberOfEmployees: "50-100", award: ["ISO 9001 Certified","Leading Fabric Manufacturer"],
+    foundingDate: "2018", numberOfEmployees: "100", award: ["ISO 9001 Certified","Leading Fabric Manufacturer"],
   };
 }
 function websiteJsonLd() {
