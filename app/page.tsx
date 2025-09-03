@@ -17,26 +17,52 @@ const DEFAULT_LOCATION_SLUG = "ahmedabad";
    API URLs
 -------------------------------------------------- */
 const RAW_BASE = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, "") ?? "";
-const SEO_URL = RAW_BASE ? `${RAW_BASE}/seo` : "http://localhost:7000/landing/seo";
-const PRODUCT_URL = RAW_BASE ? `${RAW_BASE}/product` : "http://localhost:7000/landing/product";
-const LOC_URL = RAW_BASE ? `${RAW_BASE}/locations` : "http://localhost:7000/landing/locations";
+const SEO_URL = RAW_BASE ? `${RAW_BASE}/seo` : "";
+const PRODUCT_URL = RAW_BASE ? `${RAW_BASE}/product` : "";
+const LOC_URL = RAW_BASE ? `${RAW_BASE}/locations` : "";
 
 /** Contact endpoint */
 const CONTACT_URL =
   process.env.NEXT_PUBLIC_CONTACT_URL ??
-  (RAW_BASE ? `${RAW_BASE}/contacts` : "http://localhost:7000/landing/contacts");
+  (RAW_BASE ? `${RAW_BASE}/contacts` : "");
 
 /* -------------------------------------------------
    AUTH HEADERS
 -------------------------------------------------- */
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY ?? "";
 const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? "";
-const API_KEY_HEADER = process.env.NEXT_PUBLIC_API_KEY_HEADER ?? "x-api-key-yash";
+const API_KEY_HEADER = process.env.NEXT_PUBLIC_API_KEY_HEADER ?? "";
 const ADMIN_EMAIL_HEADER = process.env.NEXT_PUBLIC_ADMIN_EMAIL_HEADER ?? "x-admin-email";
 
 const authHeaders: Record<string, string> = {};
 if (API_KEY) authHeaders[API_KEY_HEADER] = API_KEY;
 if (ADMIN_EMAIL) authHeaders[ADMIN_EMAIL_HEADER] = ADMIN_EMAIL;
+
+/* -------------------------------------------------
+   Company ENV (Organization/LocalBusiness/Contact)
+   DB → ENV → default priority
+-------------------------------------------------- */
+const COMPANY_NAME = process.env.NEXT_PUBLIC_COMPANY_NAME ;
+const COMPANY_EMAIL = process.env.NEXT_PUBLIC_COMPANY_EMAIL;
+const COMPANY_PHONE = process.env.NEXT_PUBLIC_COMPANY_PHONE ;
+const COMPANY_ADDRESS = process.env.NEXT_PUBLIC_COMPANY_ADDRESS;
+const COMPANY_LOGO_URL =
+  process.env.NEXT_PUBLIC_COMPANY_LOGO_URL;
+const COMPANY_SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || undefined;
+const COMPANY_SAME_AS = (process.env.NEXT_PUBLIC_COMPANY_SAME_AS || "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+const COMPANY_LANGS = (process.env.NEXT_PUBLIC_COMPANY_LANGS || "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+const COMPANY_FOUNDING_DATE = process.env.NEXT_PUBLIC_COMPANY_FOUNDING_DATE;
+const COMPANY_EMPLOYEE_RANGE = process.env.NEXT_PUBLIC_COMPANY_EMPLOYEE_RANGE;
+const COMPANY_AWARDS = (process.env.NEXT_PUBLIC_COMPANY_AWARDS || "")
+  .split("|")
+  .map((s) => s.trim())
+  .filter(Boolean);
 
 /* -------------------------------------------------
    Helpers
@@ -88,6 +114,28 @@ function isSeoForLocation(seoRow: any, locIds: Set<string>, locSlug: string) {
   return (locId && locIds.has(locId)) || locCode === norm(locSlug);
 }
 
+/** Pick with priority: DB → ENV → fallback */
+function pick<T>(dbVal: T | undefined | null, envVal?: T, fallback?: T) {
+  if (dbVal !== undefined && dbVal !== null && String(dbVal).trim() !== "") return dbVal as T;
+  if (envVal !== undefined && envVal !== null && String(envVal).trim() !== "") return envVal as T;
+  return fallback as T;
+}
+
+/** Parse a single-line address from env into schema parts (best-effort) */
+function parseAddressString(addr: string) {
+  if (!addr) return {} as any;
+  const parts = addr.split(",").map((p) => p.trim()).filter(Boolean);
+  const pinMatch = addr.match(/\b\d{5,6}\b/);
+  const postalCode = pinMatch ? pinMatch[0] : undefined;
+  return {
+    streetAddress: parts.slice(0, 3).join(", ") || undefined,
+    addressLocality: parts[3] || parts[2] || undefined,
+    addressRegion: parts.find((p) => /gujarat/i.test(p)) || parts[4] || undefined,
+    postalCode,
+    addressCountry: "IN",
+  };
+}
+
 /* -------------------------------------------------
    Metadata helpers (same as slug page)
 -------------------------------------------------- */
@@ -128,12 +176,9 @@ function buildOtherMeta(seo: any) {
     if (v !== undefined && v !== "") other[name] = v;
   };
 
-  // Core page meta
+  // Core page meta (keep only items not already expressed via Next metadata API)
   set("charset", seo.charset);
-  set("viewport", seo.viewport);
-  set("x-ua-compatible", seo.xUaCompatible);
   set("content-language", seo.contentLanguage);
-  set("canonical", seo.canonical_url);
   set("keywords", seo.keywords);
   set("robots", seo.robots);
 
@@ -166,32 +211,6 @@ function buildOtherMeta(seo: any) {
   set("apple-mobile-web-app-status-bar-style", seo.appleStatusBarStyle);
   set("format-detection", seo.formatDetection);
 
-  // Open Graph mirror
-  set("og:url", seo.ogUrl);
-  set("og:image", seo.ogImage);
-  set("og:site_name", seo.ogSiteName);
-  set("og:locale", seo.ogLocale);
-  set("og:title", seo.ogTitle);
-  set("og:description", seo.ogDescription);
-  set("og:type (raw)", seo.ogType);
-
-  // OG Video
-  set("og:video", seo.ogVideoUrl);
-  set("og:video:secure_url", seo.ogVideoSecureUrl);
-  set("og:video:type", seo.ogVideoType);
-  if (typeof seo.ogVideoWidth !== "undefined") set("og:video:width", seo.ogVideoWidth);
-  if (typeof seo.ogVideoHeight !== "undefined") set("og:video:height", seo.ogVideoHeight);
-
-  // Twitter mirror
-  set("twitter:card", seo.twitterCard);
-  set("twitter:site", seo.twitterSite);
-  set("twitter:title", seo.twitterTitle);
-  set("twitter:description", seo.twitterDescription);
-  set("twitter:image", seo.twitterImage);
-  set("twitter:player", seo.twitterPlayer);
-  if (typeof seo.twitterPlayerWidth !== "undefined") set("twitter:player:width", seo.twitterPlayerWidth);
-  if (typeof seo.twitterPlayerHeight !== "undefined") set("twitter:player:height", seo.twitterPlayerHeight);
-
   // Hreflang helpers
   set("hreflang", seo.hreflang);
   set("x-default", seo.x_default);
@@ -200,7 +219,7 @@ function buildOtherMeta(seo: any) {
   return other;
 }
 
-/* ---------- JSON-LD helpers (same as slug page) ---------- */
+/* ---------- JSON-LD helpers ---------- */
 function parseJsonLd(input?: string) {
   if (!input || typeof input !== "string") return null;
   try {
@@ -216,28 +235,55 @@ function buildLogoLdFromParts(seo: any) {
   return {
     "@context": seo.LogoJsonLdcontext || "https://schema.org",
     "@type": seo.LogoJsonLdtype || "ImageObject",
-    url: nonEmpty(seo.logoJsonLdurl),
+    url: nonEmpty(seo.logoJsonLdurl) || COMPANY_LOGO_URL,
     width: nonEmpty(seo.logoJsonLdwidth),
     height: nonEmpty(seo.logoJsonLdheight),
   };
 }
 
+/** ENV-aware LocalBusiness (DB → ENV → default) */
 function buildLocalBusinessLdFromParts(seo: any) {
+  const lat = parseFloat(seo?.LocalBusinessJsonLdgeoLatitude);
+  const lng = parseFloat(seo?.LocalBusinessJsonLdgeoLongitude);
+
+  const images = [seo?.ogImage, seo?.twitterImage].filter(Boolean) as string[];
+  if (images.length === 0) images.push(COMPANY_LOGO_URL ?? "/placeholder.svg?height=800&width=1200");
+
+  const addressFromEnv = parseAddressString(COMPANY_ADDRESS ?? "");
+
   const address = {
     "@type": "PostalAddress",
-    streetAddress:
+    streetAddress: pick<string>(
       nonEmpty(seo?.LocalBusinessJsonLdaddressstreetAddress),
-    addressLocality: nonEmpty(seo?.LocalBusinessJsonLdaddressaddressLocality),
-    addressRegion: nonEmpty(seo?.LocalBusinessJsonLdaddressaddressRegion) ,
-    postalCode: nonEmpty(seo?.LocalBusinessJsonLdaddresspostalCode),
-    addressCountry: nonEmpty(seo?.LocalBusinessJsonLdaddressaddressCountry),
+      addressFromEnv.streetAddress as string,
+      undefined
+    ),
+    addressLocality: pick<string>(
+      nonEmpty(seo?.LocalBusinessJsonLdaddressaddressLocality),
+      addressFromEnv.addressLocality as string,
+      undefined
+    ),
+    addressRegion: pick<string>(
+      nonEmpty(seo?.LocalBusinessJsonLdaddressaddressRegion),
+      addressFromEnv.addressRegion as string,
+      undefined
+    ),
+    postalCode: pick<string>(
+      nonEmpty(seo?.LocalBusinessJsonLdaddresspostalCode),
+      addressFromEnv.postalCode as string,
+      undefined
+    ),
+    addressCountry: pick<string>(
+      nonEmpty(seo?.LocalBusinessJsonLdaddressaddressCountry),
+      addressFromEnv.addressCountry as string,
+      "IN"
+    ),
   };
 
-  const geo = {
-    "@type": "GeoCoordinates",
-    latitude: parseFloat(seo?.LocalBusinessJsonLdgeoLatitude),
-    longitude: parseFloat(seo?.LocalBusinessJsonLdgeoLongitude ),
-  };
+  const geo =
+    Number.isFinite(lat) && Number.isFinite(lng)
+      ? { "@type": "GeoCoordinates", latitude: lat, longitude: lng }
+      : undefined;
 
   const openingHoursSpecification = [
     {
@@ -248,54 +294,27 @@ function buildLocalBusinessLdFromParts(seo: any) {
     },
   ];
 
-  const images = [seo?.ogImage, seo?.twitterImage].filter(Boolean) as string[];
-  if (images.length === 0) {
-    images.push("https://amritafashions.com/wp-content/uploads/amrita-fashions-small-logo-india.webp");
-  }
-
-  let review: any = null;
-  if (seo?.rating_value && seo?.rating_count) {
-    review = {
-      "@type": "Review",
-      reviewRating: {
-        "@type": "Rating",
-        ratingValue: seo.rating_value,
-        bestRating: 5,
-        worstRating: 1,
-      },
-      author: { "@type": "Person", name: "Customer" },
-      reviewBody: "Excellent quality fabrics and professional service",
-    };
-  }
-
   return {
     "@context": "https://schema.org",
     "@type": "LocalBusiness",
-    name: nonEmpty(seo?.LocalBusinessJsonLdname),
-    url: nonEmpty(seo?.canonical_url) ,
-    telephone: nonEmpty(seo?.LocalBusinessJsonLdtelephone),
-    email: "rajesh.goyal@amritafashions.com",
+    name: pick<string>(nonEmpty(seo?.LocalBusinessJsonLdname), COMPANY_NAME, COMPANY_NAME),
+    url: pick<string>(nonEmpty(seo?.canonical_url), COMPANY_SITE_URL, undefined),
+    telephone: pick<string>(nonEmpty(seo?.LocalBusinessJsonLdtelephone), COMPANY_PHONE, COMPANY_PHONE),
+    email: pick<string>(nonEmpty(seo?.LocalBusinessJsonLdemail), COMPANY_EMAIL, COMPANY_EMAIL),
     address,
     geo,
     image: images,
-    logo: "https://amritafashions.com/wp-content/uploads/amrita-fashions-small-logo-india.webp",
-    description:
-      nonEmpty(seo?.description) ,
-    areaServed: nonEmpty(seo?.LocalBusinessJsonLdareaserved),
+    logo: pick<string>(nonEmpty(seo?.LocalBusinessJsonLdlogoUrl), COMPANY_LOGO_URL, COMPANY_LOGO_URL),
+    description: pick<string>(nonEmpty(seo?.description), undefined, undefined),
+    areaServed: pick<string>(nonEmpty(seo?.LocalBusinessJsonLdareaserved), undefined, undefined),
     openingHoursSpecification,
-    ...(review && { review }),
-    priceRange: "$$",
+    priceRange: pick<string>(nonEmpty(seo?.LocalBusinessJsonLdpriceRange), "$$", "$$"),
     paymentAccepted: ["Cash", "Credit Card", "Bank Transfer"],
     currenciesAccepted: ["INR", "USD", "EUR"],
     hasOfferCatalog: {
       "@type": "OfferCatalog",
       name: "Fabric Catalog",
-      itemListElement: [
-        {
-          "@type": "Offer",
-          itemOffered: { "@type": "Product", name: "Premium Fabrics" },
-        },
-      ],
+      itemListElement: [{ "@type": "Offer", itemOffered: { "@type": "Product", name: "Premium Fabrics" } }],
     },
   };
 }
@@ -323,7 +342,7 @@ function buildBreadcrumbLdFromParts(seo: any) {
     {
       "@type": "ListItem",
       position: 4,
-      name: nonEmpty(seo?.BreadcrumbJsonLdname) || nonEmpty(seo?.title) ,
+      name: nonEmpty(seo?.BreadcrumbJsonLdname) || nonEmpty(seo?.title),
       item: nonEmpty(seo?.canonical_url),
     },
   ];
@@ -334,7 +353,7 @@ function buildBreadcrumbLdFromParts(seo: any) {
 function productJsonLd(seo: any, productName?: string) {
   const images = [seo?.ogImage, seo?.twitterImage].filter(Boolean) as string[];
   if (images.length === 0) {
-    images.push("https://amritafashions.com/wp-content/uploads/amrita-fashions-small-logo-india.webp");
+    images.push(COMPANY_LOGO_URL ?? "/placeholder.svg?height=800&width=1200");
   }
 
   const ld: any = {
@@ -343,13 +362,12 @@ function productJsonLd(seo: any, productName?: string) {
     name: productName || nonEmpty(seo?.title),
     description: nonEmpty(seo?.description),
     sku: nonEmpty(seo?.sku) || undefined,
-    brand: { "@type": "Brand", name: "Amrita Fashions" },
+    brand: { "@type": "Brand", name: COMPANY_NAME },
     image: images,
-    url: nonEmpty(seo?.canonical_url) ,
+    url: nonEmpty(seo?.canonical_url) || COMPANY_SITE_URL,
     category: "Textile & Fabric",
-    manufacturer: { "@type": "Organization", name: "Amrita Fashions", url: seo?.canonical_url || "https://abc.com" },
+    manufacturer: { "@type": "Organization", name: COMPANY_NAME, url: nonEmpty(seo?.canonical_url) || COMPANY_SITE_URL || "https://example.com" },
     mpn: nonEmpty(seo?.productIdentifier) || undefined,
-    gtin: nonEmpty(seo?.sku) || undefined,
   };
 
   if (seo?.salesPrice) {
@@ -358,7 +376,7 @@ function productJsonLd(seo: any, productName?: string) {
       price: seo.salesPrice,
       priceCurrency: "INR",
       availability: "https://schema.org/InStock",
-      seller: { "@type": "Organization", name: "Amrita Fashions" },
+      seller: { "@type": "Organization", name: COMPANY_NAME },
       priceValidUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
       deliveryLeadTime: { "@type": "QuantitativeValue", value: 7, unitCode: "DAY" },
     };
@@ -381,45 +399,69 @@ function productJsonLd(seo: any, productName?: string) {
   return ld;
 }
 
+/** ENV-aware Organization (DB → ENV → default) */
 function organizationJsonLd(seo: any) {
   const images = [seo?.ogImage, seo?.twitterImage].filter(Boolean) as string[];
   if (images.length === 0) {
-    images.push("https://amritafashions.com/wp-content/uploads/amrita-fashions-small-logo-india.webp");
+    images.push(COMPANY_LOGO_URL ?? "/placeholder.svg?height=800&width=1200");
   }
+
+  const orgName = pick<string>(nonEmpty(seo?.OrganizationJsonLdname), COMPANY_NAME, "Amrita Fashions");
+  const url = pick<string>(nonEmpty(seo?.canonical_url), COMPANY_SITE_URL, "https://example.com");
+  const description = nonEmpty(seo?.description);
+  const sameAs = Array.isArray(seo?.sameAs) && seo.sameAs.length ? seo.sameAs : COMPANY_SAME_AS;
+
+  const envAddr = parseAddressString(COMPANY_ADDRESS ?? "");
+
+  const addr = {
+    "@type": "PostalAddress",
+    streetAddress: pick<string>(
+      nonEmpty(seo?.OrganizationJsonLdaddressstreetAddress),
+      envAddr.streetAddress as string,
+      "404, Safal Prelude, Corporate Rd"
+    ),
+    addressLocality: pick<string>(
+      nonEmpty(seo?.OrganizationJsonLdaddressaddressLocality),
+      envAddr.addressLocality as string,
+      "Ahmedabad"
+    ),
+    addressRegion: pick<string>(
+      nonEmpty(seo?.OrganizationJsonLdaddressaddressRegion),
+      envAddr.addressRegion as string,
+      "Gujarat"
+    ),
+    postalCode: pick<string>(
+      nonEmpty(seo?.OrganizationJsonLdaddresspostalCode),
+      envAddr.postalCode as string,
+      "380015"
+    ),
+    addressCountry: pick<string>(
+      nonEmpty(seo?.OrganizationJsonLdaddressaddressCountry),
+      envAddr.addressCountry as string,
+      "IN"
+    ),
+  };
 
   return {
     "@context": "https://schema.org",
     "@type": "Organization",
-    name: "Amrita Fashions",
-    url: seo?.canonical_url ,
-    logo: {
-      "@type": "ImageObject",
-      url: "https://amritafashions.com/wp-content/uploads/amrita-fashions-small-logo-india.webp",
-      width: 131,
-      height: 61,
-    },
+    name: orgName,
+    url,
+    logo: { "@type": "ImageObject", url: pick<string>(nonEmpty(seo?.OrganizationJsonLdlogoUrl), COMPANY_LOGO_URL, COMPANY_LOGO_URL), width: 131, height: 61 },
     image: images,
-    description:
-      nonEmpty(seo?.description),
-    address: {
-      "@type": "PostalAddress",
-      streetAddress: "404, Safal Prelude, Corporate Rd, Prahlad Nagar",
-      addressLocality: "Ahmedabad",
-      addressRegion: "Gujarat",
-      postalCode: "380015",
-      addressCountry: "IN",
-    },
+    description,
+    address: addr,
     contactPoint: {
       "@type": "ContactPoint",
-      telephone: "+919925155141",
+      telephone: pick<string>(nonEmpty(seo?.OrganizationJsonLdtelephone), COMPANY_PHONE, COMPANY_PHONE),
       contactType: "customer service",
-      email: "rajesh.goyal@amritafashions.com",
-      availableLanguage: ["English", "Hindi", "Gujarati"],
+      email: pick<string>(nonEmpty(seo?.OrganizationJsonLdemail), COMPANY_EMAIL, COMPANY_EMAIL),
+      availableLanguage: COMPANY_LANGS,
     },
-    sameAs: ["https://amritafashions.com"],
-    foundingDate: "2018",
-    numberOfEmployees: "50-100",
-    award: ["ISO 9001 Certified", "Leading Fabric Manufacturer"],
+    sameAs: sameAs && sameAs.length ? sameAs : undefined,
+    ...(COMPANY_FOUNDING_DATE ? { foundingDate: COMPANY_FOUNDING_DATE } : {}),
+    ...(COMPANY_EMPLOYEE_RANGE ? { numberOfEmployees: COMPANY_EMPLOYEE_RANGE } : {}),
+    ...(COMPANY_AWARDS.length ? { award: COMPANY_AWARDS } : {}),
   };
 }
 
@@ -427,15 +469,15 @@ function websiteJsonLd(_: any) {
   return {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    name: "Amrita Fashions",
-    url: _?.canonical_url || "https://abc.com",
+    name: COMPANY_NAME,
+    url: _?.canonical_url || COMPANY_SITE_URL || "https://example.com",
     description: "Leading B2B Fabric Supplier Worldwide - Premium Quality Textiles",
     potentialAction: {
       "@type": "SearchAction",
       target: { "@type": "EntryPoint", urlTemplate: "https://amritafashions.com/search?q={search_term_string}" },
       "query-input": "required name=search_term_string",
     },
-    publisher: { "@type": "Organization", name: "Amrita Fashions" },
+    publisher: { "@type": "Organization", name: COMPANY_NAME },
   };
 }
 
@@ -513,11 +555,11 @@ export async function generateMetadata(): Promise<Metadata> {
     keywords:
       seoData.keywords?.split(",").map((k: string) => k.trim()).filter(Boolean) ||
       ["fabric", "textile", "garment", "wholesale", "manufacturer"],
-    metadataBase: new URL(seoData.canonical_url || "https://example.com"),
-    applicationName: seoData.ogSiteName || "Amrita Fashions",
+    metadataBase: new URL(seoData.canonical_url || COMPANY_SITE_URL || "https://example.com"),
+    applicationName: seoData.ogSiteName || COMPANY_NAME,
     authors: seoData.author_name ? [{ name: seoData.author_name }] : undefined,
     creator: seoData.author_name,
-    publisher: seoData.ogSiteName,
+    publisher: seoData.ogSiteName || COMPANY_NAME,
     generator: "Next.js",
     referrer: "origin-when-cross-origin",
     robots: seoData.robots ? { index: true, follow: true } : undefined,
@@ -542,21 +584,14 @@ export async function generateMetadata(): Promise<Metadata> {
         }
       : undefined,
     openGraph: {
-      url: seoData.ogUrl || "https://example.com/premium-cotton-ic",
-      siteName: seoData.ogSiteName || "Amrita Fashions",
+      url: seoData.ogUrl || COMPANY_SITE_URL || "https://example.com/premium-cotton-ic",
+      siteName: seoData.ogSiteName || COMPANY_NAME,
       locale: seoData.ogLocale || "en_US",
       title: seoData.ogTitle || "Premium Cotton Fabric",
       description: seoData.ogDescription || "High-quality fabric for B2B customers.",
       type: ogTypeSafe(seoData.ogType) as any,
       images: seoData.ogImage
-        ? [
-            {
-              url: seoData.ogImage,
-              width: 1200,
-              height: 630,
-              alt: seoData.ogTitle || "Premium Cotton Fabric",
-            },
-          ]
+        ? [{ url: seoData.ogImage, width: 1200, height: 630, alt: seoData.ogTitle || "Premium Cotton Fabric" }]
         : [],
       videos: seoData.ogVideoUrl
         ? [
@@ -580,12 +615,12 @@ export async function generateMetadata(): Promise<Metadata> {
     alternates: (() => {
       const canonicalUrl = seoData.canonical_url
         ? new URL(seoData.canonical_url).toString()
-        : "https://example.com/premium-cotton-fabric";
+        : COMPANY_SITE_URL || "https://example.com/premium-cotton-fabric";
       return {
         canonical: canonicalUrl,
         languages: {
           en: canonicalUrl,
-          "x-default": seoData.x_default || "https://example.com",
+          "x-default": seoData.x_default || COMPANY_SITE_URL || "https://example.com",
         },
       };
     })(),
@@ -779,11 +814,11 @@ export default async function Page() {
                 <a href="#contact" className="px-8 py-4 btn-primary">
                   Get Quote Now
                 </a>
-                <a href="tel:+1234567890" className="px-8 py-4 btn-secondary">
+                <a href={`tel:${(COMPANY_PHONE ?? "").replace(/\s+/g, "")}`} className="px-8 py-4 btn-secondary">
                   📞 Call Now
                 </a>
                 <a
-                  href="https://n8n.egport.com/webhook/a59f3482-d830-4d83-ae0e-3e5a955350a9"
+                  href={process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL}
                   className="px-6 py-3 border-2 border-emerald-600 text-emerald-700 hover:bg-emerald-700 hover:text-white rounded-lg font-semibold transition-all duration-200"
                 >
                   📋 Free Catalog
@@ -940,7 +975,7 @@ export default async function Page() {
       {/* FAQ */}
       <FAQ />
 
-      {/* CONTACT */}
+      {/* CONTACT (env-driven) */}
       <section id="contact" className="py-20 bg-slate-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6 text-center">
@@ -949,9 +984,9 @@ export default async function Page() {
           <div className="grid lg:grid-cols-2 gap-16">
             <ContactForm />
             <div className="space-y-6 text-white">
-              <div>📞 +91 9925155141</div>
-              <div>✉️ rajesh.goyal@amritafashions.com</div>
-              <div>🏢 Ahmedabad, Gujarat-380015</div>
+              <div>📞 {COMPANY_PHONE}</div>
+              <div>✉️ {COMPANY_EMAIL}</div>
+              <div>🏢 {COMPANY_ADDRESS || "Ahmedabad, Gujarat-380015"}</div>
               <div>🕘 Mon–Sat: 9:30 AM – 7:00 PM IST</div>
             </div>
           </div>

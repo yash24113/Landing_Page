@@ -61,7 +61,7 @@ const LOC_URL = RAW_BASE ? `${RAW_BASE}/locations` : "http://localhost:7000/land
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY ?? ""
 const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? ""
 // Align default header name with your server-side default
-const API_KEY_HEADER = process.env.NEXT_PUBLIC_API_KEY_HEADER ?? "x-api-key-yash"
+const API_KEY_HEADER = process.env.NEXT_PUBLIC_API_KEY_HEADER ?? ""
 const ADMIN_EMAIL_HEADER = process.env.NEXT_PUBLIC_ADMIN_EMAIL_HEADER ?? "x-admin-email"
 
 // ---------------------------

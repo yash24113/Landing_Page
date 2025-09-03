@@ -10,6 +10,20 @@ interface ContactFormModalProps {
 export function ContactFormModal({ isOpen, onClose }: ContactFormModalProps) {
   const [mounted, setMounted] = useState(false)
 
+  // ---- ENV (public) with safe fallbacks ----
+  const COMPANY_PHONE =
+    process.env.NEXT_PUBLIC_COMPANY_PHONE || "+91 9925155141"
+  const COMPANY_EMAIL =
+    process.env.NEXT_PUBLIC_COMPANY_EMAIL || "rajesh.goyal@amritafashions.com"
+  const COMPANY_ADDRESS =
+    process.env.NEXT_PUBLIC_COMPANY_ADDRESS ||
+    "404, Safal Prelude, Corporate Rd, Prahlad Nagar, Ahmedabad, Gujarat-380015"
+
+  // sanitize for tel: (keep + and digits)
+  const telHref = `tel:${COMPANY_PHONE.replace(/[^\d+]/g, "")}`
+  // show address with line breaks
+  const addressDisplay = COMPANY_ADDRESS.replace(/,\s*/g, ",\n")
+
   useEffect(() => {
     setMounted(true)
   }, [])
@@ -20,7 +34,6 @@ export function ContactFormModal({ isOpen, onClose }: ContactFormModalProps) {
     } else {
       document.body.style.overflow = "unset"
     }
-
     return () => {
       document.body.style.overflow = "unset"
     }
@@ -33,19 +46,21 @@ export function ContactFormModal({ isOpen, onClose }: ContactFormModalProps) {
         onClose()
       }
     }
-
     document.addEventListener("keydown", handleEscape)
     return () => document.removeEventListener("keydown", handleEscape)
   }, [isOpen, onClose])
 
   if (!mounted) return null
-
   if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
+      <div
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        onClick={onClose}
+        aria-hidden="true"
+      />
 
       {/* Modal */}
       <div className="relative bg-white rounded-2xl shadow-2xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden">
@@ -109,8 +124,8 @@ export function ContactFormModal({ isOpen, onClose }: ContactFormModalProps) {
                       </div>
                       <div>
                         <div className="font-medium text-slate-900">Phone</div>
-                        <a href="tel:+919925155141" className="text-slate-600 hover:text-blue-600 transition-colors">
-                          +91 9925155141
+                        <a href={telHref} className="text-slate-600 hover:text-blue-600 transition-colors">
+                          {COMPANY_PHONE}
                         </a>
                       </div>
                     </div>
@@ -122,22 +137,23 @@ export function ContactFormModal({ isOpen, onClose }: ContactFormModalProps) {
                       <div>
                         <div className="font-medium text-slate-900">Email</div>
                         <a
-                          href="mailto:rajesh.goyal@amritafashions.com"
+                          href={`mailto:${COMPANY_EMAIL}`}
                           className="text-slate-600 hover:text-emerald-600 transition-colors"
                         >
-                         rajesh.goyal@amritafashions.com
+                          {COMPANY_EMAIL}
                         </a>
                       </div>
                     </div>
 
                     <div className="flex items-center space-x-3 p-3 bg-slate-50 rounded-lg">
                       <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                        <span className="text-purple-600">🏢 </span>
+                        <span className="text-purple-600">🏢</span>
                       </div>
                       <div>
                         <div className="font-medium text-slate-900">Office</div>
-                        <div className="text-slate-600">404, Safal Prelude,Corporate Rd, Prahlad Nagar,<br /> Ahmedabad,
-                           Gujarat-380015</div>
+                        <div className="text-slate-600 whitespace-pre-line">
+                          {addressDisplay}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -158,6 +174,7 @@ export function ContactFormModal({ isOpen, onClose }: ContactFormModalProps) {
                   </div>
                 </div>
               </div>
+              {/* /Contact Information */}
             </div>
           </div>
         </div>
