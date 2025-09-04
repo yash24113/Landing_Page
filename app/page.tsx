@@ -42,12 +42,11 @@ if (ADMIN_EMAIL) authHeaders[ADMIN_EMAIL_HEADER] = ADMIN_EMAIL;
    Company ENV (Organization/LocalBusiness/Contact)
    DB → ENV → default priority
 -------------------------------------------------- */
-const COMPANY_NAME = process.env.NEXT_PUBLIC_COMPANY_NAME ;
+const COMPANY_NAME = process.env.NEXT_PUBLIC_COMPANY_NAME;
 const COMPANY_EMAIL = process.env.NEXT_PUBLIC_COMPANY_EMAIL;
-const COMPANY_PHONE = process.env.NEXT_PUBLIC_COMPANY_PHONE ;
+const COMPANY_PHONE = process.env.NEXT_PUBLIC_COMPANY_PHONE;
 const COMPANY_ADDRESS = process.env.NEXT_PUBLIC_COMPANY_ADDRESS;
-const COMPANY_LOGO_URL =
-  process.env.NEXT_PUBLIC_COMPANY_LOGO_URL;
+const COMPANY_LOGO_URL = process.env.NEXT_PUBLIC_COMPANY_LOGO_URL;
 const COMPANY_SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || undefined;
 const COMPANY_SAME_AS = (process.env.NEXT_PUBLIC_COMPANY_SAME_AS || "")
   .split(",")
@@ -308,7 +307,7 @@ function buildLocalBusinessLdFromParts(seo: any) {
     description: pick<string>(nonEmpty(seo?.description), undefined, undefined),
     areaServed: pick<string>(nonEmpty(seo?.LocalBusinessJsonLdareaserved), undefined, undefined),
     openingHoursSpecification,
-    priceRange: pick<string>(nonEmpty(seo?.LocalBusinessJsonLdpriceRange), "$$", "$$"),
+    priceRange: "$$",
     paymentAccepted: ["Cash", "Credit Card", "Bank Transfer"],
     currenciesAccepted: ["INR", "USD", "EUR"],
     hasOfferCatalog: {
@@ -743,8 +742,8 @@ export default async function Page() {
   const faqLd = faqJsonLd();
 
   return (
-    <main className="min-h-screen bg-white">
-      {/* Structured data (built like slug page) */}
+    <main className="min-h-screen bg-white pb-24 md:pb-0 overflow-x-hidden">
+      {/* Structured data */}
       <JsonLdInjector
         videoLd={videoLd}
         logoLd={logoLd}
@@ -758,11 +757,11 @@ export default async function Page() {
 
       {/* HERO */}
       <section className="hero relative bg-white text-slate-900 overflow-hidden pt-4 pb-8 sm:pt-8">
-        <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
           <div className="flex flex-col lg:grid lg:grid-cols-2 gap-8 items-center">
             {/* Left */}
-            <div className="space-y-8 w-full mt-6 lg:mt-0">
-              <h1 className="text-3xl sm:text-4xl lg:text-6xl font-bold leading-tight">
+            <div className="space-y-6 sm:space-y-8 w-full mt-4 sm:mt-6 lg:mt-0">
+              <h1 className="font-bold leading-tight text-[clamp(1.75rem,4vw,3.75rem)] sm:text-4xl lg:text-6xl text-balance break-words">
                 {titleFromSeo ? (
                   titleFromSeo
                 ) : (
@@ -776,7 +775,7 @@ export default async function Page() {
                 )}
               </h1>
 
-              <p className="text-base sm:text-xl text-slate-700 max-w-2xl">
+              <p className="text-base sm:text-xl text-slate-700 max-w-2xl whitespace-pre-wrap break-words">
                 {taglineFromSeo ||
                   "Connect with leading fabric suppliers worldwide. Quality textiles, competitive pricing, and reliable supply chains."}
               </p>
@@ -786,7 +785,7 @@ export default async function Page() {
                   {typeof firstCardSeo.sku !== "undefined" && (
                     <div>
                       <span className="text-slate-700">SKU:</span>
-                      <span className="ml-2 text-slate-900">{firstCardSeo.sku}</span>
+                      <span className="ml-2 text-slate-900 break-words">{firstCardSeo.sku}</span>
                     </div>
                   )}
                   {typeof firstCardSeo.salesPrice !== "undefined" && (
@@ -810,22 +809,22 @@ export default async function Page() {
                 </div>
               )}
 
-              <div className="flex flex-col sm:flex-row gap-4">
-                <a href="#contact" className="px-8 py-4 btn-primary">
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                <a href="#contact" className="px-6 sm:px-8 py-3 sm:py-4 btn-primary">
                   Get Quote Now
                 </a>
-                <a href={`tel:${(COMPANY_PHONE ?? "").replace(/\s+/g, "")}`} className="px-8 py-4 btn-secondary">
+                <a href={`tel:${(COMPANY_PHONE ?? "").replace(/\s+/g, "")}`} className="px-6 sm:px-8 py-3 sm:py-4 btn-secondary">
                   📞 Call Now
                 </a>
                 <a
                   href={process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL}
-                  className="px-6 py-3 border-2 border-emerald-600 text-emerald-700 hover:bg-emerald-700 hover:text-white rounded-lg font-semibold transition-all duration-200"
+                  className="px-5 sm:px-6 py-2.5 sm:py-3 border-2 border-emerald-600 text-emerald-700 hover:bg-emerald-700 hover:text-white rounded-lg font-semibold transition-all duration-200"
                 >
                   📋 Free Catalog
                 </a>
               </div>
 
-              <div className="flex flex-wrap gap-4 text-sm text-slate-700 mt-2">
+              <div className="flex flex-wrap gap-3 sm:gap-4 text-sm text-slate-700 mt-2">
                 <div className="flex items-center space-x-2">
                   <div className="w-2 h-2 bg-emerald-400 rounded-full" />
                   <span>ISO Certified</span>
@@ -842,16 +841,17 @@ export default async function Page() {
             </div>
 
             {/* Right (Image) */}
-            <div className="relative flex items-center justify-center w-full min-h-[220px] sm:min-h-[320px] lg:min-h-[400px]">
-              <div className="relative z-10 w-full h-56 sm:h-80 lg:h-[420px] rounded-2xl overflow-hidden shadow-lg">
+            <div className="relative w-full">
+              <div className="relative z-10 w-full rounded-2xl overflow-hidden shadow-lg bg-white
+                              aspect-[16/10] sm:aspect-[5/4] lg:aspect-[16/9]">
                 <Image
                   key={heroImage}
                   src={heroImage}
                   alt={heroAlt}
                   fill
                   priority
-                  className="object-cover"
-                  sizes="(max-width: 1024px) 100vw, 800px"
+                  className="object-center"
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 800px"
                 />
               </div>
             </div>
@@ -860,52 +860,51 @@ export default async function Page() {
       </section>
 
       {/* COMPANY OVERVIEW (SEO text) */}
-      <section className="py-20 bg-slate-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-6">
+      <section className="py-14 sm:py-20 bg-slate-50">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="text-center mb-12 sm:mb-16">
+            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4 sm:mb-6 text-balance break-words">
               Leading B2B Fabric Supplier Worldwide
             </h2>
-            <p className="text-slate-600 mb-8">
+            <p className="text-slate-600 mb-6 sm:mb-8">
               ISO 9001 Certified • 500+ Global Partners • Ships to 50+ Countries
             </p>
-            <div className="w-24 h-1 bg-gradient-to-r from-blue-600 to-emerald-600 mx-auto mb-8" />
+            <div className="w-24 h-1 bg-gradient-to-r from-blue-600 to-emerald-600 mx-auto" />
           </div>
 
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
+          <div className="grid lg:grid-cols-2 gap-10 sm:gap-16 items-center">
             <div className="space-y-6">
-              <p className="text-lg text-slate-700 leading-relaxed">
+              <p className="text-base sm:text-lg text-slate-700 leading-relaxed whitespace-pre-wrap break-words">
                 {desc1FromSeo ||
                   "As a premier B2B fabric supplier, we specialize in providing high-quality textiles to global garment manufacturers, clothing retailers, and fabric trading companies. Our extensive network spans across major textile hubs worldwide, ensuring consistent supply chains and competitive pricing for bulk fabric orders."}
               </p>
 
-              <p className="text-lg text-slate-700 leading-relaxed">
+              <p className="text-base sm:text-lg text-slate-700 leading-relaxed whitespace-pre-wrap break-words">
                 {desc2FromSeo ||
                   "Our commitment to excellence extends beyond product quality to encompass reliable logistics, flexible payment terms, and comprehensive customer support. Whether you’re sourcing fabrics for fast fashion, luxury apparel, or industrial textiles, our team delivers customized solutions."}
               </p>
 
-              <div className="grid sm:grid-cols-2 gap-6 mt-8">
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                  <div className="text-3xl font-bold mb-2">500+</div>
-                  <div className="text-slate-600">Global Partners</div>
+              <div className="grid grid-cols-2 gap-4 sm:gap-6 mt-6 sm:mt-8">
+                <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-slate-200 text-center">
+                  <div className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">500+</div>
+                  <div className="text-slate-600 text-sm sm:text-base">Global Partners</div>
                 </div>
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                  <div className="text-3xl font-bold mb-2">50+</div>
-                  <div className="text-slate-600">Countries Served</div>
+                <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-slate-200 text-center">
+                  <div className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">50+</div>
+                  <div className="text-slate-600 text-sm sm:text-base">Countries Served</div>
                 </div>
               </div>
             </div>
 
-            <div className="relative">
+            <div className="relative rounded-2xl shadow-lg overflow-hidden bg-white aspect-[4/3] sm:aspect-[5/4] lg:aspect-[3/2] w-full">
               <Image
                 key={overviewImage}
                 src={overviewImage}
                 alt={overviewAlt}
-                width={600}
-                height={500}
+                fill
                 loading="lazy"
-                className="rounded-2xl shadow-lg object-cover w-full h-auto"
-                sizes="(max-width: 1024px) 100vw, 600px"
+                className="object-contain object-center"
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 600px"
               />
             </div>
           </div>
@@ -913,13 +912,13 @@ export default async function Page() {
       </section>
 
       {/* PRODUCTS — ALL Ahmedabad */}
-      <section id="products" className="py-20 bg-white" aria-labelledby="product-categories">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 id="product-categories" className="text-3xl sm:text-4xl font-bold text-slate-900 mb-6">
+      <section id="products" className="py-14 sm:py-20 bg-white" aria-labelledby="product-categories">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="text-center mb-12 sm:mb-16">
+            <h2 id="product-categories" className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4 sm:mb-6 text-balance">
               Explore Our Fabric Catalog
             </h2>
-            <p className="text-xl text-slate-600 max-w-3xl mx-auto">
+            <p className="text-lg sm:text-xl text-slate-600 max-w-3xl mx-auto">
               {taglineFromSeo || "Comprehensive range of premium fabrics for every manufacturing need"}
             </p>
           </div>
@@ -929,7 +928,7 @@ export default async function Page() {
               No products for the selected location.
             </div>
           ) : (
-            <div className="grid gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-6 sm:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
               {ahmedabadProducts.map((p) => {
                 const img =
                   (p.img ?? p.image1 ?? p.image2 ?? "/placeholder.svg?height=300&width=400").toString();
@@ -939,18 +938,19 @@ export default async function Page() {
 
                 const Card = (
                   <div className="relative overflow-hidden rounded-2xl shadow-lg border border-slate-100 hover:border-blue-200 transition">
-                    <div className="relative w-full h-48">
+                    <div className="relative w-full bg-white aspect-[4/3]">
                       <Image
                         src={img}
                         alt={`${p.name} - ${p.productdescription ?? ""}`}
                         fill
-                        className="object-cover"
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                        className="object-contain object-center"
+                        loading="lazy"
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                       />
                     </div>
-                    <div className="p-6">
-                      <h3 className="text-xl font-bold text-slate-900 mb-3">{p.name}</h3>
-                      <p className="text-slate-600 line-clamp-3">{p.productdescription || "—"}</p>
+                    <div className="p-5 sm:p-6">
+                      <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-2 line-clamp-2 break-words">{p.name}</h3>
+                      <p className="text-slate-600 text-sm sm:text-base line-clamp-3 whitespace-pre-wrap break-words">{p.productdescription || "—"}</p>
                     </div>
                   </div>
                 );
@@ -976,17 +976,17 @@ export default async function Page() {
       <FAQ />
 
       {/* CONTACT (env-driven) */}
-      <section id="contact" className="py-20 bg-slate-900">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6 text-center">
+      <section id="contact" className="py-14 sm:py-20 bg-slate-900">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6 text-center text-balance">
             Get Your Custom Quote Today
           </h2>
-          <div className="grid lg:grid-cols-2 gap-16">
+          <div className="grid lg:grid-cols-2 gap-10 sm:gap-16">
             <ContactForm />
-            <div className="space-y-6 text-white">
-              <div>📞 {COMPANY_PHONE}</div>
-              <div>✉️ {COMPANY_EMAIL}</div>
-              <div>🏢 {COMPANY_ADDRESS || "Ahmedabad, Gujarat-380015"}</div>
+            <div className="space-y-6 text-white break-words">
+              <div className="truncate md:whitespace-normal">📞 {COMPANY_PHONE}</div>
+              <div className="truncate md:whitespace-normal">✉️ {COMPANY_EMAIL}</div>
+              <div className="break-words">🏢 {COMPANY_ADDRESS || "Ahmedabad, Gujarat-380015"}</div>
               <div>🕘 Mon–Sat: 9:30 AM – 7:00 PM IST</div>
             </div>
           </div>

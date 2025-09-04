@@ -659,7 +659,7 @@ function faqJsonLd() {
 
 /* ---------- Metadata ---------- */
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug } = await params; // ✅ single, consistent usage
+  const { slug } = await params;
   const seo = await fetchSeoData(slug);
   if (!seo) {
     return {
@@ -717,7 +717,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title: seoFull.ogTitle,
       description: seoFull.ogDescription,
       type: ogTypeSafe(seoFull.ogType) as any,
-      // ✅ keep types simple to avoid TS changes across Next versions
       images: seoFull.ogImage ? [seoFull.ogImage] : undefined,
     },
     twitter: {
@@ -742,18 +741,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       };
     })(),
     other: buildOtherMeta(seoFull),
-    // @ts-ignore — carried to component; actual injection happens there
+    // @ts-ignore — carried to component
     jsonLdBlocks: { videoLd, logoLd, breadcrumbLd, localBusinessLd, productLd, organizationLd, websiteLd, faqLd },
   };
 }
 
 /* ---------- Page ---------- */
 export default async function SlugPage({ params }: Props) {
-  const { slug } = await params; // ✅ single, consistent usage
+  const { slug } = await params;
   if (isAssetSlug(slug)) return null;
 
   // Get current SEO doc and all products
-  const [{ fetchProductData }] = await Promise.all([import("@/lib/seo")]); // dynamic import to avoid duplicating static import names
+  const [{ fetchProductData }] = await Promise.all([import("@/lib/seo")]);
   const [rawSeo, productsArr] = await Promise.all([fetchSeoData(slug), fetchProductData()]);
   if (!rawSeo) notFound();
   const seo = rawSeo as SeoDocFull;
@@ -788,7 +787,8 @@ export default async function SlugPage({ params }: Props) {
     }
   }
 
-  const allProducts: ProductDoc[] = Array.isArray(productsArr) ? (productsArr as ProductDoc[]) : [];
+  type ProductDocArr = ProductDoc[];
+  const allProducts: ProductDocArr = Array.isArray(productsArr) ? (productsArr as ProductDoc[]) : [];
   const relatedProducts: ProductDoc[] = allProducts.filter((p) => relatedProductIds.has(String(p?._id)));
 
   // Linked product for hero images
@@ -840,24 +840,24 @@ export default async function SlugPage({ params }: Props) {
         faqLd={faqLd}
       />
 
-      <main className="min-h-screen bg-white">
+      <main className="min-h-screen bg-white overflow-x-hidden">
         {/* HERO */}
-        <section className="hero relative bg-white text-slate-900 overflow-hidden pt-4 pb-8 sm:pt-8">
-          <div className="relative max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
-            <div className="flex flex-col lg:grid lg:grid-cols-2 gap-8 items-center">
+        <section className="hero relative bg-white text-slate-900 overflow-hidden pt-4 pb-8 sm:pt-10">
+          <div className="relative max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+            <div className="flex flex-col lg:grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
               {/* Left Column: Text */}
-              <div className="space-y-8 w-full mt-6 lg:mt-0">
+              <div className="space-y-6 sm:space-y-8 w-full mt-2 lg:mt-0">
                 <div className="space-y-4">
-                  <h1 className="text-3xl sm:text-4xl lg:text-6xl font-bold leading-tight tracking-tight">
+                  <h1 className="font-bold leading-tight tracking-tight text-[clamp(1.75rem,4vw,3.75rem)] sm:text-4xl lg:text-6xl break-words">
                     {locationTitle}
                   </h1>
-                  <p className="text-base sm:text-xl text-slate-600 leading-relaxed max-w-2xl">
+                  <p className="text-base sm:text-lg lg:text-xl text-slate-700 leading-relaxed max-w-2xl whitespace-pre-wrap break-words">
                     {locationTagline}
                   </p>
 
-                  <div className="bg-slate-100 rounded-lg p-4 mt-4">
-                    <dl className="grid grid-cols-2 gap-4 text-sm">
-                      <div className="flex items-baseline">
+                  <div className="bg-slate-100 rounded-lg p-4 mt-2 sm:mt-4">
+                    <dl className="grid grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm">
+                      <div className="flex items-baseline break-words">
                         <dt className="text-slate-800 font-medium">SKU:</dt>
                         <dd className="ml-2 text-slate-950">{seo.sku ?? "—"}</dd>
                       </div>
@@ -878,25 +878,25 @@ export default async function SlugPage({ params }: Props) {
                 </div>
 
                 {/* Buttons */}
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <a href="#contact" className="inline-flex items-center justify-center px-8 py-4 btn-primary">
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                  <a href="#contact" className="inline-flex items-center justify-center px-6 sm:px-8 py-3 sm:py-4 btn-primary">
                     Get Quote Now
                   </a>
                   <a
                     href={`tel:${COMPANY_PHONE.replace(/\s+/g, "")}`}
-                    className="inline-flex items-center justify-center px-8 py-4 btn-secondary"
+                    className="inline-flex items-center justify-center px-6 sm:px-8 py-3 sm:py-4 btn-secondary"
                   >
                     📞 Call Now
                   </a>
                   <a
                     href={process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL}
-                    className="inline-flex items-center justify-center px-6 py-3 border-2 border-emerald-600 text-emerald-700 hover:bg-emerald-700 hover:text-white rounded-lg font-semibold transition-all duration-200"
+                    className="inline-flex items-center justify-center px-5 sm:px-6 py-2.5 sm:py-3 border-2 border-emerald-600 text-emerald-700 hover:bg-emerald-700 hover:text-white rounded-lg font-semibold transition-all duration-200"
                   >
                     📋 Free Catalog
                   </a>
                 </div>
 
-                <div className="flex flex-wrap gap-4 text-sm text-slate-500 mt-2">
+                <div className="flex flex-wrap gap-3 sm:gap-4 text-sm text-slate-600 mt-1 sm:mt-2">
                   <div className="flex items-center space-x-2">
                     <div className="w-2 h-2 bg-emerald-400 rounded-full" />
                     <span>ISO Certified</span>
@@ -912,17 +912,18 @@ export default async function SlugPage({ params }: Props) {
                 </div>
               </div>
 
-              {/* Right Column: Image */}
-              <div className="relative flex items-center justify-center w-full min-h-[220px] sm:min-h-[320px] lg:min-h-[400px]">
-                <div className="relative z-10 w-full h-56 sm:h-80 lg:h-[420px] lg:max-w-2xl lg:aspect-[16/9] rounded-2xl overflow-hidden shadow-lg animate-shadow">
+              {/* Right Column: Image — fully visible & centered */}
+              <div className="relative w-full">
+                <div className="relative z-10 w-full rounded-2xl overflow-hidden shadow-lg bg-white
+                                aspect-[16/10] sm:aspect-[5/4] lg:aspect-[16/9]">
                   <Image
                     src={heroImage}
                     alt={heroAlt}
                     fill
                     priority
                     fetchPriority="high"
-                    className="object-cover w-full h-full"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 40vw, 800px"
+                    className="object-contain object-center"
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 800px"
                   />
                 </div>
               </div>
@@ -931,42 +932,40 @@ export default async function SlugPage({ params }: Props) {
         </section>
 
         {/* COMPANY OVERVIEW */}
-        <section className="py-20 bg-slate-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-16">
-              <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-6">
+        <section className="py-14 sm:py-20 bg-slate-50">
+          <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+            <div className="text-center mb-12 sm:mb-16">
+              <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4 sm:mb-6">
                 Leading B2B Fabric Supplier Worldwide
               </h2>
-              <p className="text-slate-600 mb-8">ISO 9001 Certified • 500+ Global Partners • Ships to 50+ Countries</p>
-              <div className="w-24 h-1 bg-gradient-to-r from-blue-600 to-emerald-600 mx-auto mb-8" />
             </div>
 
-            <div className="grid lg:grid-cols-2 gap-16 items-center">
+            <div className="grid lg:grid-cols-2 gap-10 sm:gap-16 items-center">
               <div className="space-y-6">
-                <p className="text-lg text-slate-700 leading-relaxed">{locationDesc1}</p>
-                <p className="text-lg text-slate-700 leading-relaxed">{locationDesc2}</p>
+                <p className="text-base sm:text-lg text-slate-700 leading-relaxed whitespace-pre-wrap break-words">{locationDesc1}</p>
+                <p className="text-base sm:text-lg text-slate-700 leading-relaxed whitespace-pre-wrap break-words">{locationDesc2}</p>
 
-                <div className="grid sm:grid-cols-2 gap-6 mt-8">
-                  <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                    <div className="text-3xl font-bold text-blue-600 mb-2">500+</div>
-                    <div className="text-slate-600">Global Partners</div>
+                <div className="grid grid-cols-2 gap-4 sm:gap-6 mt-6 sm:mt-8">
+                  <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-slate-200 text-center">
+                    <div className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">500+</div>
+                    <div className="text-slate-600 text-sm sm:text-base">Global Partners</div>
                   </div>
-                  <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                    <div className="text-3xl font-bold text-emerald-600 mb-2">50+</div>
-                    <div className="text-slate-600">Countries Served</div>
+                  <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-slate-200 text-center">
+                    <div className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">50+</div>
+                    <div className="text-slate-600 text-sm sm:text-base">Countries Served</div>
                   </div>
                 </div>
               </div>
 
-              <div className="relative">
+              {/* overview image — fully visible & centered */}
+              <div className="relative rounded-2xl shadow-lg overflow-hidden bg-white aspect-[4/3] sm:aspect-[5/4] lg:aspect-[3/2] w-full">
                 <Image
                   src={overviewImage}
                   alt={overviewAlt}
-                  width={600}
-                  height={500}
+                  fill
                   loading="lazy"
-                  className="rounded-2xl shadow-lg object-cover w-full h-auto"
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 600px"
+                  className="object-contain object-center"
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 600px"
                 />
               </div>
             </div>
@@ -974,13 +973,13 @@ export default async function SlugPage({ params }: Props) {
         </section>
 
         {/* RELATED PRODUCTS — same-location */}
-        <section id="products" className="py-20 bg-white" aria-labelledby="product-categories">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-16">
-              <h2 id="product-categories" className="text-3xl sm:text-4xl font-bold text-slate-900 mb-6">
+        <section id="products" className="py-14 sm:py-20 bg-white" aria-labelledby="product-categories">
+          <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+            <div className="text-center mb-12 sm:mb-16">
+              <h2 id="product-categories" className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4 sm:mb-6">
                 Explore Our Fabric Catalog
               </h2>
-              <p className="text-xl text-slate-600 max-w-3xl mx-auto">
+              <p className="text-lg sm:text-xl text-slate-600 max-w-3xl mx-auto">
                 {locationTagline || "Comprehensive range of premium fabrics for every manufacturing need"}
               </p>
             </div>
@@ -988,7 +987,7 @@ export default async function SlugPage({ params }: Props) {
             {relatedProducts.length === 0 ? (
               <div className="text-center text-slate-600">No products for the selected location.</div>
             ) : (
-              <div className="grid gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-6 sm:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
                 {relatedProducts.map((p) => {
                   const img = (p.img ?? p.image1 ?? p.image2 ?? "/placeholder.svg?height=300&width=400").toString();
                   const pid = String(p?._id ?? "").trim();
@@ -997,18 +996,19 @@ export default async function SlugPage({ params }: Props) {
 
                   const Card = (
                     <div className="relative overflow-hidden rounded-2xl shadow-lg border border-slate-100 hover:border-blue-200 transition">
-                      <div className="relative w-full h-48">
+                      <div className="relative w-full bg-white aspect-[4/3]">
                         <Image
                           src={img}
                           alt={`${p.name ?? "Fabric"} - ${p.productdescription ?? ""}`}
                           fill
-                          className="object-cover"
-                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                          className="object-contain object-center"
+                          loading="lazy"
+                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                         />
                       </div>
-                      <div className="p-6">
-                        <h3 className="text-xl font-bold text-slate-900 mb-3">{p.name ?? "Fabric"}</h3>
-                        <p className="text-slate-600 line-clamp-3">{p.productdescription || "—"}</p>
+                      <div className="p-5 sm:p-6">
+                        <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-2 break-words">{p.name ?? "Fabric"}</h3>
+                        <p className="text-slate-600 text-sm sm:text-base whitespace-pre-wrap break-words">{p.productdescription || "—"}</p>
                       </div>
                     </div>
                   );
@@ -1034,16 +1034,16 @@ export default async function SlugPage({ params }: Props) {
         <FAQ />
 
         {/* CONTACT (env-driven) */}
-        <section id="contact" className="py-20 bg-slate-900">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-16">
-              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6">Get Your Custom Quote Today</h2>
-              <p className="text-xl text-slate-300 max-w-3xl mx-auto">
+        <section id="contact" className="py-14 sm:py-20 bg-slate-900">
+          <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+            <div className="text-center mb-12 sm:mb-16">
+              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4 sm:mb-6">Get Your Custom Quote Today</h2>
+              <p className="text-lg sm:text-xl text-slate-300 max-w-3xl mx-auto">
                 Connect with our fabric specialists for personalized pricing and bulk order solutions
               </p>
             </div>
 
-            <div className="grid lg:grid-cols-2 gap-16">
+            <div className="grid lg:grid-cols-2 gap-10 sm:gap-16">
               <ContactForm />
               <div className="space-y-6">
                 <div className="flex items-start space-x-4">
@@ -1054,7 +1054,7 @@ export default async function SlugPage({ params }: Props) {
                     <div className="text-white font-semibold">Phone</div>
                     <a
                       href={`tel:${COMPANY_PHONE.replace(/\s+/g, "")}`}
-                      className="text-slate-300 hover:text-white transition-colors"
+                      className="text-slate-300 hover:text-white transition-colors break-words"
                     >
                       {COMPANY_PHONE}
                     </a>
@@ -1067,7 +1067,7 @@ export default async function SlugPage({ params }: Props) {
                   </div>
                   <div>
                     <div className="text-white font-semibold">Email</div>
-                    <a href={`mailto:${COMPANY_EMAIL}`} className="text-slate-300 hover:text-white transition-colors">
+                    <a href={`mailto:${COMPANY_EMAIL}`} className="text-slate-300 hover:text-white transition-colors break-words">
                       {COMPANY_EMAIL}
                     </a>
                   </div>
@@ -1079,7 +1079,7 @@ export default async function SlugPage({ params }: Props) {
                   </div>
                   <div>
                     <div className="text-white font-semibold">Office</div>
-                    <div className="text-slate-300">{COMPANY_ADDRESS || "Ahmedabad, Gujarat-380015"}</div>
+                    <div className="text-slate-300 break-words">{COMPANY_ADDRESS || "Ahmedabad, Gujarat-380015"}</div>
                   </div>
                 </div>
 
