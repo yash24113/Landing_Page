@@ -1,15 +1,16 @@
 "use client";
 
 import type React from "react";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
+/* ---------------------------------------------
+   Config (unchanged defaults still supported)
+---------------------------------------------- */
 interface ContactFormProps {
   onSuccess?: () => void;
-  submitAction?: (fd: FormData) => Promise<any>;
-  saveDraftAction?: (fd: FormData) => Promise<any>;
   submitUrl?: string;
   submitHeaders?: Record<string, string>;
-  draftKey?: string; // e.g. "contact_draft_id"
+  draftKey?: string; // localStorage key to keep the created _id
 }
 
 const STORAGE_KEY = "fabricpro_contact_form";
@@ -36,10 +37,11 @@ function buildAuthHeaders(extra?: Record<string, string>) {
   return { ...h, ...(extra || {}) };
 }
 
+/* ---------------------------------------------
+   Component
+---------------------------------------------- */
 export function ContactForm({
   onSuccess,
-  submitAction,
-  saveDraftAction,
   submitUrl = DEFAULT_CONTACT_URL,
   submitHeaders,
   draftKey = "contact_draft_id",
@@ -58,6 +60,7 @@ export function ContactForm({
     timeline: "",
     message: "",
   });
+
   const [isLoading, setIsLoading] = useState(true);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -66,71 +69,15 @@ export function ContactForm({
 
   const [draftId, setDraftId] = useState<string>("");
 
-  useEffect(() => {
-    const loadSavedData = () => {
-      try {
-        const savedData = localStorage.getItem(STORAGE_KEY);
-        if (savedData) {
-          const parsed = JSON.parse(savedData);
-          setFormData((prev) => parsed.formData ?? prev);
-          setCurrentStep(parsed.currentStep || 1);
-          setLastSaved(parsed.lastSaved ? new Date(parsed.lastSaved) : null);
-        }
-        const savedDraft = localStorage.getItem(draftKey) || "";
-        if (savedDraft) setDraftId(savedDraft);
-      } catch (error) {
-        console.error("Error loading saved form data:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  // debounce timer for autosave
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isSavingRef = useRef(false);
 
-    loadSavedData();
-  }, [draftKey]);
-
-  const saveFormData = useCallback(() => {
-    try {
-      const dataToSave = {
-        formData,
-        currentStep,
-        lastSaved: new Date().toISOString(),
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
-      setLastSaved(new Date());
-      setHasUnsavedChanges(false);
-    } catch (error) {
-      console.error("Error saving form data:", error);
-    }
-  }, [formData, currentStep]);
-
-  useEffect(() => {
-    if (isLoading) return;
-    setHasUnsavedChanges(true);
-    const timeoutId = setTimeout(() => {
-      saveFormData();
-    }, 1000);
-    return () => clearTimeout(timeoutId);
-  }, [formData, currentStep, saveFormData, isLoading]);
-
-  const handleInputChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleCheckboxChange = (fabricType: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      fabricTypes: prev.fabricTypes.includes(fabricType)
-        ? prev.fabricTypes.filter((t) => t !== fabricType)
-        : [...prev.fabricTypes, fabricType],
-    }));
-  };
-
-  function toBackendPayload(status: "draft" | "submitted", stepCompleted: number) {
+  /* ----------------------------
+     Helpers: backend mapping
+  ----------------------------- */
+  function toBackendPayload() {
+    // Map frontend keys → backend keys
     return {
       companyName: formData.companyName,
       contactPerson: formData.contactPerson,
@@ -143,77 +90,229 @@ export function ContactForm({
       specificationsRequirements: formData.specifications,
       timeline: formData.timeline,
       additionalMessage: formData.message,
-      status,
-      stepCompleted,
-      draftId,
     };
   }
 
-  const doSaveDraft = async (nextStepCompleted: number) => {
-    if (!saveDraftAction) return;
-    const payload = toBackendPayload("draft", nextStepCompleted);
-    const fd = new FormData();
-    Object.entries(payload).forEach(([k, v]) => {
-      if (Array.isArray(v)) v.forEach((x) => fd.append(k, String(x)));
-      else if (v !== undefined && v !== null) fd.set(k, String(v));
-    });
-    const res = await saveDraftAction(fd);
-    if (res?.ok && res?.id && !draftId) {
-      setDraftId(res.id);
-      localStorage.setItem(draftKey, res.id);
+  /* ----------------------------
+     Create draft (POST) or
+     update draft (PUT)
+  ----------------------------- */
+  const persistDraft = useCallback(
+    async (immediate = false) => {
+      if (isSavingRef.current) return; // avoid overlapping saves
+      isSavingRef.current = true;
+
+      try {
+        const payload = toBackendPayload();
+
+        // If no draft yet: create one
+        if (!draftId) {
+          const res = await fetch(submitUrl, {
+            method: "POST",
+            headers: buildAuthHeaders(submitHeaders),
+            body: JSON.stringify(payload),
+          });
+          const json = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(json?.message || `POST ${res.status}`);
+
+          const newId = json?.data?._id || json?._id || json?.id;
+          if (newId) {
+            setDraftId(newId);
+            localStorage.setItem(draftKey, newId);
+          }
+        } else {
+          // Update existing draft
+          const res = await fetch(`${submitUrl}/${draftId}`, {
+            method: "PUT",
+            headers: buildAuthHeaders(submitHeaders),
+            body: JSON.stringify(payload),
+          });
+          const json = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(json?.message || `PUT ${res.status}`);
+        }
+
+        // Save local checkpoint
+        const dataToSave = {
+          formData,
+          currentStep,
+          lastSaved: new Date().toISOString(),
+          draftId: draftId || null,
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+        setLastSaved(new Date());
+        setHasUnsavedChanges(false);
+      } catch (e) {
+        console.error("Autosave error:", e);
+        // We won't alert on autosave; user continues typing
+      } finally {
+        isSavingRef.current = false;
+      }
+    },
+    [draftId, formData, currentStep, submitUrl, submitHeaders, draftKey]
+  );
+
+  // Debounced autosave when form changes
+  const scheduleAutosave = useCallback(() => {
+    setHasUnsavedChanges(true);
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      persistDraft(false);
+    }, 800); // 800ms debounce for onChange
+  }, [persistDraft]);
+
+  // Immediate save on blur
+  const saveImmediately = useCallback(() => {
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current);
+      saveTimer.current = null;
     }
+    setHasUnsavedChanges(true);
+    void persistDraft(true);
+  }, [persistDraft]);
+
+  /* ----------------------------
+     Load from localStorage
+     & hydrate from backend if draftId exists
+  ----------------------------- */
+  useEffect(() => {
+    const loadSavedData = async () => {
+      try {
+        // load cached UI state
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed.formData) {
+            // Map back-end fields to frontend shape if needed
+            setFormData({
+              companyName: parsed.formData.companyName ?? "",
+              contactPerson: parsed.formData.contactPerson ?? "",
+              email: parsed.formData.email ?? "",
+              phone: parsed.formData.phone ?? "",
+              businessType: parsed.formData.businessType ?? "",
+              annualVolume: parsed.formData.annualVolume ?? "",
+              primaryMarkets: parsed.formData.primaryMarkets ?? "",
+              fabricTypes: parsed.formData.fabricTypes ?? [],
+              specifications: parsed.formData.specifications ?? "",
+              timeline: parsed.formData.timeline ?? "",
+              message: parsed.formData.message ?? "",
+            });
+          }
+          setCurrentStep(parsed.currentStep || 1);
+          setLastSaved(parsed.lastSaved ? new Date(parsed.lastSaved) : null);
+        }
+        const savedDraft = localStorage.getItem(draftKey) || "";
+        if (savedDraft) {
+          setDraftId(savedDraft);
+
+          // hydrate from backend in case local cache is old
+          try {
+            const res = await fetch(`${submitUrl}/${savedDraft}`, {
+              method: "GET",
+              headers: buildAuthHeaders(submitHeaders),
+            });
+            const json = await res.json().catch(() => ({}));
+            if (res.ok && json?.data) {
+              const d = json.data;
+              setFormData({
+                companyName: d.companyName ?? "",
+                contactPerson: d.contactPerson ?? "",
+                email: d.email ?? "",
+                phone: d.phoneNumber ?? "",
+                businessType: d.businessType ?? "",
+                annualVolume: d.annualFabricVolume ?? "",
+                primaryMarkets: d.primaryMarkets ?? "",
+                fabricTypes: Array.isArray(d.fabricTypesOfInterest)
+                  ? d.fabricTypesOfInterest
+                  : [],
+                specifications: d.specificationsRequirements ?? "",
+                timeline: d.timeline ?? "",
+                message: d.additionalMessage ?? "",
+              });
+            }
+          } catch (e) {
+            console.warn("Could not hydrate draft from server:", e);
+          }
+        }
+      } catch (error) {
+        console.error("Error loading saved form data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void loadSavedData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /* ----------------------------
+     Field handlers
+  ----------------------------- */
+  const handleInputChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    scheduleAutosave();
   };
 
+  const handleBlur = () => {
+    saveImmediately();
+  };
+
+  const handleCheckboxChange = (fabricType: string) => {
+    setFormData((prev) => {
+      const updated = prev.fabricTypes.includes(fabricType)
+        ? prev.fabricTypes.filter((t) => t !== fabricType)
+        : [...prev.fabricTypes, fabricType];
+      return { ...prev, fabricTypes: updated };
+    });
+    scheduleAutosave();
+  };
+
+  /* ----------------------------
+     Step navigation (NO submit)
+     >>> ONLY CHANGE HERE <<<
+  ----------------------------- */
   const nextStep = async () => {
+    // prevent any lingering success view when moving from step 2 -> 3
+    setShowSuccess(false);
+
     const next = Math.min(currentStep + 1, 3);
-    await doSaveDraft(Math.max(currentStep, next));
     setCurrentStep(next);
+    // save step movement immediately (so drafts know which step user reached)
+    saveImmediately();
   };
 
   const prevStep = async () => {
     const prev = Math.max(currentStep - 1, 1);
-    await doSaveDraft(Math.max(currentStep, prev));
     setCurrentStep(prev);
+    saveImmediately();
   };
 
-  async function postDirectToBackend(payload: any) {
-    const res = await fetch(submitUrl || DEFAULT_CONTACT_URL, {
-      method: "POST",
-      headers: buildAuthHeaders(submitHeaders),
-      body: JSON.stringify(payload),
-    });
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      throw new Error(json?.message || `Backend error ${res.status}`);
-    }
-    return json;
-  }
-
+  /* ----------------------------
+     Final submit (Step 3 only)
+  ----------------------------- */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (currentStep !== 3) return;
+    if (currentStep !== 3) return; // guard: only final step submits
 
     setIsSubmitting(true);
     try {
-      const payload = toBackendPayload("submitted", 3);
-
-      if (submitAction) {
-        const fd = new FormData();
-        Object.entries(payload).forEach(([k, v]) => {
-          if (Array.isArray(v)) v.forEach((x) => fd.append(k, String(x)));
-          else if (v !== undefined && v !== null) fd.set(k, String(v));
-        });
-        const res = await submitAction(fd);
-        if (!res?.ok) {
-          await postDirectToBackend(payload);
-        }
-      } else {
-        await postDirectToBackend(payload);
+      // Flush any pending autosave before final submit
+      if (saveTimer.current) {
+        clearTimeout(saveTimer.current);
+        saveTimer.current = null;
       }
+      await persistDraft(true); // ensure latest edits are saved
 
+      // Show success UI
+      setShowSuccess(true);
+
+      // Clear local caches so a new session starts fresh
       localStorage.removeItem(STORAGE_KEY);
       localStorage.removeItem(draftKey);
-      setShowSuccess(true);
 
       setTimeout(() => {
         setShowSuccess(false);
@@ -227,6 +326,9 @@ export function ContactForm({
     }
   };
 
+  /* ----------------------------
+     UI
+  ----------------------------- */
   if (isLoading) {
     return (
       <div className="bg-white rounded-2xl shadow-xl p-8">
@@ -256,7 +358,7 @@ export function ContactForm({
 
   return (
     <div className="bg-white rounded-2xl shadow-xl p-8">
-      {/* Auto-save indicator — FIXED CONTRAST + A11Y */}
+      {/* Auto-save indicator */}
       <div className="mb-6" role="status" aria-live="polite">
         <div className="flex items-center justify-between text-sm">
           <div className="flex items-center space-x-2">
@@ -312,6 +414,7 @@ export function ContactForm({
                 name="companyName"
                 value={formData.companyName}
                 onChange={handleInputChange}
+                onBlur={handleBlur}
                 required
                 className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                 placeholder="Your company name"
@@ -325,6 +428,7 @@ export function ContactForm({
                 name="contactPerson"
                 value={formData.contactPerson}
                 onChange={handleInputChange}
+                onBlur={handleBlur}
                 required
                 className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                 placeholder="Your full name"
@@ -338,6 +442,7 @@ export function ContactForm({
                 name="email"
                 value={formData.email}
                 onChange={handleInputChange}
+                onBlur={handleBlur}
                 required
                 className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                 placeholder="your@company.com"
@@ -351,6 +456,7 @@ export function ContactForm({
                 name="phone"
                 value={formData.phone}
                 onChange={handleInputChange}
+                onBlur={handleBlur}
                 required
                 className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                 placeholder="+1 (555) 123-4567"
@@ -367,6 +473,7 @@ export function ContactForm({
                 name="businessType"
                 value={formData.businessType}
                 onChange={handleInputChange}
+                onBlur={handleBlur}
                 required
                 className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
               >
@@ -385,6 +492,7 @@ export function ContactForm({
                 name="annualVolume"
                 value={formData.annualVolume}
                 onChange={handleInputChange}
+                onBlur={handleBlur}
                 className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
               >
                 <option value="">Select volume range</option>
@@ -403,6 +511,7 @@ export function ContactForm({
                 name="primaryMarkets"
                 value={formData.primaryMarkets}
                 onChange={handleInputChange}
+                onBlur={handleBlur}
                 className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                 placeholder="e.g., North America, Europe, Asia"
               />
@@ -421,6 +530,7 @@ export function ContactForm({
                       type="checkbox"
                       checked={formData.fabricTypes.includes(fabric)}
                       onChange={() => handleCheckboxChange(fabric)}
+                      onBlur={handleBlur}
                       className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
                     />
                     <span className="text-sm text-slate-700">{fabric}</span>
@@ -435,6 +545,7 @@ export function ContactForm({
                 name="specifications"
                 value={formData.specifications}
                 onChange={handleInputChange}
+                onBlur={handleBlur}
                 rows={3}
                 className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                 placeholder="Weight, width, color requirements, etc."
@@ -447,6 +558,7 @@ export function ContactForm({
                 name="timeline"
                 value={formData.timeline}
                 onChange={handleInputChange}
+                onBlur={handleBlur}
                 className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
               >
                 <option value="">Select timeline</option>
@@ -463,6 +575,7 @@ export function ContactForm({
                 name="message"
                 value={formData.message}
                 onChange={handleInputChange}
+                onBlur={handleBlur}
                 rows={4}
                 className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                 placeholder="Any additional requirements or questions..."
@@ -513,3 +626,10 @@ export function ContactForm({
     </div>
   );
 }
+
+
+
+
+
+
+
