@@ -298,6 +298,11 @@ export function ContactForm({
     e.preventDefault();
     if (currentStep !== 3) return; // guard: only final step submits
 
+    // if(currentStep === 3)
+    // {
+    //   alert("this is step 3")
+    // }
+
     setIsSubmitting(true);
     try {
       // Flush any pending autosave before final submit
@@ -626,6 +631,9 @@ export function ContactForm({
     </div>
   );
 }
+
+
+
 
 
 
