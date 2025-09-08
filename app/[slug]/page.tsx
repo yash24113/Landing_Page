@@ -10,6 +10,8 @@ import { FAQ } from "@/components/faq";
 import { ContactForm } from "@/components/contact-form";
 import { fetchSeoData } from "@/lib/seo"; // keep this import; fetchProductData is dynamically imported below
 import JsonLdInjector from "@/components/json-ld-injector";
+import { CatalogButton } from "@/components/catalog-button";
+
 
 /* -------------------------------------------------
    API + Auth used for related-products logic
@@ -230,7 +232,13 @@ type ProductDoc = {
   img?: string;
   image1?: string;
   image2?: string;
+  gsm?: string | number;
+  oz?: string | number;
+  cm?: string | number;
+  inch?: string | number;
+  salesPrice?: number;
   productdescription?: string;
+  sku?: string;
 };
 
 /* -------------------------------------------------
@@ -275,14 +283,22 @@ function buildOtherMeta(seo: SeoDocFull) {
     if (v !== undefined && v !== "") other[name] = v;
   };
 
-  set("charset", seo.charset);
-  set("viewport", seo.viewport);
-  set("x-ua-compatible", seo.xUaCompatible);
-  set("content-language", seo.contentLanguage);
-  set("canonical", seo.canonical_url);
-  set("keywords", seo.keywords);
-  set("robots", seo.robots);
+  // 🚫 Removed (handled elsewhere by Next Metadata or invalid here):
+  // - charset, viewport
+  // - canonical (use alternates.canonical)
+  // - keywords, robots
+  // - google-site-verification, msvalidate.01 (use verification)
+  // - theme-color, apple-mobile-web-app-*, format-detection
+  // - og:* (handled by openGraph)  ❌ also avoids invalid name="og:*"
+  // - twitter:* (handled by twitter)
+  // - hreflang / x-default (handled by alternates.languages)
 
+  // ✅ Keep only fields that aren't first-class in Metadata and your custom diagnostics:
+  set("content-language", seo.contentLanguage);
+  set("x-ua-compatible", seo.xUaCompatible); // optional/legacy, but harmless if you want it
+  set("author_name", seo.author_name);
+
+  // Custom SEO diagnostics / IDs (safe & unique)
   set("seo:product", typeof seo.product === "string" ? seo.product : (seo.product as any)?._id);
   set("seo:location", typeof seo.location === "string" ? seo.location : (seo.location as any)?._id);
   set("seo:locationCode", seo.locationCode);
@@ -301,43 +317,9 @@ function buildOtherMeta(seo: SeoDocFull) {
   set("seo:salesPrice", seo.salesPrice);
   set("seo:purchasePrice", seo.purchasePrice);
 
-  set("google-site-verification", seo.googleSiteVerification);
-  set("msvalidate.01", seo.msValidate);
-
-  set("theme-color", seo.themeColor);
-  set("apple-mobile-web-app-capable", seo.mobileWebAppCapable);
-  set("apple-mobile-web-app-status-bar-style", seo.appleStatusBarStyle);
-  set("format-detection", seo.formatDetection);
-
-  set("og:url", seo.ogUrl);
-  set("og:image", seo.ogImage);
-  set("og:site_name", seo.ogSiteName);
-  set("og:locale", seo.ogLocale);
-  set("og:title", seo.ogTitle);
-  set("og:description", seo.ogDescription);
-  set("og:type (raw)", seo.ogType);
-
-  set("og:video", seo.ogVideoUrl);
-  set("og:video:secure_url", seo.ogVideoSecureUrl);
-  set("og:video:type", seo.ogVideoType);
-  if (typeof seo.ogVideoWidth !== "undefined") set("og:video:width", seo.ogVideoWidth);
-  if (typeof seo.ogVideoHeight !== "undefined") set("og:video:height", seo.ogVideoHeight);
-
-  set("twitter:card", seo.twitterCard);
-  set("twitter:site", seo.twitterSite);
-  set("twitter:title", seo.twitterTitle);
-  set("twitter:description", seo.twitterDescription);
-  set("twitter:image", seo.twitterImage);
-  set("twitter:player", seo.twitterPlayer);
-  if (typeof seo.twitterPlayerWidth !== "undefined") set("twitter:player:width", seo.twitterPlayerWidth);
-  if (typeof seo.twitterPlayerHeight !== "undefined") set("twitter:player:height", seo.twitterPlayerHeight);
-
-  set("hreflang", seo.hreflang);
-  set("x-default", seo.x_default);
-  set("author_name", seo.author_name);
-
   return other;
 }
+
 
 function parseJsonLd(input?: string) {
   if (!input || typeof input !== "string") return null;
@@ -888,12 +870,21 @@ export default async function SlugPage({ params }: Props) {
                   >
                     📞 Call Now
                   </a>
-                  <a
-                    href={process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL}
-                    className="inline-flex items-center justify-center px-5 sm:px-6 py-2.5 sm:py-3 border-2 border-emerald-600 text-emerald-700 hover:bg-emerald-700 hover:text-white rounded-lg font-semibold transition-all duration-200"
-                  >
-                    📋 Free Catalog
-                  </a>
+                 <CatalogButton
+                                    product={{
+                                      name: matchingProduct?.name,
+                                      sku: matchingProduct?.sku || seo.sku,
+                                      salesPrice: matchingProduct?.salesPrice || seo.salesPrice,
+                                      productdescription: matchingProduct?.productdescription || seo.productdescription,
+                                      img: matchingProduct?.img,
+                                      image1: matchingProduct?.image1,
+                                      image2: matchingProduct?.image2,
+                                      gsm: matchingProduct?.gsm,
+                                      oz: matchingProduct?.oz,
+                                      cm: matchingProduct?.cm,
+                                      inch: matchingProduct?.inch
+                                    }}
+                                  />
                 </div>
 
                 <div className="flex flex-wrap gap-3 sm:gap-4 text-sm text-slate-600 mt-1 sm:mt-2">

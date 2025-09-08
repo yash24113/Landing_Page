@@ -15,18 +15,13 @@ interface ContactFormProps {
 
 const STORAGE_KEY = "fabricpro_contact_form";
 
-const RAW_BASE =
-  (process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:7000/landing")
-    .replace(/\/+$/, "");
+const RAW_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:7000/landing").replace(/\/+$/, "");
 const DEFAULT_CONTACT_URL = `${RAW_BASE}/contacts`;
 
-const API_KEY_HEADER =
-  process.env.NEXT_PUBLIC_API_KEY_HEADER || "x-api-key";
-const ADMIN_EMAIL_HEADER =
-  process.env.NEXT_PUBLIC_ADMIN_EMAIL_HEADER || "x-admin-email";
+const API_KEY_HEADER = process.env.NEXT_PUBLIC_API_KEY_HEADER || "x-api-key";
+const ADMIN_EMAIL_HEADER = process.env.NEXT_PUBLIC_ADMIN_EMAIL_HEADER || "x-admin-email";
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
-const ADMIN_EMAIL =
-  process.env.NEXT_PUBLIC_ADMIN_EMAIL || "";
+const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "";
 
 function buildAuthHeaders(extra?: Record<string, string>) {
   const h: Record<string, string> = {
@@ -66,12 +61,25 @@ export function ContactForm({
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [isFormClosed, setIsFormClosed] = useState(false);
+
+
+  // NEW: quick transition overlay when moving 2 -> 3
+  const [showStepAdvance, setShowStepAdvance] = useState(false);
+  const stepAdvanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [draftId, setDraftId] = useState<string>("");
 
   // debounce timer for autosave
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isSavingRef = useRef(false);
+
+  useEffect(() => {
+    return () => {
+      if (stepAdvanceTimer.current) clearTimeout(stepAdvanceTimer.current);
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    };
+  }, []);
 
   /* ----------------------------
      Helpers: backend mapping
@@ -138,7 +146,7 @@ export function ContactForm({
           lastSaved: new Date().toISOString(),
           draftId: draftId || null,
         };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+        // localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
         setLastSaved(new Date());
         setHasUnsavedChanges(false);
       } catch (e) {
@@ -156,7 +164,7 @@ export function ContactForm({
     setHasUnsavedChanges(true);
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      persistDraft(false);
+      void persistDraft(false);
     }, 800); // 800ms debounce for onChange
   }, [persistDraft]);
 
@@ -221,9 +229,7 @@ export function ContactForm({
                 businessType: d.businessType ?? "",
                 annualVolume: d.annualFabricVolume ?? "",
                 primaryMarkets: d.primaryMarkets ?? "",
-                fabricTypes: Array.isArray(d.fabricTypesOfInterest)
-                  ? d.fabricTypesOfInterest
-                  : [],
+                fabricTypes: Array.isArray(d.fabricTypesOfInterest) ? d.fabricTypesOfInterest : [],
                 specifications: d.specificationsRequirements ?? "",
                 timeline: d.timeline ?? "",
                 message: d.additionalMessage ?? "",
@@ -248,9 +254,7 @@ export function ContactForm({
      Field handlers
   ----------------------------- */
   const handleInputChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -273,16 +277,23 @@ export function ContactForm({
 
   /* ----------------------------
      Step navigation (NO submit)
-     >>> ONLY CHANGE HERE <<<
   ----------------------------- */
   const nextStep = async () => {
-    // prevent any lingering success view when moving from step 2 -> 3
-    setShowSuccess(false);
+    // always save immediately when moving steps
+    saveImmediately();
+
+    // If we're moving from step 2 to 3, show a quick success/transition overlay first
+    if (currentStep === 2) {
+      setShowStepAdvance(true);
+      stepAdvanceTimer.current = setTimeout(() => {
+        setShowStepAdvance(false);
+        setCurrentStep(3);
+      }, 1200); // tweak delay as desired
+      return;
+    }
 
     const next = Math.min(currentStep + 1, 3);
     setCurrentStep(next);
-    // save step movement immediately (so drafts know which step user reached)
-    saveImmediately();
   };
 
   const prevStep = async () => {
@@ -297,11 +308,6 @@ export function ContactForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (currentStep !== 3) return; // guard: only final step submits
-
-    // if(currentStep === 3)
-    // {
-    //   alert("this is step 3")
-    // }
 
     setIsSubmitting(true);
     try {
@@ -355,7 +361,7 @@ export function ContactForm({
             </svg>
           </div>
           <h3 className="text-2xl font-bold text-slate-900 mb-2">Quote Request Submitted!</h3>
-          <p className="text-slate-600">Thank you! We’ll get back to you within 24 hours.</p>
+          <p className="text-slate-600">Thank you! We&apos;ll get back to you within 24 hours.</p>
         </div>
       </div>
     );
@@ -397,7 +403,11 @@ export function ContactForm({
                 {step}
               </div>
               {step < 3 && (
-                <div className={`w-16 h-1 mx-2 transition-colors ${currentStep > step ? "bg-blue-600" : "bg-slate-200"}`} />
+                <div
+                  className={`w-16 h-1 mx-2 transition-colors ${
+                    currentStep > step ? "bg-blue-600" : "bg-slate-200"
+                  }`}
+                />
               )}
             </div>
           ))}
@@ -628,16 +638,21 @@ export function ContactForm({
           )}
         </div>
       </form>
+
+      {/* Quick transition overlay shown when moving from Step 2 → Step 3 */}
+      {/* {showStepAdvance && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-[92%] text-center">
+            <div className="w-16 h-16 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-bold text-slate-900 mb-2">Saved!</h3>
+            <p className="text-slate-600">Moving to the final step…</p>
+          </div>
+        </div>
+      )} */}
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-

@@ -169,19 +169,21 @@ function twitterCardSafe(v: unknown) {
 }
 
 function buildOtherMeta(seo: any) {
+  // Only include fields that are NOT already covered by Next Metadata API.
+  // Removed here: charset, keywords, robots, google-site-verification, msvalidate.01,
+  // theme-color, apple-mobile-web-app-capable, apple-mobile-web-app-status-bar-style,
+  // format-detection, hreflang, x-default (handled via Metadata.alternates)
   const other: Record<string, string> = {};
   const set = (name: string, value: any) => {
     const v = asString(value);
     if (v !== undefined && v !== "") other[name] = v;
   };
 
-  // Core page meta (keep only items not already expressed via Next metadata API)
-  set("charset", seo.charset);
-  set("content-language", seo.contentLanguage);
-  set("keywords", seo.keywords);
-  set("robots", seo.robots);
+  // Keep only things that don't have first-class Metadata keys:
+  set("content-language", seo.contentLanguage);          // OK to keep
+  set("author_name", seo.author_name);                   // custom helper/meta
 
-  // IDs & flags
+  // IDs & custom SEO diagnostics
   set("seo:product", typeof seo.product === "string" ? seo.product : seo?.product?._id);
   set("seo:location", typeof seo.location === "string" ? seo.location : seo?.location?._id);
   set("seo:locationCode", seo.locationCode);
@@ -199,21 +201,6 @@ function buildOtherMeta(seo: any) {
   set("seo:rating_count", seo.rating_count);
   set("seo:salesPrice", seo.salesPrice);
   set("seo:purchasePrice", seo.purchasePrice);
-
-  // Verification / platform
-  set("google-site-verification", seo.googleSiteVerification);
-  set("msvalidate.01", seo.msValidate);
-
-  // PWA/device
-  set("theme-color", seo.themeColor);
-  set("apple-mobile-web-app-capable", seo.mobileWebAppCapable);
-  set("apple-mobile-web-app-status-bar-style", seo.appleStatusBarStyle);
-  set("format-detection", seo.formatDetection);
-
-  // Hreflang helpers
-  set("hreflang", seo.hreflang);
-  set("x-default", seo.x_default);
-  set("author_name", seo.author_name);
 
   return other;
 }

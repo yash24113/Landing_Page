@@ -1,4 +1,4 @@
-import type { Metadata, Viewport } from "next";
+// app/layout.tsx
 import Script from "next/script";
 import ClientLayout from "./ClientLayout";
 import "./globals.css";
@@ -6,28 +6,21 @@ import "./globals.css";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
-  themeColor: "#ffffff",
-};
-
-export const metadata: Metadata = {
-  generator: "v0.dev",
-  verification: {
-    // Put your Search Console verification code in .env as NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
-    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || undefined,
-  },
-};
-
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID;           // e.g. G-XXXXXXXXXX
 const CLARITY_ID = process.env.NEXT_PUBLIC_CLARITY_ID; // e.g. abcdef1234
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="scroll-smooth">
+    <html
+      lang="en"
+      className="scroll-smooth"
+      data-ga={GA_ID ? "1" : "0"}
+      data-clarity={CLARITY_ID ? "1" : "0"}
+      data-site-url={SITE_URL}
+    >
       <body className="font-system antialiased">
-        {/* --- Google Analytics 4 (gtag.js) --- */}
+        {/* Google Analytics 4 (gtag.js) */}
         {GA_ID ? (
           <>
             <Script
@@ -45,7 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </>
         ) : null}
 
-        {/* --- Microsoft Clarity --- */}
+        {/* Microsoft Clarity */}
         {CLARITY_ID ? (
           <Script id="ms-clarity" strategy="afterInteractive">
             {`
