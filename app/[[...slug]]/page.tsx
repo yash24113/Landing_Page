@@ -918,23 +918,20 @@ export default async function Page({ params }: Props) {
               </div>
 
               {/* Right (Image) */}
-              <div className="relative w-full">
-                <div className="relative z-10 w-full rounded-2xl overflow-hidden bg-white/80 backdrop-blur-sm shadow-xl ring-1 ring-slate-200">
-                  {/* explicit heights for consistent hero size & object-contain */}
-                  <div className="relative w-full h-[260px] sm:h-[360px] lg:h-[520px] xl:h-[560px]">
-                    <Image
-                      key={heroImage}
-                      src={heroImage}
-                      alt={heroAlt}
-                      fill
-                      priority
-                      quality={90}
-                      className="object-contain object-center"
-                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 900px"
-                    />
-                  </div>
-                </div>
-              </div>
+<div className="relative w-full">
+  <div className="relative z-10 w-full rounded-2xl overflow-hidden shadow-lg bg-white aspect-[16/10] sm:aspect-[5/4] lg:aspect-[16/9]">
+    <Image
+      key={heroImage}
+      src={heroImage}
+      alt={heroAlt}
+      fill
+      priority
+      className="object-contain object-center"
+      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 800px"
+    />
+  </div>
+</div>
+
             </div>
           </div>
         </section>
