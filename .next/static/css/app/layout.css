@@ -1633,6 +1633,9 @@ video {
   margin-top: calc(1.5rem * calc(1 - var(--tw-space-y-reverse)));
   margin-bottom: calc(1.5rem * var(--tw-space-y-reverse));
 }
+.self-start {
+  align-self: flex-start;
+}
 .overflow-auto {
   overflow: auto;
 }
@@ -1661,6 +1664,9 @@ video {
 }
 .whitespace-pre-wrap {
   white-space: pre-wrap;
+}
+.text-wrap {
+  text-wrap: wrap;
 }
 .text-balance {
   text-wrap: balance;
@@ -3250,6 +3256,10 @@ video {
   --tw-text-opacity: 1;
   color: rgb(255 255 255 / var(--tw-text-opacity, 1));
 }
+.hover\:text-blue-800:hover {
+  --tw-text-opacity: 1;
+  color: rgb(30 64 175 / var(--tw-text-opacity, 1));
+}
 .hover\:underline:hover {
   text-decoration-line: underline;
 }
@@ -3409,6 +3419,10 @@ video {
 .group:hover .group-hover\:text-white {
   --tw-text-opacity: 1;
   color: rgb(255 255 255 / var(--tw-text-opacity, 1));
+}
+.group:hover .group-hover\:text-blue-800 {
+  --tw-text-opacity: 1;
+  color: rgb(30 64 175 / var(--tw-text-opacity, 1));
 }
 .group\/menu-item:hover .group-hover\/menu-item\:opacity-100 {
   opacity: 1;

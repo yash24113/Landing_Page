@@ -4,9 +4,14 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-// ---------------------------
-// Types
-// ---------------------------
+/* ---------------------------------------------
+   Config (match your page default)
+---------------------------------------------- */
+const DEFAULT_LOCATION_SLUG = "ahmedabad";
+
+/* ---------------------------------------------
+   Types
+---------------------------------------------- */
 type Product = {
   _id: string;
   name: string;
@@ -24,7 +29,6 @@ type Seo = {
   product: IdLike;
   location: IdLike;
   slug: string;
-  // many rows also have this:
   locationCode?: string;
 };
 
@@ -34,9 +38,9 @@ type LocationDoc = {
   slug?: string;
 };
 
-// ---------------------------
-// API URLs + headers (public)
-// ---------------------------
+/* ---------------------------------------------
+   API URLs + headers (public)
+---------------------------------------------- */
 const RAW_BASE = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, "") ?? "";
 const PRODUCT_URL = RAW_BASE ? `${RAW_BASE}/product` : "";
 const SEO_URL = RAW_BASE ? `${RAW_BASE}/seo` : "";
@@ -44,20 +48,16 @@ const LOC_URL = RAW_BASE ? `${RAW_BASE}/locations` : "";
 
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY ?? "";
 const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? "";
-// ✅ give safe defaults (avoid empty header names)
 const API_KEY_HEADER = process.env.NEXT_PUBLIC_API_KEY_HEADER ?? "x-api-key";
 const ADMIN_EMAIL_HEADER = process.env.NEXT_PUBLIC_ADMIN_EMAIL_HEADER ?? "x-admin-email";
 
-// ---------------------------
-// Helpers (same as categories)
-// ---------------------------
+/* ---------------------------------------------
+   Helpers
+---------------------------------------------- */
 const norm = (s: any) => String(s ?? "").trim().toLowerCase();
 
 function normalizeSlug(s: string) {
-  return String(s ?? "")
-    .toLowerCase()
-    .replace(/^\/+|\/+$/g, "")
-    .replace(/\?.*$/, "");
+  return String(s ?? "").toLowerCase().replace(/^\/+|\/+$/g, "").replace(/\?.*$/, "");
 }
 function getPageSlugFromPath(pathname: string) {
   const clean = normalizeSlug(pathname || "/");
@@ -72,13 +72,18 @@ function extractId(v: IdLike): string {
   return "";
 }
 
-// ✅ use the same matching logic as page.tsx
-function isSeoForLocation(seoRow: Partial<Seo>, locId: string, locSlug: string) {
+/** Same matching logic you use on the page: location id OR locationCode */
+function isSeoForLocation(seoRow: Partial<Seo>, locIds: Set<string>, locSlug: string) {
   const id = extractId(seoRow.location);
   const code = norm(seoRow.locationCode);
-  return (locId && id === locId) || (locSlug && code === norm(locSlug));
+  const okById = id && locIds.has(id);
+  const okByCode = locSlug && code === norm(locSlug);
+  return !!(okById || okByCode);
 }
 
+/* ---------------------------------------------
+   Footer
+---------------------------------------------- */
 export function Footer() {
   // Company info (public envs)
   const name = process.env.NEXT_PUBLIC_COMPANY_NAME || "";
@@ -95,7 +100,7 @@ export function Footer() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch all three, same as categories component
+  // Fetch all three
   useEffect(() => {
     let alive = true;
     const controller = new AbortController();
@@ -135,7 +140,6 @@ export function Footer() {
       }
     }
 
-    // don’t call fetch with empty URL
     if (SEO_URL && PRODUCT_URL && LOC_URL) load();
     else {
       setLoading(false);
@@ -148,109 +152,107 @@ export function Footer() {
     };
   }, [pageSlug]);
 
-  // Current SEO (only on slug pages); null on "/"
+  // Current page's SEO (if we're on a product detail page)
   const currentSeo = useMemo(() => {
     const slug = pageSlug;
     if (!slug) return null;
     return seos.find((s) => normalizeSlug(s.slug) === slug) || null;
   }, [seos, pageSlug]);
 
-  // Determine target location (id + slug)
-  const { targetLocationId, targetLocationSlug } = useMemo(() => {
-    // 1) From the current SEO (on product page)
-    let id = extractId(currentSeo?.location);
-    let slug = norm((currentSeo as any)?.locationCode || "");
+  // Build the set of *target location ids* to match (supports id + code)
+  const targetLocIds = useMemo(() => {
+    const ids = new Set<string>();
 
-    // 2) Home page fallback -> prefer Ahmedabad
-    if (!id && !slug) {
-      const ahm = locations.find(
-        (l) => norm(l?.name) === "ahmedabad" || norm(l?.slug) === "ahmedabad",
-      );
-      if (ahm?._id) id = ahm._id;
-      if (!slug) slug = "ahmedabad";
-    }
+    // from current product page
+    const fromSeoId = extractId(currentSeo?.location);
+    if (fromSeoId) ids.add(fromSeoId);
 
-    // 3) As a last resort, use the first SEO that has a location id
-    if (!id) {
-      for (const s of seos) {
-        const cand = extractId(s.location);
-        if (cand) {
-          id = cand;
-          break;
+    // home (or fallback): prefer Ahmedabad
+    if (ids.size === 0) {
+      for (const l of locations) {
+        if (norm(l?.name) === DEFAULT_LOCATION_SLUG || norm(l?.slug) === DEFAULT_LOCATION_SLUG) {
+          if (l._id) ids.add(l._id);
         }
       }
     }
 
-    return { targetLocationId: id, targetLocationSlug: slug };
+    // last resort: any id present in seos
+    if (ids.size === 0) {
+      for (const s of seos) {
+        const cand = extractId(s.location);
+        if (cand) {
+          ids.add(cand);
+          break;
+        }
+      }
+    }
+    return ids;
   }, [currentSeo, locations, seos]);
 
-  // Build set of product IDs belonging to the target location (id OR code)
+  // Location code to match as well (e.g., "ahmedabad")
+  const targetLocCode = useMemo(() => {
+    if (currentSeo?.locationCode) return norm(currentSeo.locationCode);
+    return DEFAULT_LOCATION_SLUG;
+  }, [currentSeo]);
+
+  // Product IDs that belong to the *target* location (id OR code)
   const targetLocationProductIds = useMemo(() => {
-    if (!targetLocationId && !targetLocationSlug) return new Set<string>();
+    if (targetLocIds.size === 0 && !targetLocCode) return new Set<string>();
     const ids = new Set<string>();
     for (const s of seos) {
-      if (isSeoForLocation(s, targetLocationId, targetLocationSlug)) {
+      if (isSeoForLocation(s, targetLocIds, targetLocCode)) {
         const pid = extractId(s.product);
         if (pid) ids.add(pid);
       }
     }
     return ids;
-  }, [seos, targetLocationId, targetLocationSlug]);
+  }, [seos, targetLocIds, targetLocCode]);
 
-  // Map productId -> SEO slug (prefer rows for target location)
+  // Map productId -> SEO slug (prefer rows for target location; fallback to any)
   const productSlugById = useMemo(() => {
     const m = new Map<string, string>();
-    // prefer location-specific slug first
+    // prefer location-specific first
     for (const s of seos) {
       const pid = extractId(s.product);
       const sl = s.slug?.trim();
       if (!pid || !sl) continue;
-      if (isSeoForLocation(s, targetLocationId, targetLocationSlug)) {
+      if (isSeoForLocation(s, targetLocIds, targetLocCode)) {
         m.set(pid, sl);
       }
     }
-    // then fill any gaps with generic slugs
+    // then fill from any remaining rows
     for (const s of seos) {
       const pid = extractId(s.product);
       const sl = s.slug?.trim();
       if (pid && sl && !m.has(pid)) m.set(pid, sl);
     }
     return m;
-  }, [seos, targetLocationId, targetLocationSlug]);
+  }, [seos, targetLocIds, targetLocCode]);
 
-  // Current page's product (if on product slug page)
+  // Current page's product id (to exclude if on product detail)
   const currentProductId = useMemo(() => extractId(currentSeo?.product), [currentSeo]);
 
-  // FINAL LIST for footer: only products in target location (exclude current product), resolve slug via SEO map
+  // FINAL list (now with product.slug fallback + non-clickable fallback render)
   const footerProducts = useMemo(() => {
     if (targetLocationProductIds.size === 0) return [] as Array<{ id: string; name: string; slug?: string }>;
 
-    // in-location products
     const inLocation = products.filter((p) => targetLocationProductIds.has(p._id.trim()));
+    const filtered = currentProductId ? inLocation.filter((p) => p._id.trim() !== currentProductId) : inLocation;
 
-    // exclude current product (if on a product detail slug)
-    const filtered = currentProductId
-      ? inLocation.filter((p) => p._id.trim() !== currentProductId)
-      : inLocation;
-
-    // Map to {id, name, slug} using SEO slug map; only keep ones with a slug
-    const mapped = filtered
-      .map((p) => ({
-        id: p._id,
-        name: p.name,
-        slug: productSlugById.get(p._id),
-      }))
-      .filter((x) => !!x.slug);
+    const mapped = filtered.map((p) => {
+      const seoSlug = productSlugById.get(p._id);
+      const finalSlug = (seoSlug || p.slug || "").trim();
+      return { id: p._id, name: p.name, slug: finalSlug || undefined };
+    });
 
     // Deduplicate & limit
     const seen = new Set<string>();
-    const unique: Array<{ id: string; name: string; slug: string }> = [];
+    const unique: Array<{ id: string; name: string; slug?: string }> = [];
     for (const x of mapped) {
-      if (!x.slug) continue;
       if (seen.has(x.id)) continue;
       seen.add(x.id);
-      unique.push({ id: x.id, name: x.name, slug: x.slug });
-      if (unique.length >= 6) break; // show up to 6 links in footer
+      unique.push(x);
+      if (unique.length >= 6) break;
     }
     return unique;
   }, [products, targetLocationProductIds, currentProductId, productSlugById]);
@@ -264,7 +266,7 @@ export function Footer() {
     <footer className="bg-slate-900 text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {/* --- Company --- */}
+          {/* Company */}
           <div className="space-y-4">
             <h3 className="text-2xl font-bold">{name}</h3>
             <p className="text-slate-300 leading-relaxed">
@@ -272,10 +274,9 @@ export function Footer() {
             </p>
           </div>
 
-          {/* --- Products (dynamic, location-aware) --- */}
+          {/* Products (location-aware) */}
           <div>
             <h4 className="text-lg font-semibold mb-4">Products</h4>
-
             {loading ? (
               <p className="text-slate-400 text-sm">Loading…</p>
             ) : error ? (
@@ -286,16 +287,20 @@ export function Footer() {
               <ul className="space-y-2 text-slate-300">
                 {footerProducts.map((p) => (
                   <li key={p.id}>
-                    <Link href={`/${p.slug}`} className="hover:text-white transition-colors">
-                      {p.name}
-                    </Link>
+                    {p.slug ? (
+                      <Link href={`/${p.slug}`} className="hover:text-white transition-colors">
+                        {p.name}
+                      </Link>
+                    ) : (
+                      <span className="opacity-80">{p.name}</span>
+                    )}
                   </li>
                 ))}
               </ul>
             )}
           </div>
 
-          {/* --- Services --- */}
+          {/* Services */}
           <div>
             <h4 className="text-lg font-semibold mb-4">Services</h4>
             <ul className="space-y-2 text-slate-300">
@@ -306,7 +311,7 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* --- Contact --- */}
+          {/* Contact */}
           <div>
             <h4 className="text-lg font-semibold mb-4">Contact</h4>
             <div className="space-y-2 text-slate-300">
