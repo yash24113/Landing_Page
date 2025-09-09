@@ -184,23 +184,23 @@ function buildOtherMeta(seo: any) {
   set("author_name", seo.author_name);                   // custom helper/meta
 
   // IDs & custom SEO diagnostics
-  set("seo:product", typeof seo.product === "string" ? seo.product : seo?.product?._id);
+  /* set("seo:product", typeof seo.product === "string" ? seo.product : seo?.product?._id);
   set("seo:location", typeof seo.location === "string" ? seo.location : seo?.location?._id);
   set("seo:locationCode", seo.locationCode);
   set("seo:productIdentifier", seo.productIdentifier);
   set("seo:sku", seo.sku);
-  set("seo:slug", seo.slug);
+  set("seo:slug", seo.slug); */
   set("seo:excerpt", seo.excerpt);
   set("seo:productdescription", seo.productdescription);
   set("seo:description_html", seo.description_html);
-  set("seo:popularproduct", asBoolString(seo.popularproduct));
-  set("seo:topratedproduct", asBoolString(seo.topratedproduct));
-  set("seo:landingPageProduct", asBoolString(seo.landingPageProduct));
-  set("seo:shopyProduct", asBoolString(seo.shopyProduct));
+  /* set("seo:popularproduct", asBoolString(seo.popularproduct));
+  set("seo:topratedproduct", asBoolString(seo.topratedproduct)); */
+/*   set("seo:landingPageProduct", asBoolString(seo.landingPageProduct));
+  set("seo:shopyProduct", asBoolString(seo.shopyProduct)); */
   set("seo:rating_value", seo.rating_value);
   set("seo:rating_count", seo.rating_count);
-  set("seo:salesPrice", seo.salesPrice);
-  set("seo:purchasePrice", seo.purchasePrice);
+/*   set("seo:salesPrice", seo.salesPrice);
+  set("seo:purchasePrice", seo.purchasePrice); */
 
   return other;
 }
