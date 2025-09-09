@@ -111,7 +111,7 @@ export function ProductCategories() {
                           <h3 className="text-xl font-bold text-slate-900 mb-3 group-hover:text-blue-600 transition-colors">
                             {category.name}
                           </h3>
-                          <p className="text-slate-600 mb-4 leading-relaxed">{category.description}</p>
+                          <p className="text-slate-600 mb-4 text-wrap leading-relaxed ">{category.description}</p>
 
                           <ul className="space-y-2" role="list">
                             {category.features.map((feature, featureIndex) => (

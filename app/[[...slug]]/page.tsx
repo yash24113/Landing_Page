@@ -11,6 +11,7 @@ import { ContactForm } from "@/components/contact-form";
 import JsonLdInjector from "@/components/json-ld-injector";
 import { CatalogButton } from "@/components/catalog-button";
 import { fetchSeoData } from "@/lib/seo"; // and fetchProductData (dynamic import below)
+import ExpandableText from "@/components/expandable-text"; // ← for product cards
 
 /* -------------------------------------------------
    Config
@@ -533,11 +534,11 @@ function websiteJsonLd(_: any) {
 function faqJsonLd() {
   const faqs = [
     { question: "What is your minimum order quantity for bulk fabric orders?", answer: "Our minimum order quantity varies by fabric type, typically starting from 500 meters for standard fabrics and 1000 meters for custom specifications. We work with garment manufacturers and retailers of all sizes to accommodate their specific needs." },
-    { question: "Do you provide fabric samples before placing bulk orders?", answer: "Yes, we provide free fabric samples for all our products. Sample orders are processed within 3-5 business days and shipped worldwide. This allows fabric importers and manufacturers to evaluate quality before committing to larger orders." },
-    { question: "What are your payment terms for B2B fabric orders?", answer: "We offer flexible payment terms including T/T (Telegraphic Transfer), L/C (Letter of Credit), and for established clients, we provide 30-60 day payment terms. All transactions are secure and comply with international trade regulations." },
-    { question: "How do you ensure consistent quality across large fabric orders?", answer: "We maintain strict quality control processes including pre-production samples, in-line inspection during manufacturing, and final quality checks before shipment. All our facilities are ISO certified and follow international quality standards." },
-    { question: "What is your typical lead time for fabric manufacturing and delivery?", answer: "Standard fabrics: 15-20 days, custom fabrics: 25-35 days. We provide detailed production schedules and regular updates throughout the manufacturing process." },
-    { question: "Do you offer custom fabric development services?", answer: "Yes, we specialize in custom fabric development for clothing brands and manufacturers. Our R&D team works closely with clients to develop unique fabric compositions, colors, and finishes that meet specific requirements." },
+    { question: "Do you provide fabric samples before placing bulk orders?", answer: "Yes, we provide free fabric samples for all our products. Sample orders are processed within 3-5 business days and shipped worldwide." },
+    { question: "What are your payment terms for B2B fabric orders?", answer: "We offer flexible payment terms including T/T, L/C, and for established clients, 30-60 day terms." },
+    { question: "How do you ensure consistent quality across large fabric orders?", answer: "Strict QC processes including pre-production samples, in-line inspection, and final checks before shipment." },
+    { question: "What is your typical lead time for fabric manufacturing and delivery?", answer: "Standard fabrics: 15-20 days, custom fabrics: 25-35 days." },
+    { question: "Do you offer custom fabric development services?", answer: "Yes, we specialize in custom fabric development for clothing brands and manufacturers." },
   ];
   return {
     "@context": "https://schema.org",
@@ -559,7 +560,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const slugSegs = p.slug ?? [];
   const slug = slugSegs[0];
 
-  // HOME (no slug) → your original page.tsx metadata
+  // HOME (no slug)
   if (!slug) {
     const seoJson = await fetchJson<any>(SEO_URL);
     const locJson = await fetchJson<any>(LOC_URL);
@@ -722,7 +723,7 @@ export default async function Page({ params }: Props) {
   const slugSegs = p.slug ?? [];
   const slug = slugSegs[0];
 
-  // ---------- JSON-LD builder for any "base seo" object ----------
+  // ---------- JSON-LD builder ----------
   const jsonLdFor = (seoBase: any, productName?: string) => {
     const videoLd = parseJsonLd(seoBase?.VideoJsonLd);
     const logoLd = parseJsonLd(seoBase?.LogoJsonLd) ?? buildLogoLdFromParts(seoBase);
@@ -736,7 +737,7 @@ export default async function Page({ params }: Props) {
   };
 
   /* ============================
-     HOME (no slug): old page.tsx
+     HOME (no slug)
   ============================ */
   if (!slug) {
     const [seoJson, prodJson, locJson] = await Promise.all([
@@ -884,15 +885,29 @@ export default async function Page({ params }: Props) {
                   </div>
                 )}
 
+                {/* CTAs — now includes dynamic CatalogButton for Ahmedabad default product */}
                 <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                   <a href="#contact" className="px-6 sm:px-8 py-3 sm:py-4 btn-primary">Get Quote Now</a>
                   <a href={`tel:${(COMPANY_PHONE ?? "").replace(/\s+/g, "")}`} className="px-6 sm:px-8 py-3 sm:py-4 btn-secondary">📞 Call Now</a>
-                  <a
-                    href={process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL}
-                    className="px-5 sm:px-6 py-2.5 sm:py-3 border-2 border-emerald-600 text-emerald-700 hover:bg-emerald-700 hover:text-white rounded-lg font-semibold transition-all duration-200"
-                  >
-                    📋 Free Catalog
-                  </a>
+
+                  {/* NEW: dynamic PDF Catalog for the current (Ahmedabad) hero product */}
+                  {firstCard && (
+                    <CatalogButton
+                      product={{
+                        name: firstCard?.name,
+                        sku: firstCard?.sku || firstCardSeo?.sku,
+                        salesPrice: firstCard?.salesPrice || firstCardSeo?.salesPrice,
+                        productdescription: firstCard?.productdescription || firstCardSeo?.productdescription,
+                        img: firstCard?.img,
+                        image1: firstCard?.image1,
+                        image2: firstCard?.image2,
+                        gsm: firstCard?.gsm,
+                        oz: firstCard?.oz,
+                        cm: firstCard?.cm,
+                        inch: firstCard?.inch,
+                      }}
+                    />
+                  )}
                 </div>
 
                 <div className="flex flex-wrap gap-3 sm:gap-4 text-sm text-slate-700 mt-2">
@@ -904,16 +919,20 @@ export default async function Page({ params }: Props) {
 
               {/* Right (Image) */}
               <div className="relative w-full">
-                <div className="relative z-10 w-full rounded-2xl overflow-hidden shadow-lg bg-white aspect-[16/10] sm:aspect-[5/4] lg:aspect-[16/9]">
-                  <Image
-                    key={heroImage}
-                    src={heroImage}
-                    alt={heroAlt}
-                    fill
-                    priority
-                    className="object-center"
-                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 800px"
-                  />
+                <div className="relative z-10 w-full rounded-2xl overflow-hidden bg-white/80 backdrop-blur-sm shadow-xl ring-1 ring-slate-200">
+                  {/* explicit heights for consistent hero size & object-contain */}
+                  <div className="relative w-full h-[260px] sm:h-[360px] lg:h-[520px] xl:h-[560px]">
+                    <Image
+                      key={heroImage}
+                      src={heroImage}
+                      alt={heroAlt}
+                      fill
+                      priority
+                      quality={90}
+                      className="object-contain object-center"
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 900px"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -970,86 +989,80 @@ export default async function Page({ params }: Props) {
         </section>
 
         {/* PRODUCTS — ALL Ahmedabad */}
-     <section id="products" className="py-14 sm:py-20 bg-white" aria-labelledby="product-categories">
-  <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-    <div className="text-center mb-12 sm:mb-16">
-      <h2
-        id="product-categories"
-        className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4 sm:mb-6 text-balance"
-      >
-        Explore Our Fabric Catalog
-      </h2>
-      <p className="text-lg sm:text-xl text-slate-600 max-w-3xl mx-auto">
-        {taglineFromSeo || "Comprehensive range of premium fabrics for every manufacturing need"}
-      </p>
-    </div>
-
-    {ahmedabadProducts.length === 0 ? (
-      <div className="text-center text-slate-600">No products for the selected location.</div>
-    ) : (
-      <div className="grid gap-6 sm:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        {ahmedabadProducts.map((p) => {
-          const img = (p.img ?? p.image1 ?? p.image2 ?? "/placeholder.svg?height=300&width=400").toString();
-          const pid = String(p?._id ?? "").trim();
-
-          // SAFE SLUG + HREF
-          const rawSlug = (slugByProduct.get(pid) || p?.slug || "").toString().trim();
-          const safeSlug = rawSlug.replace(/^\/+/, "");
-          const href = safeSlug ? `/${encodeURIComponent(safeSlug)}` : "#";
-
-          const desc = (p.productdescription || "").toString();
-
-          const CardInner = (
-            <div className="relative flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-lg border border-slate-100 hover:shadow-xl hover:border-blue-200 transition-all duration-200">
-              {/* Image */}
-              <div className="relative w-full aspect-[4/3] bg-white">
-                <Image
-                  src={img}
-                  alt={`${p.name} - ${p.productdescription ?? ""}`}
-                  fill
-                  className="object-contain object-center"
-                  loading="lazy"
-                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                />
-              </div>
-
-              {/* Content */}
-              <div className="flex flex-1 flex-col p-5 sm:p-6">
-                <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-2 line-clamp-2 break-words">
-                  {p.name}
-                </h3>
-
-                <p className="text-slate-600 text-sm sm:text-base line-clamp-3 whitespace-pre-wrap break-words">
-                  {desc || "—"}
-                </p>
-
-                {/* Bottom action row pinned to bottom for equal height */}
-                <div className="mt-4 sm:mt-6 pt-4 border-t border-slate-100 flex items-center justify-between gap-3 sm:gap-4">
-                  <span className="inline-flex items-center text-sm font-semibold text-blue-700 group-hover:text-blue-800">
-                    Read more →
-                  </span>
-                </div>
-              </div>
+        <section id="products" className="py-14 sm:py-20 bg-white" aria-labelledby="product-categories">
+          <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+            <div className="text-center mb-12 sm:mb-16">
+              <h2
+                id="product-categories"
+                className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4 sm:mb-6 text-balance"
+              >
+                Explore Our Fabric Catalog
+              </h2>
+              <p className="text-lg sm:text-xl text-slate-600 max-w-3xl mx-auto">
+                {taglineFromSeo || "Comprehensive range of premium fabrics for every manufacturing need"}
+              </p>
             </div>
-          );
 
-          return (
-            <article key={pid} className="h-full">
-              {href === "#" ? (
-                <div className="opacity-100 h-full">{CardInner}</div>
-              ) : (
-                <Link className="group block h-full" href={href}>
-                  {CardInner}
-                </Link>
-              )}
-            </article>
-          );
-        })}
-      </div>
-    )}
-  </div>
-</section>
+            {ahmedabadProducts.length === 0 ? (
+              <div className="text-center text-slate-600">No products for the selected location.</div>
+            ) : (
+              <div className="grid gap-6 sm:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+                {ahmedabadProducts.map((p) => {
+                  const img = (p.img ?? p.image1 ?? p.image2 ?? "/placeholder.svg?height=300&width=400").toString();
+                  const pid = String(p?._id ?? "").trim();
 
+                  // SAFE SLUG + HREF
+                  const rawSlug = (slugByProduct.get(pid) || p?.slug || "").toString().trim();
+                  const safeSlug = rawSlug.replace(/^\/+/, "");
+                  const href = safeSlug ? `/${encodeURIComponent(safeSlug)}` : "#";
+
+                  const desc = (p.productdescription || "").toString();
+
+                  const CardInner = (
+                    <div className="relative flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-lg border border-slate-100 hover:shadow-xl hover:border-blue-200 transition-all duration-200">
+                      {/* Image */}
+                      <div className="relative w-full aspect-[4/3] bg-white">
+                        <Image
+                          src={img}
+                          alt={`${p.name} - ${p.productdescription ?? ""}`}
+                          fill
+                          className="object-contain object-center"
+                          loading="lazy"
+                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                        />
+                      </div>
+
+                      {/* Content */}
+                      <div className="flex flex-1 flex-col p-5 sm:p-6">
+                        <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-2 line-clamp-2 break-words">
+                          {p.name}
+                        </h3>
+
+                        <ExpandableText
+                          text={desc || "—"}
+                          lines={3}
+                          className="text-slate-600 text-sm sm:text-base whitespace-pre-wrap break-words"
+                        />
+                      </div>
+                    </div>
+                  );
+
+                  return (
+                    <article key={pid} className="h-full">
+                      {href === "#" ? (
+                        <div className="opacity-100 h-full">{CardInner}</div>
+                      ) : (
+                        <Link className="group block h-full" href={href}>
+                          {CardInner}
+                        </Link>
+                      )}
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </section>
 
         {/* FAQ + CONTACT + Floaters */}
         <FAQ />
@@ -1077,7 +1090,7 @@ export default async function Page({ params }: Props) {
   }
 
   /* ============================
-     SLUG DETAIL: old [slug]/page
+     SLUG DETAIL: product page
   ============================ */
   if (isAssetSlug(slug)) return null;
 
@@ -1323,8 +1336,15 @@ export default async function Page({ params }: Props) {
                         />
                       </div>
                       <div className="p-5 sm:p-6">
-                        <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-2 break-words">{p.name ?? "Fabric"}</h3>
-                        <p className="text-slate-600 text-sm sm:text-base text-wrap whitespace-pre-wrap break-words">{p.productdescription || "—"}</p>
+                        <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-2 break-words">
+                          {p.name ?? "Fabric"}
+                        </h3>
+
+                        <ExpandableText
+                          text={p.productdescription || "—"}
+                          lines={3}
+                          className="text-slate-600 text-sm sm:text-base whitespace-pre-wrap break-words"
+                        />
                       </div>
                     </div>
                   );
@@ -1416,7 +1436,7 @@ export default async function Page({ params }: Props) {
 }
 
 /* -------------------------------------------------
-   Server actions (kept from your original page.tsx)
+   Server actions
 -------------------------------------------------- */
 export async function saveContactDraft(fd: FormData) {
   "use server";
