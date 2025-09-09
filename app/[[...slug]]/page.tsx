@@ -310,11 +310,11 @@ function buildOtherMeta(seo: any) {
   set("content-language", seo.contentLanguage);
   set("x-ua-compatible", seo.xUaCompatible);
   set("author_name", seo.author_name);
-  set("seo:excerpt", seo.excerpt);
+  /* set("seo:excerpt", seo.excerpt);
   set("seo:productdescription", seo.productdescription);
   set("seo:description_html", seo.description_html);
   set("seo:rating_value", seo.rating_value);
-  set("seo:rating_count", seo.rating_count);
+  set("seo:rating_count", seo.rating_count); */
   return other;
 }
 
