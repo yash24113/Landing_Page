@@ -1,4 +1,4 @@
-// File: C:\Users\madhu\Downloads\Landing_Page-main\Landing_Page-main\app\page.tsx
+// File: C:\Users\madhu\OneDrive\Desktop\Landing_Page-1.9\app\page.tsx
 import * as entry from '../../../app/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

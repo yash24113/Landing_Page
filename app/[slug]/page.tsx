@@ -996,7 +996,7 @@ export default async function SlugPage({ params }: Props) {
                       </div>
                       <div className="p-5 sm:p-6">
                         <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-2 break-words">{p.name ?? "Fabric"}</h3>
-                        <p className="text-slate-600 text-sm sm:text-base whitespace-pre-wrap break-words">{p.productdescription || "—"}</p>
+                        <p className="text-slate-600 text-sm sm:text-base text-wrap whitespace-pre-wrap break-words">{p.productdescription || "—"}</p>
                       </div>
                     </div>
                   );

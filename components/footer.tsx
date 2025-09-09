@@ -24,6 +24,8 @@ type Seo = {
   product: IdLike;
   location: IdLike;
   slug: string;
+  // many rows also have this:
+  locationCode?: string;
 };
 
 type LocationDoc = {
@@ -36,18 +38,21 @@ type LocationDoc = {
 // API URLs + headers (public)
 // ---------------------------
 const RAW_BASE = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, "") ?? "";
-const PRODUCT_URL = RAW_BASE ? `${RAW_BASE}/product` : '';
-const SEO_URL = RAW_BASE ? `${RAW_BASE}/seo` : '';
-const LOC_URL = RAW_BASE ? `${RAW_BASE}/locations` : '';
+const PRODUCT_URL = RAW_BASE ? `${RAW_BASE}/product` : "";
+const SEO_URL = RAW_BASE ? `${RAW_BASE}/seo` : "";
+const LOC_URL = RAW_BASE ? `${RAW_BASE}/locations` : "";
 
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY ?? "";
 const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? "";
-const API_KEY_HEADER = process.env.NEXT_PUBLIC_API_KEY_HEADER ?? "";
-const ADMIN_EMAIL_HEADER = process.env.NEXT_PUBLIC_ADMIN_EMAIL_HEADER ?? "";
+// ✅ give safe defaults (avoid empty header names)
+const API_KEY_HEADER = process.env.NEXT_PUBLIC_API_KEY_HEADER ?? "x-api-key";
+const ADMIN_EMAIL_HEADER = process.env.NEXT_PUBLIC_ADMIN_EMAIL_HEADER ?? "x-admin-email";
 
 // ---------------------------
 // Helpers (same as categories)
 // ---------------------------
+const norm = (s: any) => String(s ?? "").trim().toLowerCase();
+
 function normalizeSlug(s: string) {
   return String(s ?? "")
     .toLowerCase()
@@ -65,6 +70,13 @@ function extractId(v: IdLike): string {
   if (typeof v === "string") return v.trim();
   if (typeof v === "object" && v._id) return String(v._id).trim();
   return "";
+}
+
+// ✅ use the same matching logic as page.tsx
+function isSeoForLocation(seoRow: Partial<Seo>, locId: string, locSlug: string) {
+  const id = extractId(seoRow.location);
+  const code = norm(seoRow.locationCode);
+  return (locId && id === locId) || (locSlug && code === norm(locSlug));
 }
 
 export function Footer() {
@@ -113,7 +125,8 @@ export function Footer() {
         if (!alive) return;
         setSeos(Array.isArray(seoJson?.data) ? seoJson.data : []);
         setProducts(Array.isArray(prodJson?.data) ? prodJson.data : []);
-        setLocations(Array.isArray(locJson?.data?.locations) ? locJson.data.locations : []);
+        const rawLocs = (locJson?.data?.locations ?? locJson?.data ?? locJson?.locations) ?? [];
+        setLocations(Array.isArray(rawLocs) ? rawLocs : []);
       } catch (e: any) {
         if (!alive) return;
         setError(e?.message || "Failed to load data");
@@ -122,7 +135,13 @@ export function Footer() {
       }
     }
 
-    load();
+    // don’t call fetch with empty URL
+    if (SEO_URL && PRODUCT_URL && LOC_URL) load();
+    else {
+      setLoading(false);
+      setError("Missing API base URL");
+    }
+
     return () => {
       alive = false;
       controller.abort();
@@ -136,45 +155,68 @@ export function Footer() {
     return seos.find((s) => normalizeSlug(s.slug) === slug) || null;
   }, [seos, pageSlug]);
 
-  // Determine target Location ID (same priority as categories)
-  const targetLocationId = useMemo(() => {
-    if (currentSeo) return extractId(currentSeo.location);
+  // Determine target location (id + slug)
+  const { targetLocationId, targetLocationSlug } = useMemo(() => {
+    // 1) From the current SEO (on product page)
+    let id = extractId(currentSeo?.location);
+    let slug = norm((currentSeo as any)?.locationCode || "");
 
-    // home page (no slug) -> prefer "ahmedabad"
-    const ahm = locations.find((l) => String(l?.name ?? "").toLowerCase() === "ahmedabad");
-    if (ahm?._id) return ahm._id;
-
-    // fallback: first location referenced by any SEO
-    for (const s of seos) {
-      const id = extractId(s.location);
-      if (id) return id;
+    // 2) Home page fallback -> prefer Ahmedabad
+    if (!id && !slug) {
+      const ahm = locations.find(
+        (l) => norm(l?.name) === "ahmedabad" || norm(l?.slug) === "ahmedabad",
+      );
+      if (ahm?._id) id = ahm._id;
+      if (!slug) slug = "ahmedabad";
     }
-    return "";
+
+    // 3) As a last resort, use the first SEO that has a location id
+    if (!id) {
+      for (const s of seos) {
+        const cand = extractId(s.location);
+        if (cand) {
+          id = cand;
+          break;
+        }
+      }
+    }
+
+    return { targetLocationId: id, targetLocationSlug: slug };
   }, [currentSeo, locations, seos]);
 
-  // Build set of product IDs belonging to the target location
+  // Build set of product IDs belonging to the target location (id OR code)
   const targetLocationProductIds = useMemo(() => {
-    if (!targetLocationId) return new Set<string>();
+    if (!targetLocationId && !targetLocationSlug) return new Set<string>();
     const ids = new Set<string>();
     for (const s of seos) {
-      if (extractId(s.location) === targetLocationId) {
+      if (isSeoForLocation(s, targetLocationId, targetLocationSlug)) {
         const pid = extractId(s.product);
         if (pid) ids.add(pid);
       }
     }
     return ids;
-  }, [seos, targetLocationId]);
+  }, [seos, targetLocationId, targetLocationSlug]);
 
-  // Map productId -> SEO slug (from any SEO row)
+  // Map productId -> SEO slug (prefer rows for target location)
   const productSlugById = useMemo(() => {
     const m = new Map<string, string>();
+    // prefer location-specific slug first
+    for (const s of seos) {
+      const pid = extractId(s.product);
+      const sl = s.slug?.trim();
+      if (!pid || !sl) continue;
+      if (isSeoForLocation(s, targetLocationId, targetLocationSlug)) {
+        m.set(pid, sl);
+      }
+    }
+    // then fill any gaps with generic slugs
     for (const s of seos) {
       const pid = extractId(s.product);
       const sl = s.slug?.trim();
       if (pid && sl && !m.has(pid)) m.set(pid, sl);
     }
     return m;
-  }, [seos]);
+  }, [seos, targetLocationId, targetLocationSlug]);
 
   // Current page's product (if on product slug page)
   const currentProductId = useMemo(() => extractId(currentSeo?.product), [currentSeo]);
@@ -200,7 +242,7 @@ export function Footer() {
       }))
       .filter((x) => !!x.slug);
 
-    // Deduplicate (in case multiple SEO rows map to same product) & limit
+    // Deduplicate & limit
     const seen = new Set<string>();
     const unique: Array<{ id: string; name: string; slug: string }> = [];
     for (const x of mapped) {
