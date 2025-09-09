@@ -711,14 +711,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     alternates: (() => {
       const canonicalUrl = seoFull.canonical_url
         ? new URL(seoFull.canonical_url).toString()
-        : COMPANY_SITE_URL
-        ? `${COMPANY_SITE_URL}/premium-cotton-fabric`
-        : "https://example.com/premium-cotton-fabric";
+        : COMPANY_SITE_URL;
       return {
         canonical: canonicalUrl,
         languages: {
           en: canonicalUrl,
-          "x-default": seoFull.x_default || COMPANY_SITE_URL || "https://example.com",
         },
       };
     })(),

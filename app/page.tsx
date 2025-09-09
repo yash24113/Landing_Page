@@ -601,12 +601,11 @@ export async function generateMetadata(): Promise<Metadata> {
     alternates: (() => {
       const canonicalUrl = seoData.canonical_url
         ? new URL(seoData.canonical_url).toString()
-        : COMPANY_SITE_URL || "https://example.com/premium-cotton-fabric";
+        : COMPANY_SITE_URL;
       return {
         canonical: canonicalUrl,
         languages: {
           en: canonicalUrl,
-          "x-default": seoData.x_default || COMPANY_SITE_URL || "https://example.com",
         },
       };
     })(),
