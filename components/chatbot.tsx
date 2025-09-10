@@ -11,7 +11,7 @@ import {
   Check,
   Pencil,
   Square, // ⬛ stop
-  Mic,    // 🎤 (optional, just for the look)
+  Mic,     // 🎤 (visual only)
 } from "lucide-react";
 
 type MsgKind = "text" | "quick-reply" | "image";
@@ -43,18 +43,18 @@ export function Chatbot() {
   const [isTyping, setIsTyping] = useState(false);
   const [showQuickReplies, setShowQuickReplies] = useState(true);
 
-  // sending vs generating:
-  const [isLoading, setIsLoading] = useState(false);     // network in-flight
-  const [isGenerating, setIsGenerating] = useState(false); // assistant composing
+  // sending vs generating
+  const [isLoading, setIsLoading] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const abortRef = useRef<AbortController | null>(null); // <- used for Stop
+  const abortRef = useRef<AbortController | null>(null); // for Stop
 
-  // toggle via custom events
+  // open/close via custom events
   useEffect(() => {
     const open = () => {
       setIsChatOpen(true);
@@ -75,8 +75,9 @@ export function Chatbot() {
     };
   }, []);
 
-  const N8N_WEBHOOK_URL = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL;
-  const N8N_API_KEY = process.env.NEXT_PUBLIC_N8N_API_KEY;
+  // point this to your backend (env wins)
+  const CHAT_API_URL =
+    process.env.NEXT_PUBLIC_CHAT_BACKEND_URL ?? "http://127.0.0.1:5000/chat";
 
   const quickReplies = [
     { id: "1", text: "Get Quote", action: "quote" },
@@ -89,7 +90,7 @@ export function Chatbot() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
 
-  /** Turn any string with escaped newlines into human text */
+  // --- helpers -------------------------------------------------
   function normalizeText(s: string | undefined | null): string {
     if (!s) return "";
     try {
@@ -99,7 +100,6 @@ export function Chatbot() {
     return String(s).replace(/\r\n/g, "\n").replace(/\\n/g, "\n").trim();
   }
 
-  /** Extract first image URL if present from several possible response shapes */
   function extractImage(payload: any): { url?: string; caption?: string } {
     if (!payload) return {};
     if (typeof payload.image === "string") {
@@ -117,14 +117,13 @@ export function Chatbot() {
       const caption = normalizeText(txtBlock?.text);
       if (url) return { url, caption };
     }
-    const att = Array.isArray(payload.attachments)
+    const att = Array.isArray(payload?.attachments)
       ? payload.attachments.find((a: any) => a?.type?.includes("image"))
       : undefined;
     if (att?.url) return { url: att.url, caption: normalizeText(att.caption) };
     return {};
   }
 
-  /** Extract best text from many possible API shapes */
   function extractText(payload: any, fallbackText: string): string {
     const candidates: any[] = [
       payload?.reply,
@@ -142,7 +141,6 @@ export function Chatbot() {
     return normalizeText(fallbackText);
   }
 
-  /** Copy helpers */
   async function copyToClipboard(text: string, id: string) {
     try {
       await navigator.clipboard.writeText(text);
@@ -159,7 +157,6 @@ export function Chatbot() {
     return m.text ?? "";
   }
 
-  /** ----- Stop generating (AbortController) ----- */
   function stopGenerating() {
     abortRef.current?.abort();
     abortRef.current = null;
@@ -168,8 +165,8 @@ export function Chatbot() {
     setIsLoading(false);
   }
 
-  /** Network */
-  const sendToN8n = async (userMessage: string) => {
+  // --- network -------------------------------------------------
+  const sendToChat = async (userMessage: string) => {
     try {
       setIsLoading(true);
       setIsGenerating(true);
@@ -178,32 +175,20 @@ export function Chatbot() {
       abortRef.current?.abort();
       abortRef.current = new AbortController();
 
-      if (!N8N_WEBHOOK_URL) {
-        return {
-          ok: true,
-          kind: "text" as MsgKind,
-          message:
-            "Thanks for your message! Our assistant will be configured soon.",
-        };
-      }
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (N8N_API_KEY) headers["Authorization"] = `Bearer ${N8N_API_KEY}`;
-
-      const res = await fetch(N8N_WEBHOOK_URL, {
+      const res = await fetch(CHAT_API_URL, {
         method: "POST",
-        headers,
+        headers: { "Content-Type": "application/json" },
+        signal: abortRef.current.signal,
         body: JSON.stringify({
           message: userMessage,
           timestamp: new Date().toISOString(),
           sessionId: "user-session-" + Date.now(),
-          context: {
-            previousMessages: messages.slice(-5).map((m) => ({
-              text: m.text,
-              isUser: m.isUser,
-            })),
-          },
+          history: messages.slice(-5).map((m) => ({
+            text: m.text,
+            isUser: m.isUser,
+            type: m.type,
+          })),
         }),
-        signal: abortRef.current.signal,
       });
 
       const raw = await res.text();
@@ -236,7 +221,7 @@ export function Chatbot() {
     }
   };
 
-  /** Quick reply */
+  // --- UI actions ----------------------------------------------
   const handleQuickReply = async (action: string, text: string) => {
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -249,7 +234,7 @@ export function Chatbot() {
     setShowQuickReplies(false);
     setIsTyping(true);
 
-    const resp = await sendToN8n(`Action: ${action} - ${text}`);
+    const resp = await sendToChat(`Action: ${action} - ${text}`);
 
     if (resp.kind === "image" && "imageUrl" in resp) {
       const botMsg: Message = {
@@ -274,7 +259,6 @@ export function Chatbot() {
     setIsTyping(false);
   };
 
-  /** Edit an existing user message */
   const handleEdit = (msg: Message) => {
     if (!msg.isUser) return;
     setEditingId(msg.id);
@@ -282,12 +266,10 @@ export function Chatbot() {
     inputRef.current?.focus();
   };
 
-  /** Send / Save (supports edit mode) */
   const handleSendMessage = async () => {
     const trimmed = inputMessage.trim();
     if (!trimmed) return;
 
-    // If editing a previous user message
     if (editingId) {
       setMessages((prev) =>
         prev.map((m) =>
@@ -299,7 +281,7 @@ export function Chatbot() {
       setShowQuickReplies(false);
       setInputMessage("");
 
-      const resp = await sendToN8n(trimmed);
+      const resp = await sendToChat(trimmed);
 
       if (resp.kind === "image" && "imageUrl" in resp) {
         const botMsg: Message = {
@@ -327,7 +309,7 @@ export function Chatbot() {
       return;
     }
 
-    // Normal (new) user message
+    // normal new message
     const userMessage: Message = {
       id: Date.now().toString(),
       isUser: true,
@@ -340,7 +322,7 @@ export function Chatbot() {
     setIsTyping(true);
     setShowQuickReplies(false);
 
-    const resp = await sendToN8n(trimmed);
+    const resp = await sendToChat(trimmed);
 
     if (resp.kind === "image" && "imageUrl" in resp) {
       const botMsg: Message = {
@@ -382,6 +364,7 @@ export function Chatbot() {
     setInputMessage("");
   };
 
+  // --- render ---------------------------------------------------
   return (
     <>
       {/* FAB — left bottom on mobile, right middle on desktop */}
@@ -462,18 +445,19 @@ export function Chatbot() {
             </div>
 
             {/* Messages */}
-            <div className="h-[calc(65dvh-160px)] md:h-[calc(520px-160px)] overflow-y-auto p-3 md:p-4 space-y-3">
+            {/* NOTE: fixed the height classes + added overscroll & padding bottom */}
+            <div className="h-[calc(65dvh-160px)] md:h-[calc(520px-160px)] overflow-y-auto overscroll-contain p-3 md:p-4 space-y-3">
               {messages.map((m) => {
                 const isUser = m.isUser;
-                const base =
-                  "relative max-w-[80%] md:max-w-[75%] px-3 py-2 rounded-lg text-sm";
-                const mine = isUser
+                const bubbleBase =
+                  "relative max-w-[85%] md:max-w-[80%] px-3 py-2 rounded-lg text-sm break-words";
+                const bubbleTone = isUser
                   ? "bg-blue-500 text-white rounded-br-none"
-                  : "bg-gray-100 text-gray-800 rounded-bl-none";
+                  : "bg-gray-100 text-gray-900 rounded-bl-none";
 
                 return (
                   <div key={m.id} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-                    <div className={[base, mine].join(" ")}>
+                    <div className={[bubbleBase, bubbleTone].join(" ")}>
                       {/* Content */}
                       {m.type === "image" ? (
                         <div className="space-y-2">
@@ -485,69 +469,27 @@ export function Chatbot() {
                           <img
                             src={m.imageUrl}
                             alt={m.caption || "Image"}
-                            className="rounded-md max-h-64 object-contain"
+                            className="rounded-md max-h-64 max-w-full object-contain"
                           />
                           {m.caption && (
-                            <p className="text-xs opacity-80 whitespace-pre-line">{m.caption}</p>
+                            <p className="text-xs opacity-80 whitespace-pre-wrap break-words">
+                              {m.caption}
+                            </p>
                           )}
                         </div>
                       ) : (
-                        <>
-                          <p className="whitespace-pre-line">
-                            {m.text}
-                            {m.edited && (
-                              <span className="ml-2 text-[10px] opacity-75">(edited)</span>
-                            )}
-                          </p>
-                        </>
+                        <p className="whitespace-pre-wrap break-words leading-relaxed">
+                          {m.text}
+                          {m.edited && (
+                            <span className="ml-2 text-[10px] opacity-75">(edited)</span>
+                          )}
+                        </p>
                       )}
 
                       {/* Timestamp */}
                       <p className="text-[10px] opacity-70 mt-1">
                         {m.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                       </p>
-
-                      {/* Actions */}
-                      <div
-                        className={[
-                          "absolute -bottom-6",
-                          isUser ? "right-0" : "left-0",
-                          "flex items-center gap-2 text-[11px]",
-                        ].join(" ")}
-                      >
-                        {/* Copy */}
-                        <button
-                          onClick={() => copyToClipboard(messagePlainText(m), m.id)}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-gray-200/70 hover:bg-gray-300 transition"
-                          title="Copy"
-                          aria-label="Copy message"
-                        >
-                          {copiedId === m.id ? (
-                            <>
-                              <Check className="w-3.5 h-3.5" />
-                              Copied
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="w-3.5 h-3.5" />
-                              Copy
-                            </>
-                          )}
-                        </button>
-
-                        {/* Edit only for user messages (text) */}
-                        {isUser && m.type !== "image" && (
-                          <button
-                            onClick={() => handleEdit(m)}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-gray-200/70 hover:bg-gray-300 transition"
-                            title="Edit message"
-                            aria-label="Edit message"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                            Edit
-                          </button>
-                        )}
-                      </div>
                     </div>
                   </div>
                 );
@@ -586,6 +528,49 @@ export function Chatbot() {
               <div ref={messagesEndRef} />
             </div>
 
+            {/* Inline actions (Copy/Edit) moved OUT of absolute positioning */}
+            <div className="px-3 md:px-4 pb-2">
+              {messages.map((m) => (
+                <div
+                  key={`act-${m.id}`}
+                  className={`-mt-2 mb-2 flex ${m.isUser ? "justify-end" : "justify-start"}`}
+                >
+                  <div className="flex items-center gap-2 text-[11px]">
+                    <button
+                      onClick={() => copyToClipboard(messagePlainText(m), m.id)}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-gray-200/70 hover:bg-gray-300 transition"
+                      title="Copy"
+                      aria-label="Copy message"
+                    >
+                      {copiedId === m.id ? (
+                        <>
+                          <Check className="w-3.5 h-3.5" />
+                          Copied
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5" />
+                          Copy
+                        </>
+                      )}
+                    </button>
+
+                    {m.isUser && m.type !== "image" && (
+                      <button
+                        onClick={() => handleEdit(m)}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-gray-200/70 hover:bg-gray-300 transition"
+                        title="Edit message"
+                        aria-label="Edit message"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                        Edit
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
             {/* Editing banner */}
             {editingId && (
               <div className="px-3 md:px-4 py-2 bg-yellow-50 border-t border-b border-yellow-200 text-[12px] text-yellow-900">
@@ -602,10 +587,9 @@ export function Chatbot() {
               </div>
             )}
 
-            {/* Input bar with mic and stop as in screenshot */}
+            {/* Input bar */}
             <div className="p-3 md:p-4 border-t border-gray-200">
               <div className="flex items-center gap-2 bg-gray-100 rounded-full px-3 py-2">
-                {/* plus/mic area (visual only) */}
                 <button
                   type="button"
                   className="shrink-0 w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center"
@@ -631,7 +615,6 @@ export function Chatbot() {
                   disabled={isLoading || isGenerating}
                 />
 
-                {/* right circular action: Stop when generating, otherwise Send */}
                 {isGenerating ? (
                   <button
                     onClick={stopGenerating}

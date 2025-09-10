@@ -11,7 +11,7 @@ import { ContactForm } from "@/components/contact-form";
 import JsonLdInjector from "@/components/json-ld-injector";
 import { CatalogButton } from "@/components/catalog-button";
 import { fetchSeoData } from "@/lib/seo"; // and fetchProductData (dynamic import below)
-import ExpandableText from "@/components/expandable-text"; // ← for product cards
+import ExpandableText from "@/components/expandable-text";
 
 /* -------------------------------------------------
    Config
@@ -82,6 +82,21 @@ const nonEmpty = (s: any) => (typeof s === "string" && s.trim().length ? s.trim(
 const asString = (v: any) => (v === undefined || v === null ? undefined : String(v));
 const asBoolString = (v: any) => (v === true ? "true" : v === false ? "false" : undefined);
 
+// phone sanitizer for tel: and JSON-LD
+function sanitizeE164(s: string) {
+  return s ? s.replace(/[^\d+]/g, "") : s;
+}
+
+// robust robots parser (keeps your intent if string absent)
+function parseRobots(s?: string) {
+  if (!s) return undefined;
+  const v = s.toLowerCase();
+  return {
+    index: !/noindex/.test(v),
+    follow: !/nofollow/.test(v),
+  } as const;
+}
+
 function pick<T>(dbVal: T | undefined | null, envVal?: T, fallback?: T) {
   if (dbVal !== undefined && dbVal !== null && String(dbVal).trim() !== "") return dbVal as T;
   if (envVal !== undefined && envVal !== null && String(envVal).trim() !== "") return envVal as T;
@@ -145,6 +160,31 @@ function isSeoForLocation(seoRow: any, locIds: Set<string>, locSlug: string) {
 }
 
 /* -------------------------------------------------
+   Canonical / Hreflang helpers (ENV base + SEO.slug)
+-------------------------------------------------- */
+const BASE_URL = (COMPANY_SITE_URL || "").replace(/\/+$/, ""); // no trailing slash
+
+function canonicalFromSeoSlug(seoSlug?: string) {
+  if (!BASE_URL) return undefined;
+  const cleaned = (seoSlug || "").trim().replace(/^\/+/, "");
+  return cleaned ? `${BASE_URL}/${cleaned}` : BASE_URL;
+}
+
+// Accepts only valid language codes; returns exactly ONE mapping (no x-default)
+const VALID_HREFLANG = /^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})?$/i;
+function pickFirstValidLang(input?: string): string | undefined {
+  if (!input) return undefined;
+  const tokens = input.split(/[, ]+/).map((s) => s.trim()).filter(Boolean);
+  for (const t of tokens) if (VALID_HREFLANG.test(t)) return t;
+  return undefined;
+}
+function hreflangMapFromSeo(canonical?: string, hreflang?: string) {
+  if (!canonical) return undefined;
+  const code = pickFirstValidLang(hreflang) || "en";
+  return { [code]: canonical };
+}
+
+/* -------------------------------------------------
    Types (merged)
 -------------------------------------------------- */
 type ProductDoc = {
@@ -190,8 +230,7 @@ interface SeoDocFull {
   title?: string;
   description?: string;
 
-  // extra fields
-  hreflang?: string;
+  hreflang?: string; // e.g. "en" or "en-IN"
   x_default?: string;
   author_name?: string;
 
@@ -310,11 +349,6 @@ function buildOtherMeta(seo: any) {
   set("content-language", seo.contentLanguage);
   set("x-ua-compatible", seo.xUaCompatible);
   set("author_name", seo.author_name);
-  /* set("seo:excerpt", seo.excerpt);
-  set("seo:productdescription", seo.productdescription);
-  set("seo:description_html", seo.description_html);
-  set("seo:rating_value", seo.rating_value);
-  set("seo:rating_count", seo.rating_count); */
   return other;
 }
 
@@ -327,6 +361,9 @@ function parseJsonLd(input?: string) {
     return null;
   }
 }
+
+/* ---------- JSON-LD builders (fixed to use BASE_URL + slug) ---------- */
+
 function buildLogoLdFromParts(seo: any) {
   if (!seo?.LogoJsonLdcontext && !seo?.LogoJsonLdtype && !seo?.logoJsonLdurl) return null;
   return {
@@ -337,6 +374,7 @@ function buildLogoLdFromParts(seo: any) {
     height: nonEmpty(seo.logoJsonLdheight),
   };
 }
+
 function buildLocalBusinessLdFromParts(seo: any) {
   const lat = parseFloat(seo?.LocalBusinessJsonLdgeoLatitude);
   const lng = parseFloat(seo?.LocalBusinessJsonLdgeoLongitude);
@@ -360,6 +398,8 @@ function buildLocalBusinessLdFromParts(seo: any) {
       ? { "@type": "GeoCoordinates", latitude: lat, longitude: lng }
       : undefined;
 
+  const canonical = canonicalFromSeoSlug(seo?.slug) || COMPANY_SITE_URL;
+
   const openingHoursSpecification = [
     {
       "@type": "OpeningHoursSpecification",
@@ -373,8 +413,8 @@ function buildLocalBusinessLdFromParts(seo: any) {
     "@context": "https://schema.org",
     "@type": "LocalBusiness",
     name: pick<string>(nonEmpty(seo?.LocalBusinessJsonLdname), COMPANY_NAME, COMPANY_NAME),
-    url: pick<string>(nonEmpty(seo?.canonical_url), COMPANY_SITE_URL, undefined),
-    telephone: pick<string>(nonEmpty(seo?.LocalBusinessJsonLdtelephone), COMPANY_PHONE, COMPANY_PHONE),
+    url: canonical,
+    telephone: sanitizeE164(pick<string>(nonEmpty(seo?.LocalBusinessJsonLdtelephone), COMPANY_PHONE, COMPANY_PHONE) || ""),
     email: pick<string>(nonEmpty(seo?.LocalBusinessJsonLdemail), COMPANY_EMAIL, COMPANY_EMAIL),
     address,
     geo,
@@ -393,10 +433,11 @@ function buildLocalBusinessLdFromParts(seo: any) {
     },
   };
 }
+
 function buildBreadcrumbLdFromParts(seo: any) {
   let productCategory = "Fabrics";
   if (seo?.slug) {
-    const s = String(seo.slug);
+    const s = String(seo.slug).toLowerCase();
     if (s.includes("cotton")) productCategory = "Cotton Fabrics";
     else if (s.includes("silk")) productCategory = "Silk Fabrics";
     else if (s.includes("wool")) productCategory = "Wool Fabrics";
@@ -404,9 +445,11 @@ function buildBreadcrumbLdFromParts(seo: any) {
     else if (s.includes("linen")) productCategory = "Linen Fabrics";
   }
 
-  const base = COMPANY_SITE_URL || "https://amritafashions.com";
+  const base = (COMPANY_SITE_URL || "https://amritafashions.com").replace(/\/+$/, "");
+  const canonical = canonicalFromSeoSlug(seo?.slug) || base;
+
   const itemListElement = [
-    { "@type": "ListItem", position: 1, name: "Home", item: base },
+    { "@type": "ListItem", position: 1, name: "Home", item: `${base}/` },
     { "@type": "ListItem", position: 2, name: "Products", item: `${base}/products` },
     {
       "@type": "ListItem",
@@ -417,18 +460,21 @@ function buildBreadcrumbLdFromParts(seo: any) {
     {
       "@type": "ListItem",
       position: 4,
-      name: nonEmpty(seo?.BreadcrumbJsonLdname) || nonEmpty(seo?.title),
-      item: nonEmpty(seo?.canonical_url),
+      name: nonEmpty(seo?.BreadcrumbJsonLdname) || nonEmpty(seo?.title) || productCategory,
+      item: canonical,
     },
   ];
 
   return { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement };
 }
+
 function productJsonLd(seo: any, productName?: string) {
   const images = [seo?.ogImage, seo?.twitterImage].filter(Boolean) as string[];
   if (images.length === 0) {
     images.push(COMPANY_LOGO_URL ?? "/placeholder.svg?height=800&width=1200");
   }
+
+  const canonical = canonicalFromSeoSlug(seo?.slug) || COMPANY_SITE_URL || "https://example.com";
 
   const ld: any = {
     "@context": "https://schema.org",
@@ -438,9 +484,9 @@ function productJsonLd(seo: any, productName?: string) {
     sku: nonEmpty(seo?.sku) || undefined,
     brand: { "@type": "Brand", name: COMPANY_NAME },
     image: images,
-    url: nonEmpty(seo?.canonical_url) || COMPANY_SITE_URL || "https://example.com",
+    url: canonical,
     category: "Textile & Fabric",
-    manufacturer: { "@type": "Organization", name: COMPANY_NAME, url: nonEmpty(seo?.canonical_url) || COMPANY_SITE_URL || "https://example.com" },
+    manufacturer: { "@type": "Organization", name: COMPANY_NAME, url: canonical },
     mpn: nonEmpty(seo?.productIdentifier) || undefined,
   };
 
@@ -472,6 +518,7 @@ function productJsonLd(seo: any, productName?: string) {
 
   return ld;
 }
+
 function organizationJsonLd(seo: any) {
   const images = [seo?.ogImage, seo?.twitterImage].filter(Boolean) as string[];
   if (images.length === 0) {
@@ -489,7 +536,7 @@ function organizationJsonLd(seo: any) {
     addressCountry: pick<string>(nonEmpty(seo?.OrganizationJsonLdaddressaddressCountry), envAddr.addressCountry as string, "IN"),
   };
 
-  const orgUrl = pick<string>(nonEmpty(seo?.canonical_url), COMPANY_SITE_URL, "https://example.com");
+  const orgUrl = canonicalFromSeoSlug(seo?.slug) || COMPANY_SITE_URL || "https://example.com";
 
   return {
     "@context": "https://schema.org",
@@ -505,7 +552,7 @@ function organizationJsonLd(seo: any) {
     address: addr,
     contactPoint: {
       "@type": "ContactPoint",
-      telephone: pick<string>(nonEmpty(seo?.OrganizationJsonLdtelephone), COMPANY_PHONE, COMPANY_PHONE),
+      telephone: sanitizeE164(pick<string>(nonEmpty(seo?.OrganizationJsonLdtelephone), COMPANY_PHONE, COMPANY_PHONE) || ""),
       contactType: "customer service",
       email: pick<string>(nonEmpty(seo?.OrganizationJsonLdemail), COMPANY_EMAIL, COMPANY_EMAIL),
       availableLanguage: COMPANY_LANGS,
@@ -516,21 +563,25 @@ function organizationJsonLd(seo: any) {
     ...(COMPANY_AWARDS.length ? { award: COMPANY_AWARDS } : {}),
   };
 }
-function websiteJsonLd(_: any) {
+
+function websiteJsonLd(seo: any) {
+  const canonical = canonicalFromSeoSlug(seo?.slug) || COMPANY_SITE_URL || "https://example.com";
+  const base = (COMPANY_SITE_URL || canonical).replace(/\/+$/, "");
   return {
     "@context": "https://schema.org",
     "@type": "WebSite",
     name: COMPANY_NAME,
-    url: _?.canonical_url || COMPANY_SITE_URL || "https://example.com",
+    url: canonical,
     description: "Leading B2B Fabric Supplier Worldwide - Premium Quality Textiles",
     potentialAction: {
       "@type": "SearchAction",
-      target: { "@type": "EntryPoint", urlTemplate: `${COMPANY_SITE_URL || "https://amritafashions.com"}/search?q={search_term_string}` },
+      target: { "@type": "EntryPoint", urlTemplate: `${base}/search?q={search_term_string}` },
       "query-input": "required name=search_term_string",
     },
     publisher: { "@type": "Organization", name: COMPANY_NAME },
   };
 }
+
 function faqJsonLd() {
   const faqs = [
     { question: "What is your minimum order quantity for bulk fabric orders?", answer: "Our minimum order quantity varies by fabric type, typically starting from 500 meters for standard fabrics and 1000 meters for custom specifications. We work with garment manufacturers and retailers of all sizes to accommodate their specific needs." },
@@ -553,15 +604,15 @@ function faqJsonLd() {
 type Props = { params: Promise<{ slug?: string[] }> };
 
 /* -------------------------------------------------
-   Metadata (branching for home vs slug)
+   Metadata (home vs slug)
 -------------------------------------------------- */
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const p = await params;
   const slugSegs = p.slug ?? [];
-  const slug = slugSegs[0];
+  const firstSeg = slugSegs[0];
 
-  // HOME (no slug)
-  if (!slug) {
+  // ---------- HOME ----------
+  if (!firstSeg) {
     const seoJson = await fetchJson<any>(SEO_URL);
     const locJson = await fetchJson<any>(LOC_URL);
 
@@ -581,20 +632,28 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
     if (!seoData) return {};
 
+    const title = seoData.title || "Premium Fabric";
+    const desc = seoData.description || "High-quality fabric for garment manufacturing.";
+
+    // canonical from ENV + SEO.slug (falls back to base)
+    const canonical = canonicalFromSeoSlug(seoData?.slug);
+    const origin = (BASE_URL || "https://example.com");
+    const ogType = seoData.ogType ? ogTypeSafe(seoData.ogType) : (seoData.ogVideoUrl ? "video.other" : "website");
+
     return {
-      title: seoData.title || "Premium Fabric",
-      description: seoData.description || "High-quality fabric for garment manufacturing.",
+      title,
+      description: desc,
       keywords:
         seoData.keywords?.split(",").map((k: string) => k.trim()).filter(Boolean) ||
         ["fabric", "textile", "garment", "wholesale", "manufacturer"],
-      metadataBase: new URL(seoData.canonical_url || COMPANY_SITE_URL || "https://example.com"),
+      metadataBase: new URL(origin),
       applicationName: seoData.ogSiteName || COMPANY_NAME,
       authors: seoData.author_name ? [{ name: seoData.author_name }] : undefined,
       creator: seoData.author_name,
       publisher: seoData.ogSiteName || COMPANY_NAME,
       generator: "Next.js",
       referrer: "origin-when-cross-origin",
-      robots: seoData.robots ? { index: true, follow: true } : undefined,
+      robots: parseRobots(seoData.robots),
       viewport: { width: "device-width", initialScale: 1 },
       formatDetection: {
         email: false,
@@ -616,14 +675,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
           }
         : undefined,
       openGraph: {
-        url: seoData.ogUrl || COMPANY_SITE_URL || "https://example.com/premium-cotton-ic",
+        url: canonical,
         siteName: seoData.ogSiteName || COMPANY_NAME,
         locale: seoData.ogLocale || "en_US",
-        title: seoData.ogTitle || "Premium Cotton Fabric",
-        description: seoData.ogDescription || "High-quality fabric for B2B customers.",
-        type: ogTypeSafe(seoData.ogType) as any,
+        title,
+        description: desc,
+        type: ogType as any,
         images: seoData.ogImage
-          ? [{ url: seoData.ogImage, width: 1200, height: 630, alt: seoData.ogTitle || "Premium Cotton Fabric" }]
+          ? [{ url: seoData.ogImage, width: 1200, height: 630, alt: title }]
           : [],
         videos: seoData.ogVideoUrl
           ? [
@@ -640,37 +699,45 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       twitter: {
         card: twitterCardSafe(seoData.twitterCard) || "summary_large_image",
         site: seoData.twitterSite || "@ageb",
-        title: seoData.twitterTitle || "Premium",
-        description: seoData.twitterDescription || "High-quality cotton wholesale prices.",
-        images: seoData.twitterImage ? [{ url: seoData.twitterImage }] : [],
+        title,
+        description: desc,
+        images: seoData.twitterImage ? [{ url: seoData.twitterImage }] : undefined,
       },
-      alternates: (() => {
-        const canonicalUrl = seoData.canonical_url ? new URL(seoData.canonical_url).toString() : COMPANY_SITE_URL;
-        return { canonical: canonicalUrl, languages: { en: canonicalUrl } };
-      })(),
+      alternates: {
+        canonical,
+        languages: hreflangMapFromSeo(canonical, seoData?.hreflang),
+      },
       other: buildOtherMeta(seoData),
     };
   }
 
-  // SLUG DETAIL
-  if (isAssetSlug(slug)) return {};
-  const seo = (await fetchSeoData(slug)) as SeoDocFull | null;
+  // ---------- SLUG DETAIL ----------
+  if (isAssetSlug(firstSeg)) return {};
+  const seo = (await fetchSeoData(firstSeg)) as SeoDocFull | null;
   if (!seo) {
     return { title: "Page Not Found", description: "The requested page could not be found." };
   }
 
+  const title = seo.title;
+  const desc = seo.description;
+
+  const canonical = canonicalFromSeoSlug(seo?.slug);
+  const origin = BASE_URL || (canonical || "https://example.com").split("/").slice(0, 3).join("/");
+  const ogType = seo.ogType ? ogTypeSafe(seo.ogType) : (seo.ogVideoUrl ? "video.other" : "website");
+  const ogImageAlt = seo.ogTitle || seo.title || "Product image";
+
   return {
-    title: seo.title,
-    description: seo.description,
+    title,
+    description: desc,
     keywords: seo.keywords?.split(",").map((k) => k.trim()).filter(Boolean),
-    metadataBase: new URL(seo.canonical_url || COMPANY_SITE_URL || "https://example.com"),
+    metadataBase: new URL(origin),
     applicationName: seo.ogSiteName || COMPANY_NAME,
     authors: seo.author_name ? [{ name: seo.author_name }] : undefined,
     creator: seo.author_name,
     publisher: seo.ogSiteName || COMPANY_NAME,
     generator: "Next.js",
     referrer: "origin-when-cross-origin",
-    robots: seo.robots ? { index: true, follow: true } : undefined,
+    robots: parseRobots(seo.robots),
     viewport: { width: "device-width", initialScale: 1 },
     formatDetection: {
       email: false,
@@ -692,25 +759,25 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         }
       : undefined,
     openGraph: {
-      url: seo.ogUrl || COMPANY_SITE_URL,
+      url: canonical,
       siteName: seo.ogSiteName || COMPANY_NAME,
       locale: seo.ogLocale,
-      title: seo.ogTitle,
-      description: seo.ogDescription,
-      type: ogTypeSafe(seo.ogType) as any,
-      images: seo.ogImage ? [seo.ogImage] : undefined,
+      title: title,
+      description: desc,
+      type: ogType as any,
+      images: seo.ogImage ? [{ url: seo.ogImage, width: 1200, height: 630, alt: ogImageAlt }] : undefined,
     },
     twitter: {
       card: (twitterCardSafe(seo.twitterCard) as any) || "summary",
       site: seo.twitterSite,
-      title: seo.twitterTitle,
-      description: seo.twitterDescription,
+      title: seo.twitterTitle || title,
+      description: seo.twitterDescription || desc,
       images: seo.twitterImage ? [seo.twitterImage] : undefined,
     },
-    alternates: (() => {
-      const canonicalUrl = seo.canonical_url ? new URL(seo.canonical_url).toString() : COMPANY_SITE_URL;
-      return { canonical: canonicalUrl, languages: { en: canonicalUrl } };
-    })(),
+    alternates: {
+      canonical,
+      languages: hreflangMapFromSeo(canonical, seo?.hreflang),
+    },
     other: buildOtherMeta(seo),
   };
 }
@@ -885,12 +952,11 @@ export default async function Page({ params }: Props) {
                   </div>
                 )}
 
-                {/* CTAs — now includes dynamic CatalogButton for Ahmedabad default product */}
+                {/* CTAs */}
                 <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                   <a href="#contact" className="px-6 sm:px-8 py-3 sm:py-4 btn-primary">Get Quote Now</a>
-                  <a href={`tel:${(COMPANY_PHONE ?? "").replace(/\s+/g, "")}`} className="px-6 sm:px-8 py-3 sm:py-4 btn-secondary">📞 Call Now</a>
+                  <a href={`tel:${sanitizeE164(COMPANY_PHONE ?? "")}`} className="px-6 sm:px-8 py-3 sm:py-4 btn-secondary">📞 Call Now</a>
 
-                  {/* NEW: dynamic PDF Catalog for the current (Ahmedabad) hero product */}
                   {firstCard && (
                     <CatalogButton
                       product={{
@@ -918,26 +984,26 @@ export default async function Page({ params }: Props) {
               </div>
 
               {/* Right (Image) */}
-<div className="relative w-full">
-  <div className="relative z-10 w-full rounded-2xl overflow-hidden shadow-lg bg-white aspect-[16/10] sm:aspect-[5/4] lg:aspect-[16/9]">
-    <Image
-      key={heroImage}
-      src={heroImage}
-      alt={heroAlt}
-      fill
-      priority
-      className="object-contain object-center"
-      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 800px"
-    />
-  </div>
-</div>
+              <div className="relative w-full">
+                <div className="relative z-10 w-full rounded-2xl overflow-hidden shadow-lg bg-white aspect-[16/10] sm:aspect-[5/4] lg:aspect-[16/9]">
+                  <Image
+                    key={heroImage}
+                    src={heroImage}
+                    alt={heroAlt}
+                    fill
+                    priority
+                    className="object-contain object-center"
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 800px"
+                  />
+                </div>
+              </div>
 
             </div>
           </div>
         </section>
 
         {/* COMPANY OVERVIEW (SEO text) */}
-        <section className="py-14 sm:py-20 bg-slate-50">
+        <section className="py-14 sm:py-20 bg-slate-50" id="about">
           <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
             <div className="text-center mb-12 sm:mb-16">
               <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4 sm:mb-6 text-balance break-words">
@@ -1008,7 +1074,6 @@ export default async function Page({ params }: Props) {
                   const img = (p.img ?? p.image1 ?? p.image2 ?? "/placeholder.svg?height=300&width=400").toString();
                   const pid = String(p?._id ?? "").trim();
 
-                  // SAFE SLUG + HREF
                   const rawSlug = (slugByProduct.get(pid) || p?.slug || "").toString().trim();
                   const safeSlug = rawSlug.replace(/^\/+/, "");
                   const href = safeSlug ? `/${encodeURIComponent(safeSlug)}` : "#";
@@ -1021,7 +1086,7 @@ export default async function Page({ params }: Props) {
                       <div className="relative w-full aspect-[4/3] bg-white">
                         <Image
                           src={img}
-                          alt={`${p.name} - ${p.productdescription ?? ""}`}
+                          alt={p.name || "Fabric"}
                           fill
                           className="object-contain object-center"
                           loading="lazy"
@@ -1071,8 +1136,12 @@ export default async function Page({ params }: Props) {
             <div className="grid lg:grid-cols-2 gap-10 sm:gap-16">
               <ContactForm />
               <div className="space-y-6 text-white break-words">
-                <div className="truncate md:whitespace-normal">📞 {COMPANY_PHONE}</div>
-                <div className="truncate md:whitespace-normal">✉️ {COMPANY_EMAIL}</div>
+                <div className="truncate md:whitespace-normal">
+                  📞 <a href={`tel:${sanitizeE164(COMPANY_PHONE)}`} className="hover:underline">{COMPANY_PHONE}</a>
+                </div>
+                <div className="truncate md:whitespace-normal">
+                  ✉️ <a href={`mailto:${COMPANY_EMAIL}`} className="hover:underline">{COMPANY_EMAIL}</a>
+                </div>
                 <div className="break-words">🏢 {COMPANY_ADDRESS || "Ahmedabad, Gujarat-380015"}</div>
                 <div>🕘 Mon–Sat: 9:30 AM – 7:00 PM IST</div>
               </div>
@@ -1109,20 +1178,22 @@ export default async function Page({ params }: Props) {
     const locId = toId(s.location);
     const locCode = norm(s.locationCode);
     const pid = toId(s.product);
-    const sSlug = String(s?.slug ?? "").trim();
+    theLoop: {
+      const sSlug = String(s?.slug ?? "").trim();
 
-    let sameLocation = false;
-    if (currentLocId && locId) {
-      sameLocation = currentLocId === locId;
-    } else if (!currentLocId || !locId) {
-      if (currentLocCode && locCode) sameLocation = currentLocCode === locCode;
-    }
+      let sameLocation = false;
+      if (currentLocId && locId) {
+        sameLocation = currentLocId === locId;
+      } else if (!currentLocId || !locId) {
+        if (currentLocCode && locCode) sameLocation = currentLocCode === locCode;
+      }
 
-    if (pid && sameLocation) {
-      relatedProductIds.add(pid);
-      if (sSlug) slugByProduct.set(pid, sSlug);
-    } else if (pid && sSlug && !slugByProduct.has(pid)) {
-      slugByProduct.set(pid, sSlug);
+      if (pid && sameLocation) {
+        relatedProductIds.add(pid);
+        if (sSlug) slugByProduct.set(pid, sSlug);
+      } else if (pid && sSlug && !slugByProduct.has(pid)) {
+        slugByProduct.set(pid, sSlug);
+      }
     }
   }
 
@@ -1178,26 +1249,26 @@ export default async function Page({ params }: Props) {
                     {locationTagline}
                   </p>
 
-                  <div className="bg-slate-100 rounded-lg p-4 mt-2 sm:mt-4">
-                    <dl className="grid grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm">
-                      <div className="flex items-baseline break-words">
-                        <dt className="text-slate-800 font-medium">SKU:</dt>
-                        <dd className="ml-2 text-slate-950">{seo.sku ?? "—"}</dd>
-                      </div>
-                      <div className="flex items-baseline">
-                        <dt className="text-slate-800 font-medium">Price:</dt>
-                        <dd className="ml-2 text-slate-950">{seo.salesPrice ?? "—"}</dd>
-                      </div>
-                      <div className="flex items-baseline">
-                        <dt className="text-slate-800 font-medium">Rating:</dt>
-                        <dd className="ml-2 text-slate-950">{seo.rating_value ?? "—"}/5</dd>
-                      </div>
-                      <div className="flex items-baseline">
-                        <dt className="text-slate-800 font-medium">Reviews:</dt>
-                        <dd className="ml-2 text-slate-950">{seo.rating_count ?? "—"}</dd>
-                      </div>
-                    </dl>
-                  </div>
+                    <div className="bg-slate-100 rounded-lg p-4 mt-2 sm:mt-4">
+                      <dl className="grid grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm">
+                        <div className="flex items-baseline break-words">
+                          <dt className="text-slate-800 font-medium">SKU:</dt>
+                          <dd className="ml-2 text-slate-950">{seo.sku ?? "—"}</dd>
+                        </div>
+                        <div className="flex items-baseline">
+                          <dt className="text-slate-800 font-medium">Price:</dt>
+                          <dd className="ml-2 text-slate-950">{seo.salesPrice ?? "—"}</dd>
+                        </div>
+                        <div className="flex items-baseline">
+                          <dt className="text-slate-800 font-medium">Rating:</dt>
+                          <dd className="ml-2 text-slate-950">{seo.rating_value ?? "—"}/5</dd>
+                        </div>
+                        <div className="flex items-baseline">
+                          <dt className="text-slate-800 font-medium">Reviews:</dt>
+                          <dd className="ml-2 text-slate-950">{seo.rating_count ?? "—"}</dd>
+                        </div>
+                      </dl>
+                    </div>
                 </div>
 
                 {/* Buttons */}
@@ -1206,7 +1277,7 @@ export default async function Page({ params }: Props) {
                     Get Quote Now
                   </a>
                   <a
-                    href={`tel:${COMPANY_PHONE.replace(/\s+/g, "")}`}
+                    href={`tel:${sanitizeE164(COMPANY_PHONE)}`}
                     className="inline-flex items-center justify-center px-6 sm:px-8 py-3 sm:py-4 btn-secondary"
                   >
                     📞 Call Now
@@ -1256,7 +1327,7 @@ export default async function Page({ params }: Props) {
 
         {/* COMPANY OVERVIEW */}
         <section className="py-14 sm:py-20 bg-slate-50">
-          <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8" id="about">
             <div className="text-center mb-12 sm:mb-16">
               <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4 sm:mb-6">
                 Leading B2B Fabric Supplier Worldwide
@@ -1315,7 +1386,6 @@ export default async function Page({ params }: Props) {
                   const img = (p.img ?? p.image1 ?? p.image2 ?? "/placeholder.svg?height=300&width=400").toString();
                   const pid = String(p?._id ?? "").trim();
 
-                  // SAFE SLUG + HREF (fix)
                   const rawSlug = (slugByProduct.get(pid) || p.slug || "").toString().trim();
                   const safeSlug = rawSlug.replace(/^\/+/, "");
                   const href = safeSlug ? `/${encodeURIComponent(safeSlug)}` : "#";
@@ -1325,7 +1395,7 @@ export default async function Page({ params }: Props) {
                       <div className="relative w-full bg-white aspect-[4/3]">
                         <Image
                           src={img}
-                          alt={`${p.name ?? "Fabric"} - ${p.productdescription ?? ""}`}
+                          alt={p.name ?? "Fabric"}
                           fill
                           className="object-contain object-center"
                           loading="lazy"
@@ -1334,7 +1404,7 @@ export default async function Page({ params }: Props) {
                       </div>
                       <div className="p-5 sm:p-6">
                         <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-2 break-words">
-                          {p.name ?? "Fabric"}
+                                                    {p.name ?? "Fabric"}
                         </h3>
 
                         <ExpandableText
@@ -1383,7 +1453,7 @@ export default async function Page({ params }: Props) {
                   </div>
                   <div>
                     <div className="text-white font-semibold">Phone</div>
-                    <a href={`tel:${COMPANY_PHONE.replace(/\s+/g, "")}`} className="text-slate-300 hover:text-white transition-colors break-words">
+                    <a href={`tel:${sanitizeE164(COMPANY_PHONE)}`} className="text-slate-300 hover:text-white transition-colors break-words">
                       {COMPANY_PHONE}
                     </a>
                   </div>
@@ -1529,3 +1599,4 @@ export async function submitContact(formData: FormData) {
     return { ok: false as const, status: 500, message: "Network/Server error while creating contact", error: e?.message };
   }
 }
+
