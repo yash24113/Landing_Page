@@ -1,20 +1,21 @@
+// components/contact-form.tsx
 "use client";
 
 import type React from "react";
 import { useState, useEffect, useCallback, useRef } from "react";
 
 /* ---------------------------------------------
-   Config (unchanged defaults still supported)
+   Config
 ---------------------------------------------- */
-interface ContactFormProps {
+export interface ContactFormProps {
   onSuccess?: () => void;
   submitUrl?: string;
   submitHeaders?: Record<string, string>;
-  draftKey?: string; // localStorage key to keep the created _id
+  /** localStorage key for the backend draft id (shared across instances) */
+  draftKey?: string;
 }
 
-const STORAGE_KEY = "fabricpro_contact_form";
-
+const STORAGE_KEY = "fabricpro_contact_form"; // UI state cache (shared)
 const RAW_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:7000/landing").replace(/\/+$/, "");
 const DEFAULT_CONTACT_URL = `${RAW_BASE}/contacts`;
 
@@ -22,6 +23,22 @@ const API_KEY_HEADER = process.env.NEXT_PUBLIC_API_KEY_HEADER || "x-api-key";
 const ADMIN_EMAIL_HEADER = process.env.NEXT_PUBLIC_ADMIN_EMAIL_HEADER || "x-admin-email";
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
 const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "";
+
+/** Public company info for the right-rail / section (env-driven, with fallbacks) */
+const COMPANY_PHONE = process.env.NEXT_PUBLIC_COMPANY_PHONE || "+91 9925155141";
+const COMPANY_EMAIL = process.env.NEXT_PUBLIC_COMPANY_EMAIL || "rajesh.goyal@amritafashions.com";
+const COMPANY_ADDRESS =
+  process.env.NEXT_PUBLIC_COMPANY_ADDRESS ||
+  "404, Safal Prelude, Corporate Rd, Prahlad Nagar, Ahmedabad, Gujarat-380015";
+const COMPANY_HOURS = process.env.NEXT_PUBLIC_COMPANY_HOURS || "Mon–Sat: 9:30 AM – 7:00 PM IST";
+
+/** Minimal phone sanitizer for tel: links (keeps a single leading +, removes other non-digits) */
+function sanitizeE164(value: string) {
+  if (!value) return "";
+  const hasPlus = value.trim().startsWith("+");
+  const digits = value.replace(/\D/g, "");
+  return hasPlus ? `+${digits}` : digits;
+}
 
 function buildAuthHeaders(extra?: Record<string, string>) {
   const h: Record<string, string> = {
@@ -61,10 +78,8 @@ export function ContactForm({
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  const [isFormClosed, setIsFormClosed] = useState(false);
 
-
-  // NEW: quick transition overlay when moving 2 -> 3
+  // quick transition overlay when moving 2 -> 3
   const [showStepAdvance, setShowStepAdvance] = useState(false);
   const stepAdvanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -85,7 +100,6 @@ export function ContactForm({
      Helpers: backend mapping
   ----------------------------- */
   function toBackendPayload() {
-    // Map frontend keys → backend keys
     return {
       companyName: formData.companyName,
       contactPerson: formData.contactPerson,
@@ -102,18 +116,17 @@ export function ContactForm({
   }
 
   /* ----------------------------
-     Create draft (POST) or
-     update draft (PUT)
+     Create or update draft
   ----------------------------- */
   const persistDraft = useCallback(
     async (immediate = false) => {
-      if (isSavingRef.current) return; // avoid overlapping saves
+      if (isSavingRef.current) return;
       isSavingRef.current = true;
 
       try {
         const payload = toBackendPayload();
+        let newId = draftId;
 
-        // If no draft yet: create one
         if (!draftId) {
           const res = await fetch(submitUrl, {
             method: "POST",
@@ -122,14 +135,12 @@ export function ContactForm({
           });
           const json = await res.json().catch(() => ({}));
           if (!res.ok) throw new Error(json?.message || `POST ${res.status}`);
-
-          const newId = json?.data?._id || json?._id || json?.id;
+          newId = json?.data?._id || json?._id || json?.id || "";
           if (newId) {
             setDraftId(newId);
             localStorage.setItem(draftKey, newId);
           }
         } else {
-          // Update existing draft
           const res = await fetch(`${submitUrl}/${draftId}`, {
             method: "PUT",
             headers: buildAuthHeaders(submitHeaders),
@@ -139,19 +150,19 @@ export function ContactForm({
           if (!res.ok) throw new Error(json?.message || `PUT ${res.status}`);
         }
 
-        // Save local checkpoint
+        // Save UI snapshot so another instance (modal/section) clones progress
         const dataToSave = {
           formData,
           currentStep,
           lastSaved: new Date().toISOString(),
-          draftId: draftId || null,
+          draftId: newId || draftId || null,
         };
-        // localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+
         setLastSaved(new Date());
         setHasUnsavedChanges(false);
       } catch (e) {
         console.error("Autosave error:", e);
-        // We won't alert on autosave; user continues typing
       } finally {
         isSavingRef.current = false;
       }
@@ -165,7 +176,7 @@ export function ContactForm({
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       void persistDraft(false);
-    }, 800); // 800ms debounce for onChange
+    }, 800);
   }, [persistDraft]);
 
   // Immediate save on blur
@@ -179,18 +190,15 @@ export function ContactForm({
   }, [persistDraft]);
 
   /* ----------------------------
-     Load from localStorage
-     & hydrate from backend if draftId exists
+     Load from localStorage & server
   ----------------------------- */
   useEffect(() => {
     const loadSavedData = async () => {
       try {
-        // load cached UI state
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) {
           const parsed = JSON.parse(saved);
           if (parsed.formData) {
-            // Map back-end fields to frontend shape if needed
             setFormData({
               companyName: parsed.formData.companyName ?? "",
               contactPerson: parsed.formData.contactPerson ?? "",
@@ -208,11 +216,11 @@ export function ContactForm({
           setCurrentStep(parsed.currentStep || 1);
           setLastSaved(parsed.lastSaved ? new Date(parsed.lastSaved) : null);
         }
+
         const savedDraft = localStorage.getItem(draftKey) || "";
         if (savedDraft) {
           setDraftId(savedDraft);
-
-          // hydrate from backend in case local cache is old
+          // hydrate from backend
           try {
             const res = await fetch(`${submitUrl}/${savedDraft}`, {
               method: "GET",
@@ -261,9 +269,7 @@ export function ContactForm({
     scheduleAutosave();
   };
 
-  const handleBlur = () => {
-    saveImmediately();
-  };
+  const handleBlur = () => saveImmediately();
 
   const handleCheckboxChange = (fabricType: string) => {
     setFormData((prev) => {
@@ -276,52 +282,42 @@ export function ContactForm({
   };
 
   /* ----------------------------
-     Step navigation (NO submit)
+     Step nav (no submit)
   ----------------------------- */
   const nextStep = async () => {
-    // always save immediately when moving steps
     saveImmediately();
-
-    // If we're moving from step 2 to 3, show a quick success/transition overlay first
     if (currentStep === 2) {
       setShowStepAdvance(true);
       stepAdvanceTimer.current = setTimeout(() => {
         setShowStepAdvance(false);
         setCurrentStep(3);
-      }, 1200); // tweak delay as desired
+      }, 1200);
       return;
     }
-
-    const next = Math.min(currentStep + 1, 3);
-    setCurrentStep(next);
+    setCurrentStep((s) => Math.min(s + 1, 3));
   };
 
   const prevStep = async () => {
-    const prev = Math.max(currentStep - 1, 1);
-    setCurrentStep(prev);
+    setCurrentStep((s) => Math.max(s - 1, 1));
     saveImmediately();
   };
 
   /* ----------------------------
-     Final submit (Step 3 only)
+     Final submit (Step 3)
   ----------------------------- */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (currentStep !== 3) return; // guard: only final step submits
+    if (currentStep !== 3) return;
 
     setIsSubmitting(true);
     try {
-      // Flush any pending autosave before final submit
       if (saveTimer.current) {
         clearTimeout(saveTimer.current);
         saveTimer.current = null;
       }
-      await persistDraft(true); // ensure latest edits are saved
+      await persistDraft(true);
 
-      // Show success UI
       setShowSuccess(true);
-
-      // Clear local caches so a new session starts fresh
       localStorage.removeItem(STORAGE_KEY);
       localStorage.removeItem(draftKey);
 
@@ -344,7 +340,7 @@ export function ContactForm({
     return (
       <div className="bg-white rounded-2xl shadow-xl p-8">
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
           <span className="ml-3 text-slate-600">Loading form...</span>
         </div>
       </div>
@@ -375,12 +371,12 @@ export function ContactForm({
           <div className="flex items-center space-x-2">
             {hasUnsavedChanges ? (
               <>
-                <div className="w-2 h-2 bg-amber-600 rounded-full animate-pulse"></div>
+                <div className="w-2 h-2 bg-amber-600 rounded-full animate-pulse" />
                 <span className="text-amber-900">Saving...</span>
               </>
             ) : lastSaved ? (
               <>
-                <div className="w-2 h-2 bg-emerald-600 rounded-full"></div>
+                <div className="w-2 h-2 bg-emerald-600 rounded-full" />
                 <span className="text-emerald-900">
                   Saved {lastSaved.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                 </span>
@@ -403,11 +399,7 @@ export function ContactForm({
                 {step}
               </div>
               {step < 3 && (
-                <div
-                  className={`w-16 h-1 mx-2 transition-colors ${
-                    currentStep > step ? "bg-blue-600" : "bg-slate-200"
-                  }`}
-                />
+                <div className={`w-16 h-1 mx-2 transition-colors ${currentStep > step ? "bg-blue-600" : "bg-slate-200"}`} />
               )}
             </div>
           ))}
@@ -415,7 +407,7 @@ export function ContactForm({
 
         <div className="text-sm text-slate-600">
           Step {currentStep} of 3:{" "}
-          {currentStep === 1 ? "Company Information" : currentStep === 2 ? "Business Details" : "Requirements"}
+          {currentStep === 1 ? "Company Yash" : currentStep === 2 ? "Business Details" : "Requirements"}
         </div>
       </div>
 
@@ -628,7 +620,7 @@ export function ContactForm({
             >
               {isSubmitting ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
                   <span>Submitting...</span>
                 </>
               ) : (
@@ -638,21 +630,67 @@ export function ContactForm({
           )}
         </div>
       </form>
-
-      {/* Quick transition overlay shown when moving from Step 2 → Step 3 */}
-      {/* {showStepAdvance && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-[92%] text-center">
-            <div className="w-16 h-16 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <h3 className="text-xl font-bold text-slate-900 mb-2">Saved!</h3>
-            <p className="text-slate-600">Moving to the final step…</p>
-          </div>
-        </div>
-      )} */}
     </div>
   );
 }
+
+/* ---------------------------------------------
+   NEW: Full-width section that uses ContactForm
+   (matches the provided “image-wise” design)
+---------------------------------------------- */
+// export function ContactSection() {
+//   return (
+//     <section id="contact" className="py-14 sm:py-20 bg-slate-900">
+//       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+//         <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6 text-center text-balance">
+//           Get Your Custom Quote Today
+//         </h2>
+
+//         <div className="grid lg:grid-cols-2 gap-10 sm:gap-16">
+//           {/* Left: The same form (shared autosave + draft-id) */}
+//           <ContactForm />
+
+//           {/* Right: Why Choose + contact info */}
+//           <div className="space-y-6 text-white break-words">
+//             <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-6 rounded-xl text-white">
+//               <h3 className="text-xl font-bold mb-4">Why Choose FabricPro?</h3>
+//               <div className="space-y-3">
+//                 <div className="flex items-center space-x-3">
+//                   <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+//                   <span className="text-sm">ISO Certified Quality Standards</span>
+//                 </div>
+//                 <div className="flex items-center space-x-3">
+//                   <div className="w-2 h-2 bg-emerald-400 rounded-full"></div>
+//                   <span className="text-sm">Global Shipping &amp; Logistics</span>
+//                 </div>
+//                 <div className="flex items-center space-x-3">
+//                   <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
+//                   <span className="text-sm">Competitive Bulk Pricing</span>
+//                 </div>
+//                 <div className="flex items-center space-x-3">
+//                   <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
+//                   <span className="text-sm">24/7 Customer Support</span>
+//                 </div>
+//               </div>
+//             </div>
+
+//             <div className="truncate md:whitespace-normal">
+//               📞{" "}
+//               <a href={`tel:${sanitizeE164(COMPANY_PHONE)}`} className="hover:underline">
+//                 {COMPANY_PHONE}
+//               </a>
+//             </div>
+//             <div className="truncate md:whitespace-normal">
+//               ✉️{" "}
+//               <a href={`mailto:${COMPANY_EMAIL}`} className="hover:underline">
+//                 {COMPANY_EMAIL}
+//               </a>
+//             </div>
+//             <div className="break-words">🏢 {COMPANY_ADDRESS || "Ahmedabad, Gujarat-380015"}</div>
+//             <div>🕘 {COMPANY_HOURS}</div>
+//           </div>
+//         </div>
+//       </div>
+//     </section>
+//   );
+// }

@@ -12,6 +12,7 @@ import JsonLdInjector from "@/components/json-ld-injector";
 import { CatalogButton } from "@/components/catalog-button";
 import { fetchSeoData } from "@/lib/seo"; // and fetchProductData (dynamic import below)
 import ExpandableText from "@/components/expandable-text";
+import { ContactDetails } from "@/components/contact-details";
 
 /* -------------------------------------------------
    Config
@@ -1133,24 +1134,15 @@ export default async function Page({ params }: Props) {
             <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6 text-center text-balance">
               Get Your Custom Quote Today
             </h2>
-            <div className="grid lg:grid-cols-2 gap-10 sm:gap-16">
-              <ContactForm />
-              <div className="space-y-6 text-white break-words">
-                <div className="truncate md:whitespace-normal">
-                  📞 <a href={`tel:${sanitizeE164(COMPANY_PHONE)}`} className="hover:underline">{COMPANY_PHONE}</a>
-                </div>
-                <div className="truncate md:whitespace-normal">
-                  ✉️ <a href={`mailto:${COMPANY_EMAIL}`} className="hover:underline">{COMPANY_EMAIL}</a>
-                </div>
-                <div className="break-words">🏢 {COMPANY_ADDRESS || "Ahmedabad, Gujarat-380015"}</div>
-                <div>🕘 Mon–Sat: 9:30 AM – 7:00 PM IST</div>
-              </div>
-            </div>
+            <div className="grid lg:grid-cols-2 gap-10 sm:gap-16 ">
+            <ContactForm />
+          <ContactDetails  />
+</div>
           </div>
         </section>
 
         <WhatsAppButton />
-        <Chatbot />
+        {/* <Chatbot /> */}
       </main>
     );
   }
