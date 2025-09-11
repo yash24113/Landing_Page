@@ -16,12 +16,12 @@ export function CommitmentText({ content }: Props) {
   useEffect(() => {
     async function fetchAboutUs() {
       try {
-        const res = await fetch("http://localhost:7000/api/aboutus", {
+        const res = await fetch(process.env.NEXT_PUBLIC_ABOUTUS_URL as string, {
           cache: "no-store",
         });
         if (!res.ok) throw new Error("Failed to fetch");
         const json = await res.json();
-        const description = json?.data?.aboutUs?.description1;
+        const description = json?.data?.aboutUs?.descriptionsmall;
         if (description && description.trim().length > 0) {
           setAboutUsHtml(description);
         }

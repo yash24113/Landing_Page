@@ -1,10 +1,7 @@
 // app/sitemap.ts
 import type { MetadataRoute } from "next";
 
-/**
- * Must be a static literal (no expressions like 60 * 60).
- * This fixes "Unsupported node type 'BinaryExpression' at 'revalidate'".
- */
+/** Must be a static literal so Next can analyze it at build time */
 export const revalidate = 3600;
 
 /* ---------------------------
@@ -17,11 +14,6 @@ const getSiteUrl = () =>
 // Backend is ONLY for fetching slugs. Never expose it in <loc>.
 const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:7000")
   .replace(/\/+$/, "");
-
-// Optional: static index path for your product listing page
-const DEFAULT_PRODUCT_PATH =
-  (process.env.NEXT_PUBLIC_DEFAULT_PRODUCT_PATH || "/products").replace(/\/+$/, "") ||
-  "/products";
 
 // Optional headers if your API expects them
 const API_KEY_HEADER = process.env.NEXT_PUBLIC_API_KEY_HEADER || "x-api-key";
@@ -40,7 +32,7 @@ function buildAuthHeaders(): Record<string, string> {
    Types (adjust to your API)
 ---------------------------- */
 type SeoDoc = {
-  slug?: string;     // e.g. "products/micro-interlock-jersey/surat" or "/micro-interlock-jersey"
+  slug?: string;      // e.g. "micro-interlock-jersey" OR "products/micro-interlock-jersey/surat"
   updatedAt?: string;
 };
 
@@ -48,11 +40,10 @@ type SeoDoc = {
    Fetch SEO slugs
 ---------------------------- */
 async function fetchSeoSlugs(): Promise<SeoDoc[]> {
-  const url = `${API_BASE}/seo`; // add ?fields=slug,updatedAt if your API supports it
-  const res = await fetch(url, {
+  const res = await fetch(`${API_BASE}/seo`, {
     headers: buildAuthHeaders(),
     next: { revalidate: 3600 }, // keep in sync with top-level revalidate
-    // For instant updates instead of ISR, use: cache: "no-store"
+    // cache: "no-store", // <- enable for instant freshness (no ISR)
   });
   if (!res.ok) {
     console.error("Sitemap: failed to fetch SEO slugs", res.status, await res.text());
@@ -67,13 +58,10 @@ async function fetchSeoSlugs(): Promise<SeoDoc[]> {
 /* ---------------------------
    URL utils
 ---------------------------- */
-// Clean a raw path/slug: drop hashes, trim, remove leading slashes.
-// If it's a bare slug without "/", mount it under /products/<slug>.
-// If it already contains "/", keep as-is (treat as a full path).
+// Keep the slug EXACTLY as your API gives it (no default prefix).
+// Strip hashes and leading slashes; allow nested paths.
 function normalizePathFromSlug(raw: string): string {
-  const clean = raw.split("#")[0].trim().replace(/^\/+/, "");
-  if (!clean) return "";
-  return clean.includes("/") ? clean : `products/${clean}`;
+  return raw.split("#")[0].trim().replace(/^\/+/, "");
 }
 
 // Collapse accidental double slashes but keep protocol intact (e.g., https://)
@@ -88,42 +76,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = getSiteUrl();
   const now = new Date();
 
-  // 1) Static must-have entries: Home + product listing
+  // Only home + dynamic slugs (no default listing path)
   const entries: MetadataRoute.Sitemap = [
-    {
-      url: `${base}/`,
-      lastModified: now,
-      changeFrequency: "weekly",
-      priority: 1,
-    },
-    {
-      url: collapseDoubleSlashes(
-        `${base}${DEFAULT_PRODUCT_PATH.startsWith("/") ? "" : "/"}${DEFAULT_PRODUCT_PATH}`,
-      ),
-      lastModified: now,
-      changeFrequency: "weekly",
-      priority: 0.8,
-    },
+    { url: `${base}/`, lastModified: now, changeFrequency: "weekly", priority: 1 },
   ];
 
-  // 2) Dynamic entries from SEO slugs
   const seoDocs = await fetchSeoSlugs();
-  const dedupe = new Set<string>();
+  const seen = new Set<string>();
 
   for (const doc of seoDocs) {
-    const rawSlug = (doc?.slug || "").trim();
-    if (!rawSlug) continue;
-
-    const path = normalizePathFromSlug(rawSlug);
+    const path = normalizePathFromSlug(doc?.slug || "");
     if (!path) continue;
 
     const loc = collapseDoubleSlashes(`${base}/${path}`);
-    if (dedupe.has(loc)) continue;
-    dedupe.add(loc);
+    if (seen.has(loc)) continue;
+    seen.add(loc);
 
     entries.push({
       url: loc,
-      lastModified: doc.updatedAt ? new Date(doc.updatedAt) : now,
+      lastModified: doc?.updatedAt ? new Date(doc.updatedAt) : now,
       changeFrequency: "weekly",
       priority: 0.7,
     });
