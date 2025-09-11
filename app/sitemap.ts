@@ -2,26 +2,21 @@
 import type { MetadataRoute } from "next";
 
 /**
- * Revalidate the sitemap every hour. If you need immediate updates,
- * switch to `export const dynamic = "force-dynamic"` and use `cache: "no-store"`
- * in fetch below (higher runtime cost).
+ * Must be a static literal (no expressions like 60 * 60).
+ * This fixes "Unsupported node type 'BinaryExpression' at 'revalidate'".
  */
-export const revalidate = 60 * 60;
+export const revalidate = 3600;
 
 /* ---------------------------
    Helpers & Config
 ---------------------------- */
 const getSiteUrl = () =>
-  (process.env.NEXT_PUBLIC_SITE_URL || "https://landing-page-22.vercel.app").replace(
-    /\/+$/,
-    "",
-  );
+  (process.env.NEXT_PUBLIC_SITE_URL || "https://landing-page-22.vercel.app")
+    .replace(/\/+$/, "");
 
 // Backend is ONLY for fetching slugs. Never expose it in <loc>.
-const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:7000").replace(
-  /\/+$/,
-  "",
-);
+const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:7000")
+  .replace(/\/+$/, "");
 
 // Optional: static index path for your product listing page
 const DEFAULT_PRODUCT_PATH =
@@ -45,7 +40,7 @@ function buildAuthHeaders(): Record<string, string> {
    Types (adjust to your API)
 ---------------------------- */
 type SeoDoc = {
-  slug?: string; // e.g. "products/micro-interlock-jersey/surat" or "/micro-interlock-jersey"
+  slug?: string;     // e.g. "products/micro-interlock-jersey/surat" or "/micro-interlock-jersey"
   updatedAt?: string;
 };
 
@@ -53,19 +48,17 @@ type SeoDoc = {
    Fetch SEO slugs
 ---------------------------- */
 async function fetchSeoSlugs(): Promise<SeoDoc[]> {
-  const url = `${API_BASE}/seo`; // add query params like ?fields=slug,updatedAt if supported
+  const url = `${API_BASE}/seo`; // add ?fields=slug,updatedAt if your API supports it
   const res = await fetch(url, {
     headers: buildAuthHeaders(),
-    next: { revalidate: 60 * 60 },
-    // for immediate freshness instead of ISR:
-    // cache: "no-store",
+    next: { revalidate: 3600 }, // keep in sync with top-level revalidate
+    // For instant updates instead of ISR, use: cache: "no-store"
   });
   if (!res.ok) {
     console.error("Sitemap: failed to fetch SEO slugs", res.status, await res.text());
     return [];
   }
   const data = await res.json();
-  // Common API shapes
   if (Array.isArray(data)) return data as SeoDoc[];
   if (Array.isArray((data as any)?.data)) return (data as any).data as SeoDoc[];
   return [];
@@ -125,10 +118,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     if (!path) continue;
 
     const loc = collapseDoubleSlashes(`${base}/${path}`);
-    const key = `${loc}`; // de-dupe by final URL
-
-    if (dedupe.has(key)) continue;
-    dedupe.add(key);
+    if (dedupe.has(loc)) continue;
+    dedupe.add(loc);
 
     entries.push({
       url: loc,
@@ -139,7 +130,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   // Safety filter: only absolute http(s) URLs
-  const filtered = entries.filter((e) => /^https?:\/\/[^ ]+$/i.test(e.url));
-
-  return filtered;
+  return entries.filter((e) => /^https?:\/\/[^ ]+$/i.test(e.url));
 }
