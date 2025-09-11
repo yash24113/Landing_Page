@@ -46,10 +46,10 @@ const PRODUCT_URL = RAW_BASE ? `${RAW_BASE}/product` : "";
 const SEO_URL = RAW_BASE ? `${RAW_BASE}/seo` : "";
 const LOC_URL = RAW_BASE ? `${RAW_BASE}/locations` : "";
 
-const API_KEY = process.env.NEXT_PUBLIC_API_KEY ?? "";
-const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? "";
-const API_KEY_HEADER = process.env.NEXT_PUBLIC_API_KEY_HEADER ?? "x-api-key";
-const ADMIN_EMAIL_HEADER = process.env.NEXT_PUBLIC_ADMIN_EMAIL_HEADER ?? "x-admin-email";
+const API_KEY = process.env.API_KEY ?? "";
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? "";
+const API_KEY_HEADER = process.env.API_KEY_HEADER ?? "x-api-key";
+const ADMIN_EMAIL_HEADER = process.env.ADMIN_EMAIL_HEADER ?? "x-admin-email";
 
 /* ---------------------------------------------
    Helpers

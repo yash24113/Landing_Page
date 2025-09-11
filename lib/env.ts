@@ -57,10 +57,10 @@ const envSchema = z.object({
   SENTRY_AUTH_TOKEN: z.string().optional(),
 
   /** ── API auth headers (PUBLIC because you’re sending on client) ── */
-  NEXT_PUBLIC_API_KEY: z.string().optional(),                 // e.g. "rajeshsir"
-  NEXT_PUBLIC_ADMIN_EMAIL: z.string().email().optional(),     // e.g. "vivek..."
-  NEXT_PUBLIC_API_KEY_HEADER: z.string().default("x-api-key"),
-  NEXT_PUBLIC_ADMIN_EMAIL_HEADER: z.string().default("x-admin-email"),
+  API_KEY: z.string().optional(),                 // e.g. "rajeshsir"
+  ADMIN_EMAIL: z.string().email().optional(),     // e.g. "vivek..."
+  API_KEY_HEADER: z.string().default("x-api-key"),
+  ADMIN_EMAIL_HEADER: z.string().default("x-admin-email"),
 });
 
 export const env = envSchema.parse(process.env);
@@ -115,11 +115,11 @@ export function getAuthHeaders(): Record<string, string> {
     accept: "application/json",
   };
 
-  if (env.NEXT_PUBLIC_API_KEY) {
-    headers[env.NEXT_PUBLIC_API_KEY_HEADER] = env.NEXT_PUBLIC_API_KEY;
+  if (env.API_KEY) {
+    headers[env.API_KEY_HEADER] = env.API_KEY;
   }
-  if (env.NEXT_PUBLIC_ADMIN_EMAIL) {
-    headers[env.NEXT_PUBLIC_ADMIN_EMAIL_HEADER] = env.NEXT_PUBLIC_ADMIN_EMAIL;
+  if (env.ADMIN_EMAIL) {
+    headers[env.ADMIN_EMAIL_HEADER] = env.ADMIN_EMAIL;
   }
   return headers;
 }

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type React from "react";
 
 import { WhatsAppButton } from "@/components/whatsapp-button";
 import { Chatbot } from "@/components/chatbot";
@@ -13,7 +14,6 @@ import { CatalogButton } from "@/components/catalog-button";
 import { fetchSeoData } from "@/lib/seo"; // and fetchProductData (dynamic import below)
 import { ContactDetails } from "@/components/contact-details";
 import { CommitmentText } from "@/components/commitment-text";
-
 
 /* -------------------------------------------------
    Config
@@ -194,8 +194,11 @@ type ProductDoc = {
   name?: string;
   slug?: string;
   img?: string;
+  altimg1?:string;
   image1?: string;
+   altimg2?:string;
   image2?: string;
+   altimg3?:string;
   gsm?: string | number;
   oz?: string | number;
   cm?: string | number;
@@ -323,10 +326,10 @@ export const fetchCache = "force-no-store";
    OG/Twitter + JSON-LD helpers (merged)
 -------------------------------------------------- */
 const VALID_OG_TYPES = new Set([
-  "website","article","book","profile","music.song","music.album","music.playlist",
-  "music.radio_station","video.movie","video.episode","video.tv_show","video.other",
+  "website", "article", "book", "profile", "music.song", "music.album", "music.playlist",
+  "music.radio_station", "video.movie", "video.episode", "video.tv_show", "video.other",
 ]);
-const VALID_TWITTER_CARDS = new Set(["summary","summary_large_image","player","app"]);
+const VALID_TWITTER_CARDS = new Set(["summary", "summary_large_image", "player", "app"]);
 
 function ogTypeSafe(v: unknown) {
   const t = String(v ?? "").toLowerCase().trim();
@@ -601,6 +604,289 @@ function faqJsonLd() {
 }
 
 /* -------------------------------------------------
+   Reusable UI Sections (shared by home & slug)
+-------------------------------------------------- */
+function SectionHero(props: {
+  titleNode: React.ReactNode;
+  subtitle?: string;
+  sku?: string | number;
+  price?: string | number;
+  rating?: string | number;
+  reviews?: string | number;
+  phone?: string;
+  heroImage: string;
+  heroAlt: string;
+  catalogProduct?: {
+    name?: string;
+    sku?: string;
+    salesPrice?: number;
+    productdescription?: string;
+    img?: string;
+    image1?: string;
+    image2?: string;
+      altimg1?:string;
+        altimg2?:string;
+          altimg3?:string;
+    gsm?: string | number;
+    oz?: string | number;
+    cm?: string | number;
+    inch?: string | number;
+
+  };
+}) {
+  const { titleNode, subtitle, sku, price, rating, reviews, phone, heroImage, heroAlt, catalogProduct } = props;
+  return (
+    <section id="hero" className="hero relative bg-white text-slate-900 overflow-hidden pt-4 pb-8 sm:pt-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        <div className="flex flex-col lg:grid lg:grid-cols-2 gap-8 items-center">
+          {/* Left */}
+          <div className="space-y-6 sm:space-y-8 w-full mt-4 sm:mt-6 lg:mt-0">
+            <h1 className="font-bold leading-tight text-[clamp(1.75rem,4vw,3.75rem)] sm:text-4xl lg:text-6xl text-balance break-words">
+              {titleNode}
+            </h1>
+
+            {subtitle && (
+              <p className="text-base sm:text-xl text-slate-700 max-w-2xl whitespace-pre-wrap break-words">
+                {subtitle}
+              </p>
+            )}
+
+            {(sku !== undefined || price !== undefined || rating !== undefined || reviews !== undefined) && (
+              <div className="bg-slate-100 rounded-lg p-4 grid grid-cols-2 gap-4 text-sm">
+                {sku !== undefined && (
+                  <div>
+                    <span className="text-slate-700">SKU:</span>
+                    <span className="ml-2 text-slate-900 break-words">{sku as any}</span>
+                  </div>
+                )}
+                {price !== undefined && (
+                  <div>
+                    <span className="text-slate-700">Price:</span>
+                    <span className="ml-2 text-slate-900">{price as any}</span>
+                  </div>
+                )}
+                {rating !== undefined && (
+                  <div>
+                    <span className="text-slate-700">Rating:</span>
+                    <span className="ml-2 text-slate-900">{rating as any}/5</span>
+                  </div>
+                )}
+                {reviews !== undefined && (
+                  <div>
+                    <span className="text-slate-700">Reviews:</span>
+                    <span className="ml-2 text-slate-900">{reviews as any}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* CTAs */}
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+              <a href="#contact" className="px-6 sm:px-8 py-3 sm:py-4 btn-primary">Get Quote Now</a>
+              {phone && (
+                <a href={`tel:${sanitizeE164(phone)}`} className="px-6 sm:px-8 py-3 sm:py-4 btn-secondary">
+                  📞 Call Now
+                </a>
+              )}
+              {catalogProduct && <CatalogButton product={catalogProduct} />}
+            </div>
+
+            <div className="flex flex-wrap gap-3 sm:gap-4 text-sm text-slate-700 mt-2">
+              <div className="flex items-center space-x-2"><div className="w-2 h-2 bg-emerald-400 rounded-full" /><span>ISO Certified</span></div>
+              <div className="flex items-center space-x-2"><div className="w-2 h-2 bg-emerald-400 rounded-full" /><span>Global Shipping</span></div>
+              <div className="flex items-center space-x-2"><div className="w-2 h-2 bg-emerald-400 rounded-full" /><span>24/7 Support</span></div>
+            </div>
+          </div>
+
+          {/* Right (Image) */}
+          <div className="relative w-full px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
+            <div className="relative z-10 w-full rounded-2xl overflow-hidden shadow-lg bg-white aspect-[16/10] sm:aspect-[5/4] lg:aspect-[16/9]">
+              <Image
+                key={heroImage}
+                src={heroImage}
+                alt={heroAlt}
+                fill
+                priority
+                className="object-contain object-center"
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 800px"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function OverviewSection(props: {
+  heading?: string;
+  tagline?: string;
+  p1?: string;
+  p2?: string;
+  extraContent?: React.ReactNode;
+  image: string;
+  imageAlt: string;
+}) {
+  const { heading = "Leading B2B Fabric Supplier Worldwide", tagline, p1, p2, extraContent, image, imageAlt } = props;
+  return (
+    <section className="py-14 sm:py-20 bg-slate-50" id="about">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        <div className="text-center mb-12 sm:mb-16">
+          <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4 sm:mb-6 text-balance break-words">
+            {heading}
+          </h2>
+          {tagline && <p className="text-slate-600 mb-6 sm:mb-8">{tagline}</p>}
+          <div className="w-24 h-1 bg-gradient-to-r from-blue-600 to-emerald-600 mx-auto" />
+        </div>
+
+        <div className="grid lg:grid-cols-2 gap-10 sm:gap-16 items-center">
+          <div className="space-y-6">
+            {p1 && (
+              <p className="text-base sm:text-lg text-slate-700 leading-relaxed whitespace-pre-wrap break-words">
+                {p1}
+              </p>
+            )}
+            {p2 && (
+              <p className="text-base sm:text-lg text-slate-700 leading-relaxed whitespace-pre-wrap break-words">
+                {p2}
+              </p>
+            )}
+            {extraContent}
+
+            <div className="grid grid-cols-2 gap-4 sm:gap-6 mt-6 sm:mt-8">
+              <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-slate-200 text-center">
+                <div className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">500+</div>
+                <div className="text-slate-600 text-sm sm:text-base">Global Partners</div>
+              </div>
+              <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-slate-200 text-center">
+                <div className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">50+</div>
+                <div className="text-slate-600 text-sm sm:text-base">Countries Served</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="relative rounded-2xl shadow-lg overflow-hidden bg-white aspect-[4/3] sm:aspect-[5/4] lg:aspect-[3/2] w-full">
+            <Image
+              key={image}
+              src={image}
+              alt={imageAlt}
+              fill
+              loading="lazy"
+              className="object-contain object-center"
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 600px"
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ProductGrid(props: {
+  title?: string;
+  subtitle?: string;
+  products: ProductDoc[];
+  slugByProduct: Map<string, string>;
+}) {
+  const { title = "Explore Our Fabric Catalog", subtitle, products, slugByProduct } = props;
+  return (
+    <section id="products" className="py-14 sm:py-20 bg-white" aria-labelledby="product-categories">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        <div className="text-center mb-12 sm:mb-16">
+          <h2 id="product-categories" className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4 sm:mb-6 text-balance">
+            {title}
+          </h2>
+          {subtitle && <p className="text-lg sm:text-xl text-slate-600 max-w-3xl mx-auto">{subtitle}</p>}
+        </div>
+
+        {products.length === 0 ? (
+          <div className="text-center text-slate-600">No products for the selected location.</div>
+        ) : (
+          <div className="grid gap-6 sm:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            {products.map((p) => {
+              const img = (p.img ?? p.image1 ?? p.image2 ?? "/placeholder.svg?height=300&width=400").toString();
+              const pid = String(p?._id ?? "").trim();
+              const rawSlug = (slugByProduct.get(pid) || p?.slug || "").toString().trim();
+              const safeSlug = rawSlug.replace(/^\/+/, "");
+              const href = safeSlug ? `/${encodeURIComponent(safeSlug)}` : "#";
+              const desc = (p.productdescription || "").toString();
+
+              const CardInner = (
+                <div className="relative flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-lg border border-slate-100 hover:shadow-xl hover:border-blue-200 transition-all duration-200">
+                  {/* Image */}
+                  <div className="relative w-full aspect-[4/3] bg-white">
+                    <Image
+                      src={img}
+                      alt={p.name || "Fabric"}
+                      fill
+                      className="object-contain object-center"
+                      loading="lazy"
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                    />
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex flex-1 flex-col p-5 sm:p-6">
+                    <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-2 line-clamp-2 break-words">
+                      {p.name ?? "Fabric"}
+                    </h3>
+
+                    <p className="text-slate-600 text-sm sm:text-base line-clamp-3">
+                      {desc || "—"}
+                    </p>
+                    {href !== "#" && (
+                      <Link
+                        href={`${href}`}
+                        className="mt-3 inline-flex items-center font-semibold text-blue-700 hover:text-blue-800"
+                      >
+                        Read more →
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              );
+
+              return (
+                <article key={pid} className="h-full">
+                  {href === "#" ? (
+                    <div className="opacity-100 h-full">{CardInner}</div>
+                  ) : (
+                    <Link className="group block h-full" href={href}>
+                      {CardInner}
+                    </Link>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function ContactSection() {
+  return (
+    <>
+      <FAQ />
+      <section id="contact" className="py-14 sm:py-20 bg-slate-900">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6 text-center text-balance">
+            Get Your Custom Quote Today
+          </h2>
+          <div className="grid lg:grid-cols-2 gap-10 sm:gap-16 ">
+            <ContactForm />
+            <ContactDetails />
+          </div>
+        </div>
+      </section>
+      <WhatsAppButton />
+      {/* <Chatbot /> */}
+    </>
+  );
+}
+
+/* -------------------------------------------------
    Props (optional catch-all)
 -------------------------------------------------- */
 type Props = { params: Promise<{ slug?: string[] }> };
@@ -665,7 +951,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       verification:
         seoData.googleSiteVerification || seoData.msValidate
           ? {
-            
               google: seoData.googleSiteVerification,
               other: seoData.msValidate ? { "msvalidate.01": seoData.msValidate } : undefined,
             }
@@ -786,20 +1071,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 /* -------------------------------------------------
-   Page (branching UI)
+   Page (branching UI, reusing sections)
 -------------------------------------------------- */
 export default async function Page({ params }: Props) {
   const p = await params;
   const slugSegs = p.slug ?? [];
   const slug = slugSegs[0];
 
-  
-//const slug = params?.slug?.join("/") || "";
-
-const seoContent = await fetchSeoData(slug);
-
-
-    
+  const seoContent = await fetchSeoData(slug);
 
   // ---------- JSON-LD builder ----------
   const jsonLdFor = (seoBase: any, productName?: string) => {
@@ -853,14 +1132,14 @@ const seoContent = await fetchSeoData(slug);
     for (const s of locSeoRows) {
       const pid = toId(s?.product);
       const sSlug = norm(s?.slug);
-      let p: any | undefined = undefined;
-      if (pid && productById.has(pid)) p = productById.get(pid);
-      else if (sSlug && productBySlug.has(sSlug)) p = productBySlug.get(sSlug);
-      if (p) {
-        const key = String(p._id);
+      let prod: any | undefined = undefined;
+      if (pid && productById.has(pid)) prod = productById.get(pid);
+      else if (sSlug && productBySlug.has(sSlug)) prod = productBySlug.get(sSlug);
+      if (prod) {
+        const key = String(prod._id);
         if (!seen.has(key)) {
           seen.add(key);
-          ahmedabadProducts.push(p);
+          ahmedabadProducts.push(prod);
         }
       }
     }
@@ -904,266 +1183,73 @@ const seoContent = await fetchSeoData(slug);
 
     const ld = jsonLdFor(firstCardSeo || seos[0] || {}, firstCard?.name);
 
+    const titleNode: React.ReactNode = titleFromSeo ? (
+      titleFromSeo
+    ) : (
+      <>
+        Premium{" "}
+        <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-700 to-emerald-700">
+          {heroName}
+        </span>{" "}
+        for Global Manufacturers
+      </>
+    );
+
     return (
       <main className="min-h-screen bg-white pb-24 md:pb-0 overflow-x-hidden">
         {/* Structured data */}
         <JsonLdInjector {...ld} />
 
-        {/* HERO */}
-        <section id="hero" className="hero relative bg-white text-slate-900 overflow-hidden pt-4 pb-8 sm:pt-8">
-          <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-            <div className="flex flex-col lg:grid lg:grid-cols-2 gap-8 items-center">
-              {/* Left */}
-              <div className="space-y-6 sm:space-y-8 w-full mt-4 sm:mt-6 lg:mt-0">
-                <h1 className="font-bold leading-tight text-[clamp(1.75rem,4vw,3.75rem)] sm:text-4xl lg:text-6xl text-balance break-words">
-                  {titleFromSeo ? (
-                    titleFromSeo
-                  ) : (
-                    <>
-                      Premium{" "}
-                      <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-700 to-emerald-700">
-                        {heroName}
-                      </span>{" "}
-                      for Global Manufacturers
-                    </>
-                  )}
-                </h1>
+        <SectionHero
+          titleNode={titleNode}
+          subtitle={taglineFromSeo || "Connect with leading fabric suppliers worldwide. Quality textiles, competitive pricing, and reliable supply chains."}
+          sku={firstCardSeo?.sku}
+          price={firstCardSeo?.salesPrice}
+          rating={firstCardSeo?.rating_value}
+          reviews={firstCardSeo?.rating_count}
+          phone={COMPANY_PHONE}
+          heroImage={heroImage}
+          heroAlt={heroAlt}
+          catalogProduct={{
+            name: firstCard?.name,
+            sku: firstCard?.sku || firstCardSeo?.sku,
+            salesPrice: firstCard?.salesPrice || firstCardSeo?.salesPrice,
+            productdescription: firstCard?.productdescription || firstCardSeo?.productdescription,
+            img: firstCard?.img,
+            altimg1:firstCard?.altimg2,
+            altimg2:firstCard?.altimg1,
+            altimg3:firstCard?.altimg3,
+            image1: firstCard?.image1,
+            image2: firstCard?.image2,
+            gsm: firstCard?.gsm,
+            oz: firstCard?.oz,
+            cm: firstCard?.cm,
+            inch: firstCard?.inch,
+          }}
+        />
 
-                <p className="text-base sm:text-xl text-slate-700 max-w-2xl whitespace-pre-wrap break-words">
-                  {taglineFromSeo ||
-                    "Connect with leading fabric suppliers worldwide. Quality textiles, competitive pricing, and reliable supply chains."}
-                </p>
+        <OverviewSection
+          tagline="ISO 9001 Certified • 500+ Global Partners • Ships to 50+ Countries"
+          p1={
+            desc1FromSeo ||
+            "As a premier B2B fabric supplier, we specialize in providing high-quality textiles to global garment manufacturers, clothing retailers, and fabric trading companies. Our extensive network spans across major textile hubs worldwide, ensuring consistent supply chains and competitive pricing for bulk fabric orders."
+          }
+          p2={
+            desc2FromSeo ||
+            "Our commitment to excellence extends beyond product quality to encompass reliable logistics, flexible payment terms, and comprehensive customer support. Whether you’re sourcing fabrics for fast fashion, luxury apparel, or industrial textiles, our team delivers customized solutions."
+          }
+          extraContent={<CommitmentText content={(seoContent as any)?.description} />}
+          image={overviewImage}
+          imageAlt={overviewAlt}
+        />
 
-                {firstCardSeo && (
-                  <div className="bg-slate-100 rounded-lg p-4 grid grid-cols-2 gap-4 text-sm">
-                    {typeof firstCardSeo.sku !== "undefined" && (
-                      <div>
-                        <span className="text-slate-700">SKU:</span>
-                        <span className="ml-2 text-slate-900 break-words">{firstCardSeo.sku}</span>
-                      </div>
-                    )}
-                    {typeof firstCardSeo.salesPrice !== "undefined" && (
-                      <div>
-                        <span className="text-slate-700">Price:</span>
-                        <span className="ml-2 text-slate-900">{firstCardSeo.salesPrice}</span>
-                      </div>
-                    )}
-                    {typeof firstCardSeo.rating_value !== "undefined" && (
-                      <div>
-                        <span className="text-slate-700">Rating:</span>
-                        <span className="ml-2 text-slate-900">{firstCardSeo.rating_value}/5</span>
-                      </div>
-                    )}
-                    {typeof firstCardSeo.rating_count !== "undefined" && (
-                      <div>
-                        <span className="text-slate-700">Reviews:</span>
-                        <span className="ml-2 text-slate-900">{firstCardSeo.rating_count}</span>
-                      </div>
-                    )}
-                  </div>
-                )}
+        <ProductGrid
+          subtitle={taglineFromSeo || "Comprehensive range of premium fabrics for every manufacturing need"}
+          products={ahmedabadProducts}
+          slugByProduct={slugByProduct}
+        />
 
-                {/* CTAs */}
-                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                  <a href="#contact" className="px-6 sm:px-8 py-3 sm:py-4 btn-primary">Get Quote Now</a>
-                  <a href={`tel:${sanitizeE164(COMPANY_PHONE ?? "")}`} className="px-6 sm:px-8 py-3 sm:py-4 btn-secondary">📞 Call Now</a>
-
-                  {firstCard && (
-                    <CatalogButton
-                      product={{
-                        name: firstCard?.name,
-                        sku: firstCard?.sku || firstCardSeo?.sku,
-                        salesPrice: firstCard?.salesPrice || firstCardSeo?.salesPrice,
-                        productdescription: firstCard?.productdescription || firstCardSeo?.productdescription,
-                        img: firstCard?.img,
-                        image1: firstCard?.image1,
-                        image2: firstCard?.image2,
-                        gsm: firstCard?.gsm,
-                        oz: firstCard?.oz,
-                        cm: firstCard?.cm,
-                        inch: firstCard?.inch,
-                      }}
-                    />
-                  )}
-                </div>
-
-                <div className="flex flex-wrap gap-3 sm:gap-4 text-sm text-slate-700 mt-2">
-                  <div className="flex items-center space-x-2"><div className="w-2 h-2 bg-emerald-400 rounded-full" /><span>ISO Certified</span></div>
-                  <div className="flex items-center space-x-2"><div className="w-2 h-2 bg-emerald-400 rounded-full" /><span>Global Shipping</span></div>
-                  <div className="flex items-center space-x-2"><div className="w-2 h-2 bg-emerald-400 rounded-full" /><span>24/7 Support</span></div>
-                </div>
-              </div>
-
-              {/* Right (Image) */}
-              <div className="relative w-full px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
-  <div className="relative z-10 w-full rounded-2xl overflow-hidden shadow-lg bg-white aspect-[16/10] sm:aspect-[5/4] lg:aspect-[16/9]">
-    <Image
-      key={heroImage}
-      src={heroImage}
-      alt={heroAlt}
-      fill
-      priority
-      className="object-contain object-center"
-      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 800px"
-    />
-  </div>
-</div>
-
-
-            </div>
-          </div>
-        </section>
-
-        {/* COMPANY OVERVIEW (SEO text) */}
-        <section className="py-14 sm:py-20 bg-slate-50" id="about">
-          <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-            <div className="text-center mb-12 sm:mb-16">
-              <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4 sm:mb-6 text-balance break-words">
-                Leading B2B Fabric Supplier Worldwide
-              </h2>
-              <p className="text-slate-600 mb-6 sm:mb-8">ISO 9001 Certified • 500+ Global Partners • Ships to 50+ Countries</p>
-              <div className="w-24 h-1 bg-gradient-to-r from-blue-600 to-emerald-600 mx-auto" />
-            </div>
-
-            <div className="grid lg:grid-cols-2 gap-10 sm:gap-16 items-center">
-              <div className="space-y-6">
-                <p className="text-base sm:text-lg text-slate-700 leading-relaxed whitespace-pre-wrap break-words">
-                  {desc1FromSeo ||
-                    "As a premier B2B fabric supplier, we specialize in providing high-quality textiles to global garment manufacturers, clothing retailers, and fabric trading companies. Our extensive network spans across major textile hubs worldwide, ensuring consistent supply chains and competitive pricing for bulk fabric orders."}
-                </p>
-                <p className="text-base sm:text-lg text-slate-700 leading-relaxed whitespace-pre-wrap break-words">
-                  {desc2FromSeo ||
-                    "Our commitment to excellence extends beyond product quality to encompass reliable logistics, flexible payment terms, and comprehensive customer support. Whether you’re sourcing fabrics for fast fashion, luxury apparel, or industrial textiles, our team delivers customized solutions."}
-                </p>
-
-             
-                      <CommitmentText content={seoContent?.description} />
-
-                <div className="grid grid-cols-2 gap-4 sm:gap-6 mt-6 sm:mt-8">
-                  <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-slate-200 text-center">
-                    <div className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">500+</div>
-                    <div className="text-slate-600 text-sm sm:text-base">Global Partners</div>
-                  </div>
-                  <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-slate-200 text-center">
-                    <div className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">50+</div>
-                    <div className="text-slate-600 text-sm sm:text-base">Countries Served</div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="relative rounded-2xl shadow-lg overflow-hidden bg-white aspect-[4/3] sm:aspect-[5/4] lg:aspect-[3/2] w-full">
-                <Image
-                  key={overviewImage}
-                  src={overviewImage}
-                  alt={overviewAlt}
-                  fill
-                  loading="lazy"
-                  className="object-contain object-center"
-                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 600px"
-                />
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* PRODUCTS — ALL Ahmedabad */}
-        <section id="products" className="py-14 sm:py-20 bg-white" aria-labelledby="product-categories">
-          <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-            <div className="text-center mb-12 sm:mb-16">
-              <h2
-                id="product-categories"
-                className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4 sm:mb-6 text-balance"
-              >
-                Explore Our Fabric Catalog
-              </h2>
-              <p className="text-lg sm:text-xl text-slate-600 max-w-3xl mx-auto">
-                {taglineFromSeo || "Comprehensive range of premium fabrics for every manufacturing need"}
-              </p>
-            </div>
-
-            {ahmedabadProducts.length === 0 ? (
-              <div className="text-center text-slate-600">No products for the selected location.</div>
-            ) : (
-              <div className="grid gap-6 sm:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-                {ahmedabadProducts.map((p) => {
-                  const img = (p.img ?? p.image1 ?? p.image2 ?? "/placeholder.svg?height=300&width=400").toString();
-                  const pid = String(p?._id ?? "").trim();
-
-                  const rawSlug = (slugByProduct.get(pid) || p?.slug || "").toString().trim();
-                  const safeSlug = rawSlug.replace(/^\/+/, "");
-                  const href = safeSlug ? `/${encodeURIComponent(safeSlug)}` : "#";
-
-                  const desc = (p.productdescription || "").toString();
-
-                  const CardInner = (
-                    <div className="relative flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-lg border border-slate-100 hover:shadow-xl hover:border-blue-200 transition-all duration-200">
-                      {/* Image */}
-                      <div className="relative w-full aspect-[4/3] bg-white">
-                        <Image
-                          src={img}
-                          alt={p.name || "Fabric"}
-                          fill
-                          className="object-contain object-center"
-                          loading="lazy"
-                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                        />
-                      </div>
-
-                      {/* Content */}
-                      <div className="flex flex-1 flex-col p-5 sm:p-6">
-                        <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-2 line-clamp-2 break-words">
-                          {p.name}
-                        </h3>
-
-                        {/* Truncated description + “Read more” link to slug#hero */}
-                        <p className="text-slate-600 text-sm sm:text-base line-clamp-3">
-                          {desc || "—"}
-                        </p>
-                        {href !== "#" && (
-                          <Link
-                            href={`${href}`}
-                            className="mt-3 inline-flex items-center font-semibold text-blue-700 hover:text-blue-800"
-                          >
-                            Read more →
-                          </Link>
-                        )}
-                      </div>
-                    </div>
-                  );
-
-                  return (
-                    <article key={pid} className="h-full">
-                      {href === "#" ? (
-                        <div className="opacity-100 h-full">{CardInner}</div>
-                      ) : (
-                        <Link className="group block h-full" href={href}>
-                          {CardInner}
-                        </Link>
-                      )}
-                    </article>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* FAQ + CONTACT + Floaters */}
-        <FAQ />
-        <section id="contact" className="py-14 sm:py-20 bg-slate-900">
-          <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6 text-center text-balance">
-              Get Your Custom Quote Today
-            </h2>
-            <div className="grid lg:grid-cols-2 gap-10 sm:gap-16 ">
-              <ContactForm />
-              <ContactDetails  />
-            </div>
-          </div>
-        </section>
-
-        <WhatsAppButton />
-        {/* <Chatbot /> */}
+        <ContactSection />
       </main>
     );
   }
@@ -1189,9 +1275,9 @@ const seoContent = await fetchSeoData(slug);
   const slugByProduct = new Map<string, string>();
   for (const s of allSeos) {
     const locId = toId(s.location);
-    const locCode = norm(s.locationCode);
-    const pid = toId(s.product);
     theLoop: {
+      const locCode = norm(s.locationCode);
+      const pid = toId(s.product);
       const sSlug = String(s?.slug ?? "").trim();
 
       let sameLocation = false;
@@ -1223,15 +1309,15 @@ const seoContent = await fetchSeoData(slug);
   let heroAlt = "Premium fabric warehouse with organized textile rolls";
   if (matchingProduct?.img) {
     heroImage = matchingProduct.img;
-    heroAlt = matchingProduct.name || heroAlt;
+    heroAlt = matchingProduct.altimg1 || heroAlt;
   }
   const overviewImage =
     (matchingProduct?.image2 ||
       matchingProduct?.image1 ||
       matchingProduct?.img ||
       "/placeholder.svg?height=500&width=600") as string;
-  const overviewAlt = matchingProduct?.name
-    ? `${matchingProduct.name} — secondary view`
+  const overviewAlt = matchingProduct?.altimg2
+    ? `${matchingProduct.altimg2}`
     : "Modern textile manufacturing facility";
 
   // dynamic copy
@@ -1248,231 +1334,50 @@ const seoContent = await fetchSeoData(slug);
       <JsonLdInjector {...ld} />
 
       <main className="min-h-screen bg-white overflow-x-hidden">
-        {/* HERO */}
-        <section id="hero" className="hero relative bg-white text-slate-900 overflow-hidden pt-4 pb-8 sm:pt-10">
-          <div className="relative max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-            <div className="flex flex-col lg:grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
-              {/* Left Column: Text */}
-              <div className="space-y-6 sm:space-y-8 w-full mt-2 lg:mt-0">
-                <div className="space-y-4">
-                  <h1 className="font-bold leading-tight tracking-tight text-[clamp(1.75rem,4vw,3.75rem)] sm:text-4xl lg:text-6xl break-words">
-                    {locationTitle}
-                  </h1>
-                  <p className="text-base sm:text-lg lg:text-xl text-slate-700 leading-relaxed max-w-2xl whitespace-pre-wrap break-words">
-                    {locationTagline}
-                  </p>
+        <SectionHero
+          titleNode={<>{locationTitle}</>}
+          subtitle={locationTagline}
+          sku={seo.sku}
+          price={seo.salesPrice}
+          rating={seo.rating_value}
+          reviews={seo.rating_count}
+          phone={COMPANY_PHONE}
+          heroImage={heroImage}
+          heroAlt={heroAlt}
+          catalogProduct={{
+            name: matchingProduct?.name,
+            sku: matchingProduct?.sku || seo.sku,
+            salesPrice: matchingProduct?.salesPrice || seo.salesPrice,
+            productdescription: matchingProduct?.productdescription || seo.productdescription,
+            img: matchingProduct?.img,
+            image1: matchingProduct?.image1,
+            image2: matchingProduct?.image2,
+            gsm: matchingProduct?.gsm,
+            oz: matchingProduct?.oz,
+            cm: matchingProduct?.cm,
+            inch: matchingProduct?.inch,
+          }}
+        />
 
-                    <div className="bg-slate-100 rounded-lg p-4 mt-2 sm:mt-4">
-                      <dl className="grid grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm">
-                        <div className="flex items-baseline break-words">
-                          <dt className="text-slate-800 font-medium">SKU:</dt>
-                          <dd className="ml-2 text-slate-950">{seo.sku ?? "—"}</dd>
-                        </div>
-                        <div className="flex items-baseline">
-                          <dt className="text-slate-800 font-medium">Price:</dt>
-                          <dd className="ml-2 text-slate-950">{seo.salesPrice ?? "—"}</dd>
-                        </div>
-                        <div className="flex items-baseline">
-                          <dt className="text-slate-800 font-medium">Rating:</dt>
-                          <dd className="ml-2 text-slate-950">{seo.rating_value ?? "—"}/5</dd>
-                        </div>
-                        <div className="flex items-baseline">
-                          <dt className="text-slate-800 font-medium">Reviews:</dt>
-                          <dd className="ml-2 text-slate-950">{seo.rating_count ?? "—"}</dd>
-                        </div>
-                      </dl>
-                    </div>
-                </div>
+        <OverviewSection
+          heading="Leading B2B Fabric Supplier Worldwide"
+          p1={locationDesc1}
+          p2={locationDesc2}
+          extraContent={
+            // Ensure CommitmentText renders for slug pages too
+            <CommitmentText content={(seoContent as any)?.description || seo?.description} />
+          }
+          image={overviewImage}
+          imageAlt={overviewAlt}
+        />
 
-                {/* Buttons */}
-                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                  <a href="#contact" className="inline-flex items-center justify-center px-6 sm:px-8 py-3 sm:py-4 btn-primary">
-                    Get Quote Now
-                  </a>
-                  <a
-                    href={`tel:${sanitizeE164(COMPANY_PHONE)}`}
-                    className="inline-flex items-center justify-center px-6 sm:px-8 py-3 sm:py-4 btn-secondary"
-                  >
-                    📞 Call Now
-                  </a>
+        <ProductGrid
+          subtitle={locationTagline || "Comprehensive range of premium fabrics for every manufacturing need"}
+          products={relatedProducts}
+          slugByProduct={slugByProduct}
+        />
 
-                  <CatalogButton
-                    product={{
-                      name: matchingProduct?.name,
-                      sku: matchingProduct?.sku || seo.sku,
-                      salesPrice: matchingProduct?.salesPrice || seo.salesPrice,
-                      productdescription: matchingProduct?.productdescription || seo.productdescription,
-                      img: matchingProduct?.img,
-                      image1: matchingProduct?.image1,
-                      image2: matchingProduct?.image2,
-                      gsm: matchingProduct?.gsm,
-                      oz: matchingProduct?.oz,
-                      cm: matchingProduct?.cm,
-                      inch: matchingProduct?.inch
-                    }}
-                  />
-                </div>
-
-                <div className="flex flex-wrap gap-3 sm:gap-4 text-sm text-slate-600 mt-1 sm:mt-2">
-                  <div className="flex items-center space-x-2"><div className="w-2 h-2 bg-emerald-400 rounded-full" /><span>ISO Certified</span></div>
-                  <div className="flex items-center space-x-2"><div className="w-2 h-2 bg-emerald-400 rounded-full" /><span>Global Shipping</span></div>
-                  <div className="flex items-center space-x-2"><div className="w-2 h-2 bg-emerald-400 rounded-full" /><span>24/7 Support</span></div>
-                </div>
-              </div>
-
-              {/* Right Column: Image */}
-              <div className="relative w-full">
-                <div className="relative z-10 w-full rounded-2xl overflow-hidden shadow-lg bg-white aspect-[16/10] sm:aspect-[5/4] lg:aspect-[16/9]">
-                  <Image
-                    src={heroImage}
-                    alt={heroAlt}
-                    fill
-                    priority
-                    fetchPriority="high"
-                    className="object-contain object-center"
-                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 800px"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* COMPANY OVERVIEW */}
-        <section className="py-14 sm:py-20 bg-slate-50">
-          <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8" id="about">
-            <div className="text-center mb-12 sm:mb-16">
-              <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4 sm:mb-6">
-                Leading B2B Fabric Supplier Worldwide
-              </h2>
-            </div>
-
-            <div className="grid lg:grid-cols-2 gap-10 sm:gap-16 items-center">
-              <div className="space-y-6">
-                <p className="text-base sm:text-lg text-slate-700 leading-relaxed whitespace-pre-wrap break-words">{locationDesc1}</p>
-                <p className="text-base sm:text-lg text-slate-700 leading-relaxed whitespace-pre-wrap break-words">{locationDesc2}</p>
-
-                <div className="grid grid-cols-2 gap-4 sm:gap-6 mt-6 sm:mt-8">
-                  <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-slate-200 text-center">
-                    <div className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">500+</div>
-                    <div className="text-slate-600 text-sm sm:text-base">Global Partners</div>
-                  </div>
-                  <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-slate-200 text-center">
-                    <div className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">50+</div>
-                    <div className="text-slate-600 text-sm sm:text-base">Countries Served</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* overview image */}
-              <div className="relative rounded-2xl shadow-lg overflow-hidden bg-white aspect-[4/3] sm:aspect-[5/4] lg:aspect-[3/2] w-full">
-                <Image
-                  src={overviewImage}
-                  alt={overviewAlt}
-                  fill
-                  loading="lazy"
-                  className="object-contain object-center"
-                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 600px"
-                />
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* RELATED PRODUCTS — same-location */}
-        <section id="products" className="py-14 sm:py-20 bg-white" aria-labelledby="product-categories">
-          <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-            <div className="text-center mb-12 sm:mb-16">
-              <h2 id="product-categories" className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4 sm:mb-6">
-                Explore Our Fabric Catalog
-              </h2>
-              <p className="text-lg sm:text-xl text-slate-600 max-w-3xl mx-auto">
-                {locationTagline || "Comprehensive range of premium fabrics for every manufacturing need"}
-              </p>
-            </div>
-
-            {relatedProducts.length === 0 ? (
-              <div className="text-center text-slate-600">No products for the selected location.</div>
-            ) : (
-              <div className="grid gap-6 sm:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-                {relatedProducts.map((p) => {
-                  const img = (p.img ?? p.image1 ?? p.image2 ?? "/placeholder.svg?height=300&width=400").toString();
-                  const pid = String(p?._id ?? "").trim();
-
-                  const rawSlug = (slugByProduct.get(pid) || p.slug || "").toString().trim();
-                  const safeSlug = rawSlug.replace(/^\/+/, "");
-                  const href = safeSlug ? `/${encodeURIComponent(safeSlug)}` : "#";
-
-                  const Card = (
-                    <div className="relative overflow-hidden rounded-2xl shadow-lg border border-slate-100 hover:border-blue-200 transition">
-                      <div className="relative w-full bg-white aspect-[4/3]">
-                        <Image
-                          src={img}
-                          alt={p.name ?? "Fabric"}
-                          fill
-                          className="object-contain object-center"
-                          loading="lazy"
-                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                        />
-                      </div>
-                      <div className="p-5 sm:p-6">
-                        <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-2 break-words">
-                          {p.name ?? "Fabric"}
-                        </h3>
-
-                        {/* Truncated text + link to slug#hero */}
-                        <p className="text-slate-600 text-sm sm:text-base line-clamp-3">
-                          {(p.productdescription || "—").toString()}
-                        </p>
-                        {href !== "#" && (
-                          <a
-                            href={`${href}`}
-                            className="mt-3 inline-flex items-center font-semibold text-blue-700 hover:text-blue-800"
-                          >
-                            Read more →
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  );
-
-                  return (
-                    <article key={pid}>
-                      {href === "#" ? (
-                        <div className="opacity-100">{Card}</div>
-                      ) : (
-                        <Link className="block group hover:opacity-95" href={href} prefetch>
-                          {Card}
-                        </Link>
-                      )}
-                    </article>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* FAQ + CONTACT + Floaters */}
-        <FAQ />
-        <section id="contact" className="py-14 sm:py-20 bg-slate-900">
-          <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-            <div className="text-center mb-12 sm:mb-16">
-              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4 sm:mb-6">Get Your Custom Quote Today</h2>
-              <p className="text-lg sm:text-xl text-slate-300 max-w-3xl mx-auto">
-                Connect with our fabric specialists for personalized pricing and bulk order solutions
-              </p>
-            </div>
-
-            <div className="grid lg:grid-cols-2 gap-10 sm:gap-16">
-              <ContactForm />
-              <ContactDetails />
-            </div>
-          </div>
-        </section>
-
-        <WhatsAppButton />
-        {/* <Chatbot /> */}
+        <ContactSection />
       </main>
     </>
   );

@@ -19,10 +19,10 @@ const STORAGE_KEY = "fabricpro_contact_form"; // UI state cache (shared)
 const RAW_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:7000/landing").replace(/\/+$/, "");
 const DEFAULT_CONTACT_URL = `${RAW_BASE}/contacts`;
 
-const API_KEY_HEADER = process.env.NEXT_PUBLIC_API_KEY_HEADER || "x-api-key";
-const ADMIN_EMAIL_HEADER = process.env.NEXT_PUBLIC_ADMIN_EMAIL_HEADER || "x-admin-email";
-const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
-const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "";
+const API_KEY_HEADER = process.env.API_KEY_HEADER || "x-api-key";
+const ADMIN_EMAIL_HEADER = process.env.ADMIN_EMAIL_HEADER || "x-admin-email";
+const API_KEY = process.env.API_KEY || "";
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "";
 
 /** Public company info for the right-rail / section (env-driven, with fallbacks) */
 const COMPANY_PHONE = process.env.NEXT_PUBLIC_COMPANY_PHONE || "+91 9925155141";

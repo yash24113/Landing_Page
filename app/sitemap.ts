@@ -16,10 +16,10 @@ const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:7000
   .replace(/\/+$/, "");
 
 // Optional headers if your API expects them
-const API_KEY_HEADER = process.env.NEXT_PUBLIC_API_KEY_HEADER || "x-api-key";
-const ADMIN_EMAIL_HEADER = process.env.NEXT_PUBLIC_ADMIN_EMAIL_HEADER || "x-admin-email";
-const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
-const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "";
+const API_KEY_HEADER = process.env.API_KEY_HEADER || "x-api-key";
+const ADMIN_EMAIL_HEADER = process.env.ADMIN_EMAIL_HEADER || "x-admin-email";
+const API_KEY = process.env.API_KEY || "";
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "";
 
 function buildAuthHeaders(): Record<string, string> {
   const h: Record<string, string> = {};

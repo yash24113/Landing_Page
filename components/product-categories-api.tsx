@@ -58,11 +58,11 @@ const PRODUCT_URL = RAW_BASE ? `${RAW_BASE}/product` : "http://localhost:7000/la
 const SEO_URL = RAW_BASE ? `${RAW_BASE}/seo/landing-page` : "http://localhost:7000/landing/seo/landing-page"
 const LOC_URL = RAW_BASE ? `${RAW_BASE}/locations` : "http://localhost:7000/landing/locations"
 
-const API_KEY = process.env.NEXT_PUBLIC_API_KEY ?? ""
-const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? ""
+const API_KEY = process.env.API_KEY ?? ""
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? ""
 // Align default header name with your server-side default
-const API_KEY_HEADER = process.env.NEXT_PUBLIC_API_KEY_HEADER ?? ""
-const ADMIN_EMAIL_HEADER = process.env.NEXT_PUBLIC_ADMIN_EMAIL_HEADER ?? "x-admin-email"
+const API_KEY_HEADER = process.env.API_KEY_HEADER ?? ""
+const ADMIN_EMAIL_HEADER = process.env.ADMIN_EMAIL_HEADER ?? "x-admin-email"
 
 // ---------------------------
 // Helpers
