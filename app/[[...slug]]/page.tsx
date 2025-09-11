@@ -12,6 +12,8 @@ import JsonLdInjector from "@/components/json-ld-injector";
 import { CatalogButton } from "@/components/catalog-button";
 import { fetchSeoData } from "@/lib/seo"; // and fetchProductData (dynamic import below)
 import { ContactDetails } from "@/components/contact-details";
+import { CommitmentText } from "@/components/commitment-text";
+
 
 /* -------------------------------------------------
    Config
@@ -791,6 +793,14 @@ export default async function Page({ params }: Props) {
   const slugSegs = p.slug ?? [];
   const slug = slugSegs[0];
 
+  
+//const slug = params?.slug?.join("/") || "";
+
+const seoContent = await fetchSeoData(slug);
+
+
+    
+
   // ---------- JSON-LD builder ----------
   const jsonLdFor = (seoBase: any, productName?: string) => {
     const videoLd = parseJsonLd(seoBase?.VideoJsonLd);
@@ -1025,6 +1035,9 @@ export default async function Page({ params }: Props) {
                   {desc2FromSeo ||
                     "Our commitment to excellence extends beyond product quality to encompass reliable logistics, flexible payment terms, and comprehensive customer support. Whether you’re sourcing fabrics for fast fashion, luxury apparel, or industrial textiles, our team delivers customized solutions."}
                 </p>
+
+             
+                      <CommitmentText content={seoContent?.description} />
 
                 <div className="grid grid-cols-2 gap-4 sm:gap-6 mt-6 sm:mt-8">
                   <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-slate-200 text-center">

@@ -58,32 +58,53 @@ export function ContactForm({
   submitHeaders,
   draftKey = "contact_draft_id",
 }: ContactFormProps = {}) {
-  const [currentStep, setCurrentStep] = useState(1);
-  const [formData, setFormData] = useState({
-    companyName: "",
-    contactPerson: "",
-    email: "",
-    phone: "",
-    businessType: "",
-    annualVolume: "",
-    primaryMarkets: "",
-    fabricTypes: [] as string[],
-    specifications: "",
-    timeline: "",
-    message: "",
+  // ----- read a saved snapshot (if any) synchronously via lazy init (no loader) -----
+  const initialSnapshot = (() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  })();
+
+  const [formData, setFormData] = useState(() => ({
+    companyName: initialSnapshot?.formData?.companyName ?? "",
+    contactPerson: initialSnapshot?.formData?.contactPerson ?? "",
+    email: initialSnapshot?.formData?.email ?? "",
+    phone: initialSnapshot?.formData?.phone ?? "",
+    businessType: initialSnapshot?.formData?.businessType ?? "",
+    annualVolume: initialSnapshot?.formData?.annualVolume ?? "",
+    primaryMarkets: initialSnapshot?.formData?.primaryMarkets ?? "",
+    fabricTypes: Array.isArray(initialSnapshot?.formData?.fabricTypes) ? initialSnapshot.formData.fabricTypes : ([] as string[]),
+    specifications: initialSnapshot?.formData?.specifications ?? "",
+    timeline: initialSnapshot?.formData?.timeline ?? "",
+    message: initialSnapshot?.formData?.message ?? "",
+  }));
+
+  const [currentStep, setCurrentStep] = useState<number>(initialSnapshot?.currentStep ?? 1);
+  const [lastSaved, setLastSaved] = useState<Date | null>(() =>
+    initialSnapshot?.lastSaved ? new Date(initialSnapshot.lastSaved) : null
+  );
+
+  // pull any prior draft id synchronously; hydrate details later in bg
+  const [draftId, setDraftId] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      return localStorage.getItem(draftKey) || initialSnapshot?.draftId || "";
+    } catch {
+      return initialSnapshot?.draftId || "";
+    }
   });
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
-
-  // quick transition overlay when moving 2 -> 3
+  // quick transition overlay when moving 2 -> 3 (kept; tiny cost)
   const [showStepAdvance, setShowStepAdvance] = useState(false);
   const stepAdvanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [draftId, setDraftId] = useState<string>("");
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   // debounce timer for autosave
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -190,73 +211,40 @@ export function ContactForm({
   }, [persistDraft]);
 
   /* ----------------------------
-     Load from localStorage & server
+     Background hydrate from server (no blocking UI)
   ----------------------------- */
   useEffect(() => {
-    const loadSavedData = async () => {
+    const hydrate = async () => {
+      if (!draftId) return;
       try {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (parsed.formData) {
-            setFormData({
-              companyName: parsed.formData.companyName ?? "",
-              contactPerson: parsed.formData.contactPerson ?? "",
-              email: parsed.formData.email ?? "",
-              phone: parsed.formData.phone ?? "",
-              businessType: parsed.formData.businessType ?? "",
-              annualVolume: parsed.formData.annualVolume ?? "",
-              primaryMarkets: parsed.formData.primaryMarkets ?? "",
-              fabricTypes: parsed.formData.fabricTypes ?? [],
-              specifications: parsed.formData.specifications ?? "",
-              timeline: parsed.formData.timeline ?? "",
-              message: parsed.formData.message ?? "",
-            });
-          }
-          setCurrentStep(parsed.currentStep || 1);
-          setLastSaved(parsed.lastSaved ? new Date(parsed.lastSaved) : null);
+        const res = await fetch(`${submitUrl}/${draftId}`, {
+          method: "GET",
+          headers: buildAuthHeaders(submitHeaders),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (res.ok && json?.data) {
+          const d = json.data;
+          setFormData({
+            companyName: d.companyName ?? "",
+            contactPerson: d.contactPerson ?? "",
+            email: d.email ?? "",
+            phone: d.phoneNumber ?? "",
+            businessType: d.businessType ?? "",
+            annualVolume: d.annualFabricVolume ?? "",
+            primaryMarkets: d.primaryMarkets ?? "",
+            fabricTypes: Array.isArray(d.fabricTypesOfInterest) ? d.fabricTypesOfInterest : [],
+            specifications: d.specificationsRequirements ?? "",
+            timeline: d.timeline ?? "",
+            message: d.additionalMessage ?? "",
+          });
         }
-
-        const savedDraft = localStorage.getItem(draftKey) || "";
-        if (savedDraft) {
-          setDraftId(savedDraft);
-          // hydrate from backend
-          try {
-            const res = await fetch(`${submitUrl}/${savedDraft}`, {
-              method: "GET",
-              headers: buildAuthHeaders(submitHeaders),
-            });
-            const json = await res.json().catch(() => ({}));
-            if (res.ok && json?.data) {
-              const d = json.data;
-              setFormData({
-                companyName: d.companyName ?? "",
-                contactPerson: d.contactPerson ?? "",
-                email: d.email ?? "",
-                phone: d.phoneNumber ?? "",
-                businessType: d.businessType ?? "",
-                annualVolume: d.annualFabricVolume ?? "",
-                primaryMarkets: d.primaryMarkets ?? "",
-                fabricTypes: Array.isArray(d.fabricTypesOfInterest) ? d.fabricTypesOfInterest : [],
-                specifications: d.specificationsRequirements ?? "",
-                timeline: d.timeline ?? "",
-                message: d.additionalMessage ?? "",
-              });
-            }
-          } catch (e) {
-            console.warn("Could not hydrate draft from server:", e);
-          }
-        }
-      } catch (error) {
-        console.error("Error loading saved form data:", error);
-      } finally {
-        setIsLoading(false);
+      } catch (e) {
+        console.warn("Could not hydrate draft from server:", e);
       }
     };
-
-    void loadSavedData();
+    void hydrate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [draftId]);
 
   /* ----------------------------
      Field handlers
@@ -274,7 +262,7 @@ export function ContactForm({
   const handleCheckboxChange = (fabricType: string) => {
     setFormData((prev) => {
       const updated = prev.fabricTypes.includes(fabricType)
-        ? prev.fabricTypes.filter((t) => t !== fabricType)
+        ? prev.fabricTypes.filter((t:string) => t !== fabricType)
         : [...prev.fabricTypes, fabricType];
       return { ...prev, fabricTypes: updated };
     });
@@ -334,19 +322,8 @@ export function ContactForm({
   };
 
   /* ----------------------------
-     UI
+     UI  (no loading screen)
   ----------------------------- */
-  if (isLoading) {
-    return (
-      <div className="bg-white rounded-2xl shadow-xl p-8">
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-          <span className="ml-3 text-slate-600">Loading form...</span>
-        </div>
-      </div>
-    );
-  }
-
   if (showSuccess) {
     return (
       <div className="bg-white rounded-2xl shadow-xl p-8">
