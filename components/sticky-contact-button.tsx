@@ -15,6 +15,7 @@ type Props = {
   buttonLabel?: string;      // tooltip/aria label for the FAB
   title?: string;            // modal title
   subtitle?: string;         // modal subtitle
+  side?: "left" | "right";   // where to place the FAB; default: left
 };
 
 export function StickyContactButton({
@@ -23,39 +24,38 @@ export function StickyContactButton({
   address,
   hours,
   mapsUrl,
-  buttonLabel = "",
+  buttonLabel = "Get Your Custom Quote Today",
   title = "Get Your Custom Quote Today",
   subtitle = "",
+  side = "left",
 }: Props) {
   const [open, setOpen] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
-  // Public env fallbacks
-  const COMPANY_PHONE =
-    phone || process.env.NEXT_PUBLIC_COMPANY_PHONE || "+91 9925155141";
-  const COMPANY_EMAIL =
-    email || process.env.NEXT_PUBLIC_COMPANY_EMAIL || "rajesh.goyal@amritafashions.com";
+  // Pull from props first, then envs. (No hard-coded fallbacks.)
+  const COMPANY_PHONE = phone || process.env.NEXT_PUBLIC_COMPANY_PHONE || "";
+  const COMPANY_EMAIL = email || process.env.NEXT_PUBLIC_COMPANY_EMAIL || "";
   const COMPANY_ADDRESS =
-    address ||
-    process.env.NEXT_PUBLIC_COMPANY_ADDRESS ||
-    "404, Safal Prelude, Corporate Rd, Prahlad Nagar, Ahmedabad, Gujarat-380015";
-  const COMPANY_HOURS =
-    hours ||
-    process.env.NEXT_PUBLIC_COMPANY_HOURS ||
-    "Mon–Sat: 9:30 AM – 7:00 PM IST";
+    address || process.env.NEXT_PUBLIC_COMPANY_ADDRESS || "";
+  const COMPANY_HOURS = hours || process.env.NEXT_PUBLIC_COMPANY_HOURS || "";
 
   // Links
-  const telHref = `tel:${COMPANY_PHONE.replace(/[^\d+]/g, "")}`;
-  const mailHref = `mailto:${COMPANY_EMAIL}`;
+  const telHref = COMPANY_PHONE
+    ? `tel:${COMPANY_PHONE.replace(/[^\d+]/g, "")}`
+    : undefined;
+  const mailHref = COMPANY_EMAIL ? `mailto:${COMPANY_EMAIL}` : undefined;
   const mapsHref =
     mapsUrl ||
-    `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(COMPANY_ADDRESS)}`;
+    (COMPANY_ADDRESS
+      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+          COMPANY_ADDRESS
+        )}`
+      : undefined);
 
   // prettified, multiline address for UI
-  const addressDisplay = COMPANY_ADDRESS.replace(/,\s*/g, ",\n");
-
-  function sanitizeE164(s: string) {
-    return s ? s.replace(/[^\d+]/g, "") : s;
-  }
+  const addressDisplay = COMPANY_ADDRESS
+    ? COMPANY_ADDRESS.replace(/,\s*/g, ",\n")
+    : "";
 
   // Close on Esc + lock scroll when modal is open
   useEffect(() => {
@@ -70,29 +70,90 @@ export function StickyContactButton({
     };
   }, [open]);
 
+  // side-aware positioning (iOS safe areas)
+  const sideClasses =
+    side === "right"
+      ? "right-[max(env(safe-area-inset-right),16px)]"
+      : "left-[max(env(safe-area-inset-left),16px)]";
+
   return (
     <>
-      {/* Sticky launcher (bottom-left) */}
-      <button
-        onClick={() => setOpen(true)}
-        className="fixed bottom-6 left-6 z-[120] bg-gradient-to-r from-blue-600 to-blue-700
-                   hover:from-blue-700 hover:to-blue-800 text-white h-14 w-14 rounded-full
-                   shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 group"
-        aria-label={buttonLabel}
+      {/* Sticky launcher */}
+      <div
+        className={[
+          "fixed z-[120]",
+          sideClasses,
+          "bottom-[max(env(safe-area-inset-bottom),16px)]",
+          "transition-all duration-500 ease-out translate-y-0 opacity-100",
+        ].join(" ")}
       >
-        <span className="text-2xl leading-none">✉</span>
-        {/* Tooltip */}
-        <span
-          className="pointer-events-none absolute -top-2 left-1/2 -translate-x-1/2 -translate-y-full
-                     rounded px-2 py-1 text-xs bg-slate-900 text-white opacity-0 group-hover:opacity-100"
+        {/* tooltip: desktop only */}
+        {isHovered && (
+          <div
+            role="tooltip"
+            id="contact-tooltip"
+            className={[
+              "hidden sm:block absolute bottom-full",
+              side === "right" ? "right-0" : "left-0",
+              "mb-3 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg shadow-lg whitespace-nowrap",
+            ].join(" ")}
+          >
+            {buttonLabel}
+            <div
+              className={[
+                "w-2 h-2 bg-gray-900 rotate-45 absolute -bottom-1",
+                side === "right" ? "right-4" : "left-4",
+              ].join(" ")}
+            />
+          </div>
+        )}
+
+        <button
+          onClick={() => setOpen(true)}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+          className={[
+            "group relative flex items-center justify-center",
+            "w-14 h-14 md:w-16 md:h-16 rounded-full text-white shadow-2xl",
+            "transition-all duration-300 hover:scale-110 focus:outline-none",
+            "focus-visible:ring-2 focus-visible:ring-white/60",
+            // same gradient look & strong shadow (contact = blue)
+            "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800",
+          ].join(" ")}
+          style={{ boxShadow: "0 10px 30px rgba(37,99,235,0.45)" }}
+          aria-label={buttonLabel}
+          title={buttonLabel}
+          aria-describedby={isHovered ? "contact-tooltip" : undefined}
         >
-          {buttonLabel}
-        </span>
-      </button>
+          <span className="sr-only">{buttonLabel}</span>
+
+          {/* ripple */}
+          <div
+            className="absolute inset-0 rounded-full bg-white opacity-0 group-hover:opacity-20 group-hover:scale-150 transition-all duration-300"
+            aria-hidden="true"
+          />
+
+          {/* icon (envelope) */}
+          <span className="text-2xl leading-none relative z-10">✉</span>
+        </button>
+
+        {/* reduce motion preference */}
+        <style jsx>{`
+          @media (prefers-reduced-motion: reduce) {
+            .group:hover {
+              transform: none !important;
+            }
+          }
+        `}</style>
+      </div>
 
       {/* Modal */}
       {open && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center" role="dialog" aria-modal="true">
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center"
+          role="dialog"
+          aria-modal="true"
+        >
           {/* Backdrop */}
           <div
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -106,7 +167,9 @@ export function StickyContactButton({
             <div className="flex items-center justify-between p-6 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-white">
               <div>
                 <h2 className="text-2xl font-bold text-slate-900">{title}</h2>
-                <p className="text-slate-600 mt-1">{subtitle}</p>
+                {subtitle ? (
+                  <p className="text-slate-600 mt-1">{subtitle}</p>
+                ) : null}
               </div>
               <button
                 onClick={() => setOpen(false)}
@@ -121,9 +184,14 @@ export function StickyContactButton({
             <div className="overflow-y-auto max-h-[calc(90vh-120px)]">
               <div className="p-6">
                 <div className="grid lg:grid-cols-2 gap-8">
-                  <div><ContactForm onSuccess={() => setOpen(false)} /></div>
+                  <div>
+                    <ContactForm onSuccess={() => setOpen(false)} />
+                  </div>
                   <ContactDetails className="text-black" />
                 </div>
+
+               
+               
               </div>
             </div>
             {/* /Body */}

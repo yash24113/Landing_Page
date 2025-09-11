@@ -3,23 +3,52 @@ import React from "react";
 import Link from "next/link";
 import { createPortal } from "react-dom";
 
+/* -----------------------------------------------
+   Hook: media query (SSR-safe)
+------------------------------------------------ */
+function useMediaQuery(query: string) {
+  const [matches, setMatches] = React.useState(false);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mql = window.matchMedia(query);
+    const onChange = () => setMatches(mql.matches);
+    // set initial
+    setMatches(mql.matches);
+    // subscribe
+    mql.addEventListener ? mql.addEventListener("change", onChange) : mql.addListener(onChange);
+    return () => {
+      mql.removeEventListener ? mql.removeEventListener("change", onChange) : mql.removeListener(onChange);
+    };
+  }, [query]);
+
+  return matches;
+}
+
 export function Navigation() {
   const [open, setOpen] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
+  const isDesktop = useMediaQuery("(min-width: 768px)"); // Tailwind md breakpoint
 
   React.useEffect(() => setMounted(true), []);
 
-  // lock body scroll
+  // 1) Auto-close the mobile menu when we cross to desktop
+  React.useEffect(() => {
+    if (isDesktop && open) setOpen(false);
+  }, [isDesktop, open]);
+
+  // 2) Lock body scroll only when the mobile sheet is visible on mobile
   React.useEffect(() => {
     if (!mounted) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = open ? "hidden" : prev || "";
+    const prevOverflow = document.body.style.overflow;
+    const shouldLock = open && !isDesktop; // lock only for mobile sheet
+    document.body.style.overflow = shouldLock ? "hidden" : prevOverflow || "";
     return () => {
-      document.body.style.overflow = prev || "";
+      document.body.style.overflow = prevOverflow || "";
     };
-  }, [open, mounted]);
+  }, [open, mounted, isDesktop]);
 
-  // close on ESC
+  // 3) Close on ESC
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     window.addEventListener("keydown", onKey);
@@ -31,29 +60,18 @@ export function Navigation() {
   /* -----------------------------------------------
      ENV → UI (name / call / WhatsApp)
   ------------------------------------------------ */
-  const COMPANY_NAME =
-    process.env.NEXT_PUBLIC_COMPANY_NAME || "Company Name";
-  const RAW_PHONE =
-    process.env.NEXT_PUBLIC_COMPANY_PHONE || "+91 9925155141";
-  const RAW_WA =
-    process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || RAW_PHONE;
+  const COMPANY_NAME = process.env.NEXT_PUBLIC_COMPANY_NAME || "Company Name";
+  const RAW_PHONE = process.env.NEXT_PUBLIC_COMPANY_PHONE || "+91 9925155141";
+  const RAW_WA = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || RAW_PHONE;
 
-  // Remove invisible bidi marks and trim
-  const stripBidi = (s: string) =>
-    s.replace(/[\u200e\u200f\u202a-\u202e]/g, "").trim();
-
-  // Keep a single leading + if present, strip everything else that's not a digit
+  const stripBidi = (s: string) => s.replace(/[\u200e\u200f\u202a-\u202e]/g, "").trim();
   const sanitizeForTel = (s: string) => {
     const t = stripBidi(s);
     const plus = t.startsWith("+") ? "+" : "";
     const digits = t.replace(/[^\d]/g, "");
     return `${plus}${digits}`;
-    // examples: "+1-234 567 8900" -> "+12345678900"
   };
-
-  // WhatsApp requires digits only (no plus)
-  const sanitizeForWhatsApp = (s: string) =>
-    stripBidi(s).replace(/[^\d]/g, "");
+  const sanitizeForWhatsApp = (s: string) => stripBidi(s).replace(/[^\d]/g, "");
 
   const telHref = `tel:${sanitizeForTel(RAW_PHONE)}`;
   const waHref = `https://wa.me/${sanitizeForWhatsApp(RAW_WA)}?text=${encodeURIComponent(
@@ -106,7 +124,7 @@ export function Navigation() {
   );
 
   const overlay = (
-    <div className="fixed inset-0 z-[9999]">
+    <div className="fixed inset-0 z-[9999] md:hidden">{/* never render on md+ */}
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={close} aria-hidden="true" />
 
@@ -263,7 +281,7 @@ export function Navigation() {
               </a>
             </div>
 
-            {/* Mobile toggle (hidden while open to avoid overlap) */}
+            {/* Mobile toggle */}
             <div className="md:hidden flex items-center">
               <button
                 className={`text-slate-700 hover:text-slate-900 focus:outline-none transition ${open ? "opacity-0 pointer-events-none" : ""}`}
@@ -279,7 +297,8 @@ export function Navigation() {
         </div>
       </nav>
 
-      {mounted && open ? createPortal(overlay, document.body) : null}
+      {/* 4) Only render the mobile sheet on mobile */}
+      {mounted && open && !isDesktop ? createPortal(overlay, document.body) : null}
 
       <style jsx>{`
         .animated-border::after {

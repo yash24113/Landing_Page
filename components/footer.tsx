@@ -336,9 +336,12 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="border-t border-slate-800 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
-          <p className="text-slate-400 text-sm">© {year} {name}. All rights reserved.</p>
-        </div>
+       <div className="border-t border-slate-800 mt-12 pt-8 flex flex-col items-center justify-center text-center">
+  <p className="text-slate-400 text-sm">
+    © {year} {name}. All rights reserved.
+  </p>
+</div>
+
       </div>
     </footer>
   );

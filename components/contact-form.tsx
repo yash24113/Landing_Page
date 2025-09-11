@@ -119,7 +119,7 @@ export function ContactForm({
      Create or update draft
   ----------------------------- */
   const persistDraft = useCallback(
-    async (immediate = false) => {
+    async (_immediate = false) => {
       if (isSavingRef.current) return;
       isSavingRef.current = true;
 
@@ -591,24 +591,17 @@ export function ContactForm({
           </div>
         )}
 
-        <div className="flex justify-between mt-8">
-          {currentStep > 1 && (
-            <button
-              type="button"
-              onClick={prevStep}
-              disabled={isSubmitting}
-              className="px-6 py-3 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50"
-            >
-              Previous
-            </button>
-          )}
-
+        {/* Actions */}
+        <div className="mt-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          {/* Primary on top (mobile), Secondary below; both full-width on mobile */}
           {currentStep < 3 ? (
             <button
               type="button"
               onClick={nextStep}
               disabled={isSubmitting}
-              className="ml-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50"
+              className="order-1 sm:order-2 w-full sm:w-auto sm:ml-auto inline-flex justify-center px-7 py-3 rounded-xl
+                         bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold
+                         shadow-lg hover:from-blue-700 hover:to-blue-800 transition-all disabled:opacity-50"
             >
               Next Step
             </button>
@@ -616,81 +609,43 @@ export function ContactForm({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="ml-auto px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg font-semibold transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 flex items-center space-x-2"
+              className="order-1 sm:order-2 w-full sm:w-auto sm:ml-auto inline-flex items-center justify-center rounded-xl
+                         bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg
+                         hover:from-blue-700 hover:to-blue-800 transition-all disabled:opacity-50
+                         px-8 py-3"
             >
               {isSubmitting ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                  <span>Submitting...</span>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                  <span className="font-semibold">Submitting…</span>
                 </>
               ) : (
-                <span>Submit Quote Request</span>
+                <span className="font-semibold leading-tight text-center">
+                  <span className="block">Submit Quote</span>
+                  <span className="block">Request</span>
+                </span>
               )}
             </button>
           )}
+
+          {currentStep > 1 ? (
+            <button
+              type="button"
+              onClick={prevStep}
+              disabled={isSubmitting}
+              className="order-2 sm:order-1 w-full sm:w-auto inline-flex justify-center px-6 py-3 rounded-xl border border-slate-200
+                         bg-white text-slate-700 shadow-sm hover:bg-slate-50 transition-colors disabled:opacity-50"
+            >
+              Previous
+            </button>
+          ) : (
+            <span className="order-2 sm:order-1 h-0 w-0 sm:w-px sm:h-px" />
+          )}
         </div>
+
+        {/* Space for sticky FABs on mobile so buttons don't get covered */}
+        <div className="md:hidden h-[max(16px,env(safe-area-inset-bottom))]" />
       </form>
     </div>
   );
 }
-
-/* ---------------------------------------------
-   NEW: Full-width section that uses ContactForm
-   (matches the provided “image-wise” design)
----------------------------------------------- */
-// export function ContactSection() {
-//   return (
-//     <section id="contact" className="py-14 sm:py-20 bg-slate-900">
-//       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-//         <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6 text-center text-balance">
-//           Get Your Custom Quote Today
-//         </h2>
-
-//         <div className="grid lg:grid-cols-2 gap-10 sm:gap-16">
-//           {/* Left: The same form (shared autosave + draft-id) */}
-//           <ContactForm />
-
-//           {/* Right: Why Choose + contact info */}
-//           <div className="space-y-6 text-white break-words">
-//             <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-6 rounded-xl text-white">
-//               <h3 className="text-xl font-bold mb-4">Why Choose FabricPro?</h3>
-//               <div className="space-y-3">
-//                 <div className="flex items-center space-x-3">
-//                   <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-//                   <span className="text-sm">ISO Certified Quality Standards</span>
-//                 </div>
-//                 <div className="flex items-center space-x-3">
-//                   <div className="w-2 h-2 bg-emerald-400 rounded-full"></div>
-//                   <span className="text-sm">Global Shipping &amp; Logistics</span>
-//                 </div>
-//                 <div className="flex items-center space-x-3">
-//                   <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
-//                   <span className="text-sm">Competitive Bulk Pricing</span>
-//                 </div>
-//                 <div className="flex items-center space-x-3">
-//                   <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
-//                   <span className="text-sm">24/7 Customer Support</span>
-//                 </div>
-//               </div>
-//             </div>
-
-//             <div className="truncate md:whitespace-normal">
-//               📞{" "}
-//               <a href={`tel:${sanitizeE164(COMPANY_PHONE)}`} className="hover:underline">
-//                 {COMPANY_PHONE}
-//               </a>
-//             </div>
-//             <div className="truncate md:whitespace-normal">
-//               ✉️{" "}
-//               <a href={`mailto:${COMPANY_EMAIL}`} className="hover:underline">
-//                 {COMPANY_EMAIL}
-//               </a>
-//             </div>
-//             <div className="break-words">🏢 {COMPANY_ADDRESS || "Ahmedabad, Gujarat-380015"}</div>
-//             <div>🕘 {COMPANY_HOURS}</div>
-//           </div>
-//         </div>
-//       </div>
-//     </section>
-//   );
-// }

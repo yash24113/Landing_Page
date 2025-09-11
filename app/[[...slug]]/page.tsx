@@ -11,7 +11,6 @@ import { ContactForm } from "@/components/contact-form";
 import JsonLdInjector from "@/components/json-ld-injector";
 import { CatalogButton } from "@/components/catalog-button";
 import { fetchSeoData } from "@/lib/seo"; // and fetchProductData (dynamic import below)
-import ExpandableText from "@/components/expandable-text";
 import { ContactDetails } from "@/components/contact-details";
 
 /* -------------------------------------------------
@@ -664,6 +663,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       verification:
         seoData.googleSiteVerification || seoData.msValidate
           ? {
+            
               google: seoData.googleSiteVerification,
               other: seoData.msValidate ? { "msvalidate.01": seoData.msValidate } : undefined,
             }
@@ -900,7 +900,7 @@ export default async function Page({ params }: Props) {
         <JsonLdInjector {...ld} />
 
         {/* HERO */}
-        <section className="hero relative bg-white text-slate-900 overflow-hidden pt-4 pb-8 sm:pt-8">
+        <section id="hero" className="hero relative bg-white text-slate-900 overflow-hidden pt-4 pb-8 sm:pt-8">
           <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
             <div className="flex flex-col lg:grid lg:grid-cols-2 gap-8 items-center">
               {/* Left */}
@@ -985,19 +985,20 @@ export default async function Page({ params }: Props) {
               </div>
 
               {/* Right (Image) */}
-              <div className="relative w-full">
-                <div className="relative z-10 w-full rounded-2xl overflow-hidden shadow-lg bg-white aspect-[16/10] sm:aspect-[5/4] lg:aspect-[16/9]">
-                  <Image
-                    key={heroImage}
-                    src={heroImage}
-                    alt={heroAlt}
-                    fill
-                    priority
-                    className="object-contain object-center"
-                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 800px"
-                  />
-                </div>
-              </div>
+              <div className="relative w-full px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
+  <div className="relative z-10 w-full rounded-2xl overflow-hidden shadow-lg bg-white aspect-[16/10] sm:aspect-[5/4] lg:aspect-[16/9]">
+    <Image
+      key={heroImage}
+      src={heroImage}
+      alt={heroAlt}
+      fill
+      priority
+      className="object-contain object-center"
+      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 800px"
+    />
+  </div>
+</div>
+
 
             </div>
           </div>
@@ -1101,11 +1102,18 @@ export default async function Page({ params }: Props) {
                           {p.name}
                         </h3>
 
-                        <ExpandableText
-                          text={desc || "—"}
-                          lines={3}
-                          className="text-slate-600 text-sm sm:text-base whitespace-pre-wrap break-words"
-                        />
+                        {/* Truncated description + “Read more” link to slug#hero */}
+                        <p className="text-slate-600 text-sm sm:text-base line-clamp-3">
+                          {desc || "—"}
+                        </p>
+                        {href !== "#" && (
+                          <Link
+                            href={`${href}`}
+                            className="mt-3 inline-flex items-center font-semibold text-blue-700 hover:text-blue-800"
+                          >
+                            Read more →
+                          </Link>
+                        )}
                       </div>
                     </div>
                   );
@@ -1135,9 +1143,9 @@ export default async function Page({ params }: Props) {
               Get Your Custom Quote Today
             </h2>
             <div className="grid lg:grid-cols-2 gap-10 sm:gap-16 ">
-            <ContactForm />
-          <ContactDetails  />
-</div>
+              <ContactForm />
+              <ContactDetails  />
+            </div>
           </div>
         </section>
 
@@ -1228,7 +1236,7 @@ export default async function Page({ params }: Props) {
 
       <main className="min-h-screen bg-white overflow-x-hidden">
         {/* HERO */}
-        <section className="hero relative bg-white text-slate-900 overflow-hidden pt-4 pb-8 sm:pt-10">
+        <section id="hero" className="hero relative bg-white text-slate-900 overflow-hidden pt-4 pb-8 sm:pt-10">
           <div className="relative max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
             <div className="flex flex-col lg:grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
               {/* Left Column: Text */}
@@ -1396,14 +1404,21 @@ export default async function Page({ params }: Props) {
                       </div>
                       <div className="p-5 sm:p-6">
                         <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-2 break-words">
-                                                    {p.name ?? "Fabric"}
+                          {p.name ?? "Fabric"}
                         </h3>
 
-                        <ExpandableText
-                          text={p.productdescription || "—"}
-                          lines={3}
-                          className="text-slate-600 text-sm sm:text-base whitespace-pre-wrap break-words"
-                        />
+                        {/* Truncated text + link to slug#hero */}
+                        <p className="text-slate-600 text-sm sm:text-base line-clamp-3">
+                          {(p.productdescription || "—").toString()}
+                        </p>
+                        {href !== "#" && (
+                          <a
+                            href={`${href}`}
+                            className="mt-3 inline-flex items-center font-semibold text-blue-700 hover:text-blue-800"
+                          >
+                            Read more →
+                          </a>
+                        )}
                       </div>
                     </div>
                   );
@@ -1438,57 +1453,13 @@ export default async function Page({ params }: Props) {
 
             <div className="grid lg:grid-cols-2 gap-10 sm:gap-16">
               <ContactForm />
-              <div className="space-y-6">
-                <div className="flex items-start space-x-4">
-                  <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <span className="text-white text-xl">📞</span>
-                  </div>
-                  <div>
-                    <div className="text-white font-semibold">Phone</div>
-                    <a href={`tel:${sanitizeE164(COMPANY_PHONE)}`} className="text-slate-300 hover:text-white transition-colors break-words">
-                      {COMPANY_PHONE}
-                    </a>
-                  </div>
-                </div>
-
-                <div className="flex items-start space-x-4">
-                  <div className="w-12 h-12 bg-emerald-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <span className="text-white text-xl">✉️</span>
-                  </div>
-                  <div>
-                    <div className="text-white font-semibold">Email</div>
-                    <a href={`mailto:${COMPANY_EMAIL}`} className="text-slate-300 hover:text-white transition-colors break-words">
-                      {COMPANY_EMAIL}
-                    </a>
-                  </div>
-                </div>
-
-                <div className="flex items-start space-x-4">
-                  <div className="w-12 h-12 bg-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <span className="text-white text-xl">🏢</span>
-                  </div>
-                  <div>
-                    <div className="text-white font-semibold">Office</div>
-                    <div className="text-slate-300 break-words">{COMPANY_ADDRESS || "Ahmedabad, Gujarat-380015"}</div>
-                  </div>
-                </div>
-
-                <div className="flex items-start space-x-4">
-                  <div className="w-12 h-12 bg-rose-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <span className="text-white text-xl">🕘</span>
-                  </div>
-                  <div>
-                    <div className="text-white font-semibold">Hours</div>
-                    <div className="text-slate-300">Mon–Sat: 9:30 AM – 7:00 PM IST</div>
-                  </div>
-                </div>
-              </div>
+              <ContactDetails />
             </div>
           </div>
         </section>
 
         <WhatsAppButton />
-        <Chatbot />
+        {/* <Chatbot /> */}
       </main>
     </>
   );
@@ -1591,4 +1562,3 @@ export async function submitContact(formData: FormData) {
     return { ok: false as const, status: 500, message: "Network/Server error while creating contact", error: e?.message };
   }
 }
-
