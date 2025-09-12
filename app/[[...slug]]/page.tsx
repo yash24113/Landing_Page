@@ -797,6 +797,7 @@ function OverviewSection(props: {
   );
 }
 
+
 function ProductGrid(props: {
   title?: string;
   subtitle?: string;
@@ -849,13 +850,15 @@ function ProductGrid(props: {
                     <p className="text-slate-600 text-sm sm:text-base line-clamp-3">
                       {desc || "—"}
                     </p>
+
+                    {/* NOTE: Avoid nested <a>. This is a styled span now. */}
                     {href !== "#" && (
-                      <a
-                        href={`${href}`}
-                        className="mt-3 inline-flex items-center font-semibold text-blue-700 hover:text-blue-800"
+                      <span
+                        className="mt-3 inline-flex items-center font-semibold text-blue-700 group-hover:text-blue-800"
+                        aria-hidden="true"
                       >
                         Read more →
-                      </a>
+                      </span>
                     )}
                   </div>
                 </div>
@@ -879,6 +882,7 @@ function ProductGrid(props: {
     </section>
   );
 }
+
 
 function ContactSection() {
   return (
