@@ -40,7 +40,10 @@ const CONTACT_URL =
 -------------------------------------------------- */
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY ?? "";
 const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? "";
-const API_KEY_HEADER = process.env.NEXT_PUBLIC_API_KEY_HEADER ?? "x-api-key";
+const API_KEY_HEADER =
+  process.env.NEXT_API_KEY_HEADER ??
+  process.env.NEXT_PUBLIC_API_KEY_HEADER ??
+  "x-api-key";
 const ADMIN_EMAIL_HEADER = process.env.NEXT_PUBLIC_ADMIN_EMAIL_HEADER ?? "x-admin-email";
 
 const authHeaders: Record<string, string> = {};
@@ -194,11 +197,11 @@ type ProductDoc = {
   name?: string;
   slug?: string;
   img?: string;
-  altimg1?:string;
+  altimg1?: string;
   image1?: string;
-   altimg2?:string;
+  altimg2?: string;
   image2?: string;
-   altimg3?:string;
+  altimg3?: string;
   gsm?: string | number;
   oz?: string | number;
   cm?: string | number;
@@ -589,7 +592,7 @@ function websiteJsonLd(seo: any) {
 
 function faqJsonLd() {
   const faqs = [
-    { question: "What is your minimum order quantity for bulk fabric orders?", answer: "Our minimum order quantity varies by fabric type, typically starting from 500 meters for standard fabrics and 1000 meters for custom specifications. We work with garment manufacturers and retailers of all sizes to accommodate their specific needs." },
+    { question: "What is your minimum order quantity for bulk fabric orders?", answer: "Our minimum order quantity varies by fabric type, typically starting from 500 meters for standard fabrics and 1000 meters for custom specifications." },
     { question: "Do you provide fabric samples before placing bulk orders?", answer: "Yes, we provide free fabric samples for all our products. Sample orders are processed within 3-5 business days and shipped worldwide." },
     { question: "What are your payment terms for B2B fabric orders?", answer: "We offer flexible payment terms including T/T, L/C, and for established clients, 30-60 day terms." },
     { question: "How do you ensure consistent quality across large fabric orders?", answer: "Strict QC processes including pre-production samples, in-line inspection, and final checks before shipment." },
@@ -601,6 +604,19 @@ function faqJsonLd() {
     "@type": "FAQPage",
     mainEntity: faqs.map((faq) => ({ "@type": "Question", name: faq.question, acceptedAnswer: { "@type": "Answer", text: faq.answer } })),
   };
+}
+
+/* ---------- NEW: module-scoped JSON-LD aggregator (used below) ---------- */
+function jsonLdFor(seoBase: any, productName?: string) {
+  const videoLd = parseJsonLd(seoBase?.VideoJsonLd);
+  const logoLd = parseJsonLd(seoBase?.LogoJsonLd) ?? buildLogoLdFromParts(seoBase);
+  const breadcrumbLd = buildBreadcrumbLdFromParts(seoBase);
+  const localBusinessLd = buildLocalBusinessLdFromParts(seoBase);
+  const productLd = productJsonLd(seoBase, productName);
+  const organizationLd = organizationJsonLd(seoBase);
+  const websiteLd = websiteJsonLd(seoBase);
+  const faqLd = faqJsonLd();
+  return { videoLd, logoLd, breadcrumbLd, localBusinessLd, productLd, organizationLd, websiteLd, faqLd };
 }
 
 /* -------------------------------------------------
@@ -624,14 +640,13 @@ function SectionHero(props: {
     img?: string;
     image1?: string;
     image2?: string;
-      altimg1?:string;
-        altimg2?:string;
-          altimg3?:string;
+    altimg1?: string;
+    altimg2?: string;
+    altimg3?: string;
     gsm?: string | number;
     oz?: string | number;
     cm?: string | number;
     inch?: string | number;
-
   };
 }) {
   const { titleNode, subtitle, sku, price, rating, reviews, phone, heroImage, heroAlt, catalogProduct } = props;
@@ -923,7 +938,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const title = seoData.title || "Premium Fabric";
     const desc = seoData.description || "High-quality fabric for garment manufacturing.";
 
-    // canonical from ENV + SEO.slug (falls back to base)
     const canonical = canonicalFromSeoSlug(seoData?.slug);
     const origin = (BASE_URL || "https://example.com");
     const ogType = seoData.ogType ? ogTypeSafe(seoData.ogType) : (seoData.ogVideoUrl ? "video.other" : "website");
@@ -1078,21 +1092,6 @@ export default async function Page({ params }: Props) {
   const slugSegs = p.slug ?? [];
   const slug = slugSegs[0];
 
-  const seoContent = await fetchSeoData(slug);
-
-  // ---------- JSON-LD builder ----------
-  const jsonLdFor = (seoBase: any, productName?: string) => {
-    const videoLd = parseJsonLd(seoBase?.VideoJsonLd);
-    const logoLd = parseJsonLd(seoBase?.LogoJsonLd) ?? buildLogoLdFromParts(seoBase);
-    const breadcrumbLd = buildBreadcrumbLdFromParts(seoBase);
-    const localBusinessLd = buildLocalBusinessLdFromParts(seoBase);
-    const productLd = productJsonLd(seoBase, productName);
-    const organizationLd = organizationJsonLd(seoBase);
-    const websiteLd = websiteJsonLd(seoBase);
-    const faqLd = faqJsonLd();
-    return { videoLd, logoLd, breadcrumbLd, localBusinessLd, productLd, organizationLd, websiteLd, faqLd };
-  };
-
   /* ============================
      HOME (no slug)
   ============================ */
@@ -1230,15 +1229,9 @@ export default async function Page({ params }: Props) {
 
         <OverviewSection
           tagline="ISO 9001 Certified • 500+ Global Partners • Ships to 50+ Countries"
-          p1={
-            desc1FromSeo ||
-            "As a premier B2B fabric supplier, we specialize in providing high-quality textiles to global garment manufacturers, clothing retailers, and fabric trading companies. Our extensive network spans across major textile hubs worldwide, ensuring consistent supply chains and competitive pricing for bulk fabric orders."
-          }
-          p2={
-            desc2FromSeo ||
-            "Our commitment to excellence extends beyond product quality to encompass reliable logistics, flexible payment terms, and comprehensive customer support. Whether you’re sourcing fabrics for fast fashion, luxury apparel, or industrial textiles, our team delivers customized solutions."
-          }
-          extraContent={<CommitmentText content={(seoContent as any)?.description} />}
+         p1={desc1FromSeo || undefined}
+        p2={desc2FromSeo || undefined}
+          extraContent={<CommitmentText />}
           image={overviewImage}
           imageAlt={overviewAlt}
         />
@@ -1275,24 +1268,22 @@ export default async function Page({ params }: Props) {
   const slugByProduct = new Map<string, string>();
   for (const s of allSeos) {
     const locId = toId(s.location);
-    theLoop: {
-      const locCode = norm(s.locationCode);
-      const pid = toId(s.product);
-      const sSlug = String(s?.slug ?? "").trim();
+    const locCode = norm(s.locationCode);
+    const pid = toId(s.product);
+    const sSlug = String(s?.slug ?? "").trim();
 
-      let sameLocation = false;
-      if (currentLocId && locId) {
-        sameLocation = currentLocId === locId;
-      } else if (!currentLocId || !locId) {
-        if (currentLocCode && locCode) sameLocation = currentLocCode === locCode;
-      }
+    let sameLocation = false;
+    if (currentLocId && locId) {
+      sameLocation = currentLocId === locId;
+    } else if (!currentLocId || !locId) {
+      if (currentLocCode && locCode) sameLocation = currentLocCode === locCode;
+    }
 
-      if (pid && sameLocation) {
-        relatedProductIds.add(pid);
-        if (sSlug) slugByProduct.set(pid, sSlug);
-      } else if (pid && sSlug && !slugByProduct.has(pid)) {
-        slugByProduct.set(pid, sSlug);
-      }
+    if (pid && sameLocation) {
+      relatedProductIds.add(pid);
+      if (sSlug) slugByProduct.set(pid, sSlug);
+    } else if (pid && sSlug && !slugByProduct.has(pid)) {
+      slugByProduct.set(pid, sSlug);
     }
   }
 
@@ -1363,10 +1354,7 @@ export default async function Page({ params }: Props) {
           heading="Leading B2B Fabric Supplier Worldwide"
           p1={locationDesc1}
           p2={locationDesc2}
-          extraContent={
-            // Ensure CommitmentText renders for slug pages too
-            <CommitmentText content={(seoContent as any)?.description || seo?.description} />
-          }
+          extraContent={<CommitmentText />}
           image={overviewImage}
           imageAlt={overviewAlt}
         />

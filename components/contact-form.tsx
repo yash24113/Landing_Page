@@ -1,4 +1,3 @@
-// components/contact-form.tsx
 "use client";
 
 import type React from "react";
@@ -11,20 +10,24 @@ export interface ContactFormProps {
   onSuccess?: () => void;
   submitUrl?: string;
   submitHeaders?: Record<string, string>;
-  /** localStorage key for the backend draft id (shared across instances) */
   draftKey?: string;
 }
 
-const STORAGE_KEY = "fabricpro_contact_form"; // UI state cache (shared)
+const STORAGE_KEY = "fabricpro_contact_form";
 const RAW_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:7000/landing").replace(/\/+$/, "");
 const DEFAULT_CONTACT_URL = `${RAW_BASE}/contacts`;
 
-const API_KEY_HEADER = process.env.API_KEY_HEADER || "x-api-key";
-const ADMIN_EMAIL_HEADER = process.env.ADMIN_EMAIL_HEADER || "x-admin-email";
-const API_KEY = process.env.API_KEY || "";
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "";
+// 🔑 use public envs (client-side)
+const API_KEY = process.env.NEXT_PUBLIC_API_KEY ?? "";
+const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? "";
+const API_KEY_HEADER = process.env.NEXT_API_KEY_HEADER ?? "x-api-key";
+const ADMIN_EMAIL_HEADER = process.env.NEXT_PUBLIC_ADMIN_EMAIL_HEADER ?? "x-admin-email";
 
-/** Public company info for the right-rail / section (env-driven, with fallbacks) */
+const BASE_AUTH_HEADERS: Record<string, string> = {};
+if (API_KEY) BASE_AUTH_HEADERS[API_KEY_HEADER] = API_KEY;
+if (ADMIN_EMAIL) BASE_AUTH_HEADERS[ADMIN_EMAIL_HEADER] = ADMIN_EMAIL;
+
+// company info (already public)
 const COMPANY_PHONE = process.env.NEXT_PUBLIC_COMPANY_PHONE || "+91 9925155141";
 const COMPANY_EMAIL = process.env.NEXT_PUBLIC_COMPANY_EMAIL || "rajesh.goyal@amritafashions.com";
 const COMPANY_ADDRESS =
@@ -32,7 +35,6 @@ const COMPANY_ADDRESS =
   "404, Safal Prelude, Corporate Rd, Prahlad Nagar, Ahmedabad, Gujarat-380015";
 const COMPANY_HOURS = process.env.NEXT_PUBLIC_COMPANY_HOURS || "Mon–Sat: 9:30 AM – 7:00 PM IST";
 
-/** Minimal phone sanitizer for tel: links (keeps a single leading +, removes other non-digits) */
 function sanitizeE164(value: string) {
   if (!value) return "";
   const hasPlus = value.trim().startsWith("+");
@@ -41,13 +43,13 @@ function sanitizeE164(value: string) {
 }
 
 function buildAuthHeaders(extra?: Record<string, string>) {
-  const h: Record<string, string> = {
+  return {
     "Content-Type": "application/json",
+    ...BASE_AUTH_HEADERS,            // ✅ include auth here
+    ...(extra || {}),
   };
-  if (API_KEY) h[API_KEY_HEADER] = API_KEY;
-  if (ADMIN_EMAIL) h[ADMIN_EMAIL_HEADER] = ADMIN_EMAIL;
-  return { ...h, ...(extra || {}) };
 }
+
 
 /* ---------------------------------------------
    Component
