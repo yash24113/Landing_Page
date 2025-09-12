@@ -943,7 +943,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const desc = seoData.description || "High-quality fabric for garment manufacturing.";
 
     const canonical = canonicalFromSeoSlug(seoData?.slug);
-    const origin = (BASE_URL || "https://example.com");
+    const origin = BASE_URL || "https://example.com";
     const ogType = seoData.ogType ? ogTypeSafe(seoData.ogType) : (seoData.ogVideoUrl ? "video.other" : "website");
 
     return {
@@ -987,9 +987,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         title,
         description: desc,
         type: ogType as any,
-        images: seoData.ogImage
-          ? [{ url: seoData.ogImage, width: 1200, height: 630, alt: title }]
-          : [],
+        images: seoData.ogImage ? [{ url: seoData.ogImage, width: 1200, height: 630, alt: title }] : [],
         videos: seoData.ogVideoUrl
           ? [
               {
@@ -1039,54 +1037,55 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     metadataBase: new URL(origin),
     applicationName: seo.ogSiteName || COMPANY_NAME,
     authors: seo.author_name ? [{ name: seo.author_name }] : undefined,
-    creator:seo.author_name,
-  publisher: seo.ogSiteName || COMPANY_NAME,
-  generator: "Next.js",
-  referrer: "origin-when-cross-origin",
-  robots: parseRobots(seo.robots),
-  viewport: { width: "device-width", initialScale: 1 },
-  formatDetection: {
-    email: false,
-    address: false,
-    telephone: seo.formatDetection === "telephone=no" ? false : true,
-  },
-  verification:
-    seo.googleSiteVerification || seo.msValidate
+    creator: seo.author_name,
+    publisher: seo.ogSiteName || COMPANY_NAME,
+    generator: "Next.js",
+    referrer: "origin-when-cross-origin",
+    robots: parseRobots(seo.robots),
+    viewport: { width: "device-width", initialScale: 1 },
+    formatDetection: {
+      email: false,
+      address: false,
+      telephone: seo.formatDetection === "telephone=no" ? false : true,
+    },
+    verification:
+      seo.googleSiteVerification || seo.msValidate
+        ? {
+            google: seo.googleSiteVerification,
+            other: seo.msValidate ? { "msvalidate.01": seo.msValidate } : undefined,
+          }
+        : undefined,
+    themeColor: seo.themeColor || "#ffffff",
+    appleWebApp: seo.mobileWebAppCapable
       ? {
-          google: seo.googleSiteVerification,
-          other: seo.msValidate ? { "msvalidate.01": seo.msValidate } : undefined,
+          capable: seo.mobileWebAppCapable === "yes",
+          statusBarStyle: (seo.appleStatusBarStyle as any) || "default",
         }
       : undefined,
-  themeColor: seo.themeColor || "#ffffff",
-  appleWebApp: seo.mobileWebAppCapable
-    ? {
-        capable: seo.mobileWebAppCapable === "yes",
-        statusBarStyle: (seo.appleStatusBarStyle as any) || "default",
-      }
-    : undefined,
-  openGraph: {
-    url: canonical,
-    siteName: seo.ogSiteName || COMPANY_NAME,
-    locale: seo.ogLocale,
-    title: title,
-    description: desc,
-    type: ogType as any,
-    images: seo.ogImage ? [{ url: seo.ogImage, width: 1200, height: 630, alt: ogImageAlt }] : undefined,
-  },
-  twitter: {
-    card: (twitterCardSafe(seo.twitterCard) as any) || "summary",
-    site: seo.twitterSite,
-    title: seo.twitterTitle || title,
-    description: seo.twitterDescription || desc,
-    images: seo.twitterImage ? [seo.twitterImage] : undefined,
-  },
-  alternates: {
-    canonical,
-    languages: hreflangMapFromSeo(canonical, seo?.hreflang),
-  },
-  other: buildOtherMeta(seo),
-};
+    openGraph: {
+      url: canonical,
+      siteName: seo.ogSiteName || COMPANY_NAME,
+      locale: seo.ogLocale,
+      title,
+      description: desc,
+      type: ogType as any,
+      images: seo.ogImage ? [{ url: seo.ogImage, width: 1200, height: 630, alt: ogImageAlt }] : undefined,
+    },
+    twitter: {
+      card: (twitterCardSafe(seo.twitterCard) as any) || "summary",
+      site: seo.twitterSite,
+      title: seo.twitterTitle || title,
+      description: seo.twitterDescription || desc,
+      images: seo.twitterImage ? [{ url: seo.twitterImage }] : undefined,
+    },
+    alternates: {
+      canonical,
+      languages: hreflangMapFromSeo(canonical, seo?.hreflang),
+    },
+    other: buildOtherMeta(seo),
+  };
 }
+
 
 /* -------------------------------------------------
    Page (branching UI, reusing sections)
