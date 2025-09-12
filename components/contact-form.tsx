@@ -369,9 +369,8 @@ export function ContactForm({
           {[1, 2, 3].map((step) => (
             <div key={step} className="flex items-center">
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors ${
-                  currentStep >= step ? "bg-blue-600 text-white" : "bg-slate-200 text-slate-600"
-                }`}
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors ${currentStep >= step ? "bg-blue-600 text-white" : "bg-slate-200 text-slate-600"
+                  }`}
               >
                 {step}
               </div>
@@ -451,6 +450,7 @@ export function ContactForm({
                 autoComplete="tel"
                 inputMode="tel"
               />
+
             </div>
           </div>
         )}

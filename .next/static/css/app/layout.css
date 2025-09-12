@@ -2431,6 +2431,9 @@ video {
 .align-middle {
   vertical-align: middle;
 }
+.align-\[-0\.125em\] {
+  vertical-align: -0.125em;
+}
 .font-mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
