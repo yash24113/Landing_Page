@@ -1,4 +1,5 @@
 // app/layout.tsx
+import type { ReactNode } from "react";
 import Script from "next/script";
 import ClientLayout from "./ClientLayout";
 import "./globals.css";
@@ -10,7 +11,7 @@ const GA_ID = process.env.NEXT_PUBLIC_GA_ID;           // e.g. G-XXXXXXXXXX
 const CLARITY_ID = process.env.NEXT_PUBLIC_CLARITY_ID; // e.g. abcdef1234
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "";
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
       lang="en"
@@ -21,7 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     >
       <body className="font-system antialiased">
         {/* Google Analytics 4 (gtag.js) */}
-        {GA_ID ? (
+        {GA_ID && (
           <>
             <Script
               src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
@@ -36,10 +37,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               `}
             </Script>
           </>
-        ) : null}
+        )}
 
         {/* Microsoft Clarity */}
-        {CLARITY_ID ? (
+        {CLARITY_ID && (
           <Script id="ms-clarity" strategy="afterInteractive">
             {`
               (function(c,l,a,r,i,t,y){
@@ -49,7 +50,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               })(window, document, "clarity", "script", "${CLARITY_ID}");
             `}
           </Script>
-        ) : null}
+        )}
 
         <ClientLayout>{children}</ClientLayout>
       </body>
