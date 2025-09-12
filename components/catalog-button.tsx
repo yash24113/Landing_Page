@@ -32,7 +32,6 @@ export function CatalogButton({ product, className = '' }: CatalogButtonProps) {
   const handleDownload = async () => {
     try {
       setIsLoading(true);
-
       toast({
         title: 'Generating catalog...',
         description: 'Please wait while we prepare your download.',

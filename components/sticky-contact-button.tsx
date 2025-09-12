@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { ContactForm } from "@/components/contact-form";
-import { Phone, Mail, MapPin, Clock, X } from "lucide-react";
+import { X } from "lucide-react";
 import { ContactDetails } from "./contact-details";
 
 type Props = {
@@ -32,14 +32,13 @@ export function StickyContactButton({
   const [open, setOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
-  // Pull from props first, then envs. (No hard-coded fallbacks.)
+  // Pull from props first, then envs.
   const COMPANY_PHONE = phone || process.env.NEXT_PUBLIC_COMPANY_PHONE || "";
   const COMPANY_EMAIL = email || process.env.NEXT_PUBLIC_COMPANY_EMAIL || "";
   const COMPANY_ADDRESS =
     address || process.env.NEXT_PUBLIC_COMPANY_ADDRESS || "";
   const COMPANY_HOURS = hours || process.env.NEXT_PUBLIC_COMPANY_HOURS || "";
 
-  // Links
   const telHref = COMPANY_PHONE
     ? `tel:${COMPANY_PHONE.replace(/[^\d+]/g, "")}`
     : undefined;
@@ -52,12 +51,12 @@ export function StickyContactButton({
         )}`
       : undefined);
 
-  // prettified, multiline address for UI
+  // formatted address
   const addressDisplay = COMPANY_ADDRESS
     ? COMPANY_ADDRESS.replace(/,\s*/g, ",\n")
     : "";
 
-  // Close on Esc + lock scroll when modal is open
+  // Close on Esc + lock scroll
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
@@ -70,7 +69,6 @@ export function StickyContactButton({
     };
   }, [open]);
 
-  // side-aware positioning (iOS safe areas)
   const sideClasses =
     side === "right"
       ? "right-[max(env(safe-area-inset-right),16px)]"
@@ -109,6 +107,7 @@ export function StickyContactButton({
         )}
 
         <button
+          type="button"
           onClick={() => setOpen(true)}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
@@ -117,7 +116,6 @@ export function StickyContactButton({
             "w-14 h-14 md:w-16 md:h-16 rounded-full text-white shadow-2xl",
             "transition-all duration-300 hover:scale-110 focus:outline-none",
             "focus-visible:ring-2 focus-visible:ring-white/60",
-            // same gradient look & strong shadow (contact = blue)
             "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800",
           ].join(" ")}
           style={{ boxShadow: "0 10px 30px rgba(37,99,235,0.45)" }}
@@ -127,17 +125,17 @@ export function StickyContactButton({
         >
           <span className="sr-only">{buttonLabel}</span>
 
-          {/* ripple */}
-          <div
+          {/* ripple (span instead of div) */}
+          <span
             className="absolute inset-0 rounded-full bg-white opacity-0 group-hover:opacity-20 group-hover:scale-150 transition-all duration-300"
             aria-hidden="true"
           />
 
-          {/* icon (envelope) */}
+          {/* icon */}
           <span className="text-2xl leading-none relative z-10">✉</span>
         </button>
 
-        {/* reduce motion preference */}
+        {/* reduce motion */}
         <style jsx>{`
           @media (prefers-reduced-motion: reduce) {
             .group:hover {
@@ -172,6 +170,7 @@ export function StickyContactButton({
                 ) : null}
               </div>
               <button
+                type="button"
                 onClick={() => setOpen(false)}
                 className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
                 aria-label="Close contact form"
@@ -189,9 +188,6 @@ export function StickyContactButton({
                   </div>
                   <ContactDetails className="text-black" />
                 </div>
-
-               
-               
               </div>
             </div>
             {/* /Body */}
