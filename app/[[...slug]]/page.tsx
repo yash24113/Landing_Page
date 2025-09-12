@@ -829,7 +829,7 @@ function ProductGrid(props: {
 
               const CardInner = (
                 <div className="relative flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-lg border border-slate-100 hover:shadow-xl hover:border-blue-200 transition-all duration-200">
-                  {/* Image */}
+             
                   <div className="relative w-full aspect-[4/3] bg-white">
                     <Image
                       src={img}
@@ -838,7 +838,7 @@ function ProductGrid(props: {
                       className="object-contain object-center"
                       loading="lazy"
                       sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                    ></Image>
+                      />
                   </div>
 
                   {/* Content */}
@@ -851,7 +851,7 @@ function ProductGrid(props: {
                       {desc || "—"}
                     </p>
 
-                    {/* Avoid nested <a>. Styled span becomes the call-to-action; the Link wraps the whole card. */}
+                  
                    
                       <span
                         className="mt-3 inline-flex items-center font-semibold text-blue-700 group-hover:text-blue-800"
