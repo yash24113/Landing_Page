@@ -1,4 +1,3 @@
-   // app/[[...slug]]/page.tsx
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -839,7 +838,7 @@ function ProductGrid(props: {
                       className="object-contain object-center"
                       loading="lazy"
                       sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                    />
+                    ></Image>
                   </div>
 
                   {/* Content */}
@@ -853,14 +852,14 @@ function ProductGrid(props: {
                     </p>
 
                     {/* Avoid nested <a>. Styled span becomes the call-to-action; the Link wraps the whole card. */}
-                    {href !== "#" && (
+                   
                       <span
                         className="mt-3 inline-flex items-center font-semibold text-blue-700 group-hover:text-blue-800"
                         aria-hidden="true"
                       >
                         Read more →
                       </span>
-                    )}
+                  
                   </div>
                 </div>
               );
