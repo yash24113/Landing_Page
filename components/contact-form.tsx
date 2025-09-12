@@ -45,11 +45,10 @@ function sanitizeE164(value: string) {
 function buildAuthHeaders(extra?: Record<string, string>) {
   return {
     "Content-Type": "application/json",
-    ...BASE_AUTH_HEADERS,            // ✅ include auth here
+    ...BASE_AUTH_HEADERS,
     ...(extra || {}),
   };
 }
-
 
 /* ---------------------------------------------
    Component
@@ -245,8 +244,7 @@ export function ContactForm({
       }
     };
     void hydrate();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draftId]);
+  }, [draftId, submitHeaders, submitUrl]);
 
   /* ----------------------------
      Field handlers
@@ -264,7 +262,7 @@ export function ContactForm({
   const handleCheckboxChange = (fabricType: string) => {
     setFormData((prev) => {
       const updated = prev.fabricTypes.includes(fabricType)
-        ? prev.fabricTypes.filter((t:string) => t !== fabricType)
+        ? prev.fabricTypes.filter((t: string) => t !== fabricType)
         : [...prev.fabricTypes, fabricType];
       return { ...prev, fabricTypes: updated };
     });
@@ -331,7 +329,7 @@ export function ContactForm({
       <div className="bg-white rounded-2xl shadow-xl p-8">
         <div className="text-center py-12">
           <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
@@ -350,12 +348,12 @@ export function ContactForm({
           <div className="flex items-center space-x-2">
             {hasUnsavedChanges ? (
               <>
-                <div className="w-2 h-2 bg-amber-600 rounded-full animate-pulse" />
+                <span className="w-2 h-2 bg-amber-600 rounded-full animate-pulse" aria-hidden="true" />
                 <span className="text-amber-900">Saving...</span>
               </>
             ) : lastSaved ? (
               <>
-                <div className="w-2 h-2 bg-emerald-600 rounded-full" />
+                <span className="w-2 h-2 bg-emerald-600 rounded-full" aria-hidden="true" />
                 <span className="text-emerald-900">
                   Saved {lastSaved.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                 </span>
@@ -378,7 +376,7 @@ export function ContactForm({
                 {step}
               </div>
               {step < 3 && (
-                <div className={`w-16 h-1 mx-2 transition-colors ${currentStep > step ? "bg-blue-600" : "bg-slate-200"}`} />
+                <span className={`w-16 h-1 mx-2 transition-colors ${currentStep > step ? "bg-blue-600" : "bg-slate-200"}`} />
               )}
             </div>
           ))}
@@ -386,7 +384,7 @@ export function ContactForm({
 
         <div className="text-sm text-slate-600">
           Step {currentStep} of 3:{" "}
-          {currentStep === 1 ? "Company Yash" : currentStep === 2 ? "Business Details" : "Requirements"}
+          {currentStep === 1 ? "Company Info" : currentStep === 2 ? "Business Details" : "Requirements"}
         </div>
       </div>
 
@@ -404,6 +402,7 @@ export function ContactForm({
                 required
                 className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                 placeholder="Your company name"
+                autoComplete="organization"
               />
             </div>
 
@@ -418,6 +417,7 @@ export function ContactForm({
                 required
                 className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                 placeholder="Your full name"
+                autoComplete="name"
               />
             </div>
 
@@ -432,6 +432,8 @@ export function ContactForm({
                 required
                 className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                 placeholder="your@company.com"
+                autoComplete="email"
+                inputMode="email"
               />
             </div>
 
@@ -446,6 +448,8 @@ export function ContactForm({
                 required
                 className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                 placeholder="+1 (555) 123-4567"
+                autoComplete="tel"
+                inputMode="tel"
               />
             </div>
           </div>
@@ -500,6 +504,7 @@ export function ContactForm({
                 onBlur={handleBlur}
                 className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                 placeholder="e.g., North America, Europe, Asia"
+                autoComplete="off"
               />
             </div>
           </div>
@@ -595,7 +600,11 @@ export function ContactForm({
             >
               {isSubmitting ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                  {/* spinner must be phrasing content inside <button>, so use <span>, not <div> */}
+                  <span
+                    className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2 align-[-0.125em]"
+                    aria-hidden="true"
+                  />
                   <span className="font-semibold">Submitting…</span>
                 </>
               ) : (
