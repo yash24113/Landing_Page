@@ -1,4 +1,4 @@
-// app/[[...slug]]/page.tsx
+   // app/[[...slug]]/page.tsx
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -797,7 +797,7 @@ function OverviewSection(props: {
   );
 }
 
-
+/* Fixed: removed nested <a> and avoided nested <main> by using role="main" container */
 function ProductGrid(props: {
   title?: string;
   subtitle?: string;
@@ -812,8 +812,9 @@ function ProductGrid(props: {
           <h2 id="product-categories" className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4 sm:mb-6 text-balance">
             {title}
           </h2>
-          {subtitle && <p className="text-lg sm:text-xl text-slate-600 max-w-3xl mx-auto">{subtitle}</p>}
         </div>
+
+        {subtitle && <p className="text-lg sm:text-xl text-slate-600 max-w-3xl mx-auto">{subtitle}</p>}
 
         {products.length === 0 ? (
           <div className="text-center text-slate-600">No products for the selected location.</div>
@@ -851,7 +852,7 @@ function ProductGrid(props: {
                       {desc || "—"}
                     </p>
 
-                    {/* NOTE: Avoid nested <a>. This is a styled span now. */}
+                    {/* Avoid nested <a>. Styled span becomes the call-to-action; the Link wraps the whole card. */}
                     {href !== "#" && (
                       <span
                         className="mt-3 inline-flex items-center font-semibold text-blue-700 group-hover:text-blue-800"
@@ -882,7 +883,6 @@ function ProductGrid(props: {
     </section>
   );
 }
-
 
 function ContactSection() {
   return (
@@ -1039,59 +1039,58 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     metadataBase: new URL(origin),
     applicationName: seo.ogSiteName || COMPANY_NAME,
     authors: seo.author_name ? [{ name: seo.author_name }] : undefined,
-    creator: seo.author_name,
-    publisher: seo.ogSiteName || COMPANY_NAME,
-    generator: "Next.js",
-    referrer: "origin-when-cross-origin",
-    robots: parseRobots(seo.robots),
-    viewport: { width: "device-width", initialScale: 1 },
-    formatDetection: {
-      email: false,
-      address: false,
-      telephone: seo.formatDetection === "telephone=no" ? false : true,
-    },
-    verification:
-      seo.googleSiteVerification || seo.msValidate
-        ? {
-            google: seo.googleSiteVerification,
-            other: seo.msValidate ? { "msvalidate.01": seo.msValidate } : undefined,
-          }
-        : undefined,
-    themeColor: seo.themeColor || "#ffffff",
-    appleWebApp: seo.mobileWebAppCapable
+    creator:seo.author_name,
+  publisher: seo.ogSiteName || COMPANY_NAME,
+  generator: "Next.js",
+  referrer: "origin-when-cross-origin",
+  robots: parseRobots(seo.robots),
+  viewport: { width: "device-width", initialScale: 1 },
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: seo.formatDetection === "telephone=no" ? false : true,
+  },
+  verification:
+    seo.googleSiteVerification || seo.msValidate
       ? {
-          capable: seo.mobileWebAppCapable === "yes",
-          statusBarStyle: (seo.appleStatusBarStyle as any) || "default",
+          google: seo.googleSiteVerification,
+          other: seo.msValidate ? { "msvalidate.01": seo.msValidate } : undefined,
         }
       : undefined,
-    openGraph: {
-      url: canonical,
-      siteName: seo.ogSiteName || COMPANY_NAME,
-      locale: seo.ogLocale,
-      title: title,
-      description: desc,
-      type: ogType as any,
-      images: seo.ogImage ? [{ url: seo.ogImage, width: 1200, height: 630, alt: ogImageAlt }] : undefined,
-    },
-    twitter: {
-      card: (twitterCardSafe(seo.twitterCard) as any) || "summary",
-      site: seo.twitterSite,
-      title: seo.twitterTitle || title,
-      description: seo.twitterDescription || desc,
-      images: seo.twitterImage ? [seo.twitterImage] : undefined,
-    },
-    alternates: {
-      canonical,
-      languages: hreflangMapFromSeo(canonical, seo?.hreflang),
-    },
-    other: buildOtherMeta(seo),
-  };
+  themeColor: seo.themeColor || "#ffffff",
+  appleWebApp: seo.mobileWebAppCapable
+    ? {
+        capable: seo.mobileWebAppCapable === "yes",
+        statusBarStyle: (seo.appleStatusBarStyle as any) || "default",
+      }
+    : undefined,
+  openGraph: {
+    url: canonical,
+    siteName: seo.ogSiteName || COMPANY_NAME,
+    locale: seo.ogLocale,
+    title: title,
+    description: desc,
+    type: ogType as any,
+    images: seo.ogImage ? [{ url: seo.ogImage, width: 1200, height: 630, alt: ogImageAlt }] : undefined,
+  },
+  twitter: {
+    card: (twitterCardSafe(seo.twitterCard) as any) || "summary",
+    site: seo.twitterSite,
+    title: seo.twitterTitle || title,
+    description: seo.twitterDescription || desc,
+    images: seo.twitterImage ? [seo.twitterImage] : undefined,
+  },
+  alternates: {
+    canonical,
+    languages: hreflangMapFromSeo(canonical, seo?.hreflang),
+  },
+  other: buildOtherMeta(seo),
+};
 }
 
 /* -------------------------------------------------
    Page (branching UI, reusing sections)
 -------------------------------------------------- */
-
 
 export default async function Page({ params }: Props) {
   const p = await params;
@@ -1201,7 +1200,7 @@ export default async function Page({ params }: Props) {
     );
 
     return (
-      <main className="min-h-screen bg-white pb-24 md:pb-0 overflow-x-hidden">
+      <div role="main" className="min-h-screen bg-white pb-24 md:pb-0 overflow-x-hidden">
         {/* Structured data */}
         <JsonLdInjector {...ld} />
 
@@ -1221,9 +1220,9 @@ export default async function Page({ params }: Props) {
             salesPrice: firstCard?.salesPrice || firstCardSeo?.salesPrice,
             productdescription: firstCard?.productdescription || firstCardSeo?.productdescription,
             img: firstCard?.img,
-            altimg1:firstCard?.altimg2,
-            altimg2:firstCard?.altimg1,
-            altimg3:firstCard?.altimg3,
+            altimg1: firstCard?.altimg2,
+            altimg2: firstCard?.altimg1,
+            altimg3: firstCard?.altimg3,
             image1: firstCard?.image1,
             image2: firstCard?.image2,
             gsm: firstCard?.gsm,
@@ -1235,8 +1234,8 @@ export default async function Page({ params }: Props) {
 
         <OverviewSection
           tagline="ISO 9001 Certified • 500+ Global Partners • Ships to 50+ Countries"
-         p1={desc1FromSeo || undefined}
-        p2={desc2FromSeo || undefined}
+          p1={desc1FromSeo || undefined}
+          p2={desc2FromSeo || undefined}
           extraContent={<CommitmentText />}
           image={overviewImage}
           imageAlt={overviewAlt}
@@ -1249,10 +1248,9 @@ export default async function Page({ params }: Props) {
         />
 
         <ContactSection />
-      </main>
+      </div>
     );
   }
-
   /* ============================
      SLUG DETAIL: product page
   ============================ */
@@ -1330,7 +1328,7 @@ export default async function Page({ params }: Props) {
     <>
       <JsonLdInjector {...ld} />
 
-      <main className="min-h-screen bg-white overflow-x-hidden">
+      <div role="main" className="min-h-screen bg-white overflow-x-hidden">
         <SectionHero
           titleNode={<>{locationTitle}</>}
           subtitle={locationTagline}
@@ -1372,7 +1370,7 @@ export default async function Page({ params }: Props) {
         />
 
         <ContactSection />
-      </main>
+      </div>
     </>
   );
 }
