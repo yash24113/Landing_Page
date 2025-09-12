@@ -850,12 +850,12 @@ function ProductGrid(props: {
                       {desc || "—"}
                     </p>
                     {href !== "#" && (
-                      <Link
+                      <a
                         href={`${href}`}
                         className="mt-3 inline-flex items-center font-semibold text-blue-700 hover:text-blue-800"
                       >
                         Read more →
-                      </Link>
+                      </a>
                     )}
                   </div>
                 </div>
