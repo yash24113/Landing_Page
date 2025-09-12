@@ -73,7 +73,7 @@ export function FAQ() {
                     {faq.question}
                   </span>
 
-                  {/* icon wrapper must be phrasing content inside <button> */}
+                  {/* icon wrapper */}
                   <span
                     className={`inline-flex transform transition-transform duration-200 ${
                       isOpen ? "rotate-180" : ""
@@ -96,11 +96,17 @@ export function FAQ() {
                   </span>
                 </button>
 
-                {isOpen && (
-                  <div id={contentId} role="region" aria-labelledby={buttonId} className="px-6 pb-6">
-                    <p className="text-slate-600 leading-relaxed">{faq.answer}</p>
-                  </div>
-                )}
+                {/* Always render panel, just toggle visibility */}
+                <div
+                  id={contentId}
+                  role="region"
+                  aria-labelledby={buttonId}
+                  className={`px-6 pb-6 transition-all duration-200 ${
+                    isOpen ? "block" : "hidden"
+                  }`}
+                >
+                  <p className="text-slate-600 leading-relaxed">{faq.answer}</p>
+                </div>
               </div>
             );
           })}
