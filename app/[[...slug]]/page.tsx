@@ -1087,6 +1087,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 /* -------------------------------------------------
    Page (branching UI, reusing sections)
 -------------------------------------------------- */
+
+
 export default async function Page({ params }: Props) {
   const p = await params;
   const slugSegs = p.slug ?? [];

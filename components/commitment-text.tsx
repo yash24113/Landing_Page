@@ -34,16 +34,10 @@ export function CommitmentText(_: Props) {
 
         // prefer small → medium → larger; also accept legacy description1/2/3
         const val =
-          obj?.descriptionsmall ??
-          obj?.descriptionSmall ??
-          obj?.description1 ??
           obj?.descriptionmedium ??
-          obj?.descriptionMedium ??
-          obj?.description2 ??
-          obj?.descriptionlarger ??
-          obj?.descriptionLarger ??
-          obj?.description3 ??
-          "";
+          obj?.descriptionsmall ??
+           obj?.descriptionlarger ??
+          "Welcome to Amrita! We are passionate about offering reliable solutions that make life smarter and more convenient. With a team driven by creativity and expertise, we focus on quality, customer satisfaction, and long-term trust. At Amrita, our mission is simple—to provide products and services that add real value to your everyday life.";
 
         const cleaned = typeof val === "string" ? val.trim() : "";
         if (!cancelled) setHtml(cleaned);
