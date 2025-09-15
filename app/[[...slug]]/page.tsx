@@ -1193,7 +1193,7 @@ export default async function Page({ params }: Props) {
     ) : (
       <>
         Premium{" "}
-        <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-700 to-emerald-700">
+        <span className="text-black">
           {heroName}
         </span>{" "}
         for Global Manufacturers
