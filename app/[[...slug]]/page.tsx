@@ -221,6 +221,8 @@ type ProductDoc = {
   content?: string;
   subSuitableFor?: string; // maps "sub-suitable for"
   colors?: string;
+  color?: any;
+  quantity?: number | string;
 };
 
 interface SeoDocFull {
@@ -290,6 +292,7 @@ interface SeoDocFull {
   twitterPlayer?: string;
   twitterPlayerWidth?: number;
   twitterPlayerHeight?: number;
+  leadtime?: number | string;
 
   VideoJsonLd?: string;
   LogoJsonLd?: string;
@@ -688,6 +691,9 @@ function SectionHero(props: {
     content?: string;
     subSuitableFor?: string;
     colors?: string;
+    color?: any;
+    moq?: number | string;
+    leadtime?: number | string;
   };
 }) {
   const { titleNode, subtitle, sku, rating, reviews, phone, heroImage, heroAlt, catalogProduct } = props;
@@ -741,6 +747,18 @@ function SectionHero(props: {
             {(catalogProduct || rating !== undefined || reviews !== undefined) && (
               <div className="bg-slate-100 rounded-lg p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
                 {/* Three-column product details from product table */}
+                   {asDisplayText(catalogProduct?.content) && (
+                  <div><span className="font-medium text-slate-700">Content:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText(catalogProduct?.content)}</span></div>
+                )}
+                      {(catalogProduct?.gsm !== undefined || catalogProduct?.oz !== undefined) && (
+                  <div><span className="font-medium text-slate-700">Weight:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText(catalogProduct?.gsm)}{catalogProduct?.gsm !== undefined ? " gsm" : ""}{catalogProduct?.oz !== undefined ? ` / ${formatOzOneDecimal(catalogProduct?.oz)} oz` : ""}</span></div>
+                )}
+                      {(catalogProduct?.cm !== undefined || catalogProduct?.inch !== undefined) && (
+                  <div><span className="font-medium text-slate-700">Width:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText(catalogProduct?.cm)}{catalogProduct?.cm !== undefined ? " cm" : ""}{catalogProduct?.inch !== undefined ? ` / ${formatInchRounded(catalogProduct?.inch)} inch` : ""}</span></div>
+                )}
+                           {asDisplayText(catalogProduct?.subfinish) && (
+                  <div><span className="font-medium text-slate-700">Subfinish:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText(catalogProduct?.subfinish)}</span></div>
+                )}
                 {asDisplayText(catalogProduct?.design) && (
                   <div><span className="font-medium text-slate-700">Design:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText(catalogProduct?.design)}</span></div>
                 )}
@@ -750,24 +768,20 @@ function SectionHero(props: {
                 {asDisplayText(catalogProduct?.substructure) && (
                   <div><span className="font-medium text-slate-700">Substructure:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText(catalogProduct?.substructure)}</span></div>
                 )}
-                {asDisplayText(catalogProduct?.subfinish) && (
-                  <div><span className="font-medium text-slate-700">Subfinish:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText(catalogProduct?.subfinish)}</span></div>
-                )}
-                {asDisplayText(catalogProduct?.content) && (
-                  <div><span className="font-medium text-slate-700">Content:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText(catalogProduct?.content)}</span></div>
-                )}
                 {asDisplayText((catalogProduct as any)?.subsuitable ?? catalogProduct?.subSuitableFor) && (
                   <div><span className="font-medium text-slate-700">Suitable For:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText((catalogProduct as any)?.subsuitable ?? catalogProduct?.subSuitableFor)}</span></div>
                 )}
                 {/* Computed fields */}
-                {(catalogProduct?.gsm !== undefined || catalogProduct?.oz !== undefined) && (
-                  <div><span className="font-medium text-slate-700">Weight:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText(catalogProduct?.gsm)}{catalogProduct?.gsm !== undefined ? " gsm" : ""}{catalogProduct?.oz !== undefined ? ` / ${formatOzOneDecimal(catalogProduct?.oz)} oz` : ""}</span></div>
+          
+          
+                {catalogProduct?.moq !== undefined && (
+                  <div><span className="font-medium text-slate-700">MOQ:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText((catalogProduct as any)?.moq)}</span></div>
                 )}
-                {(catalogProduct?.cm !== undefined || catalogProduct?.inch !== undefined) && (
-                  <div><span className="font-medium text-slate-700">Width:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText(catalogProduct?.cm)}{catalogProduct?.cm !== undefined ? " cm" : ""}{catalogProduct?.inch !== undefined ? ` / ${formatInchRounded(catalogProduct?.inch)} inch` : ""}</span></div>
+                {asDisplayText((catalogProduct as any)?.color ?? catalogProduct?.colors) && (
+                  <div><span className="font-medium text-slate-700">Colors:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText((catalogProduct as any)?.color ?? catalogProduct?.colors)}</span></div>
                 )}
-                {asDisplayText(catalogProduct?.colors) && (
-                  <div><span className="font-medium text-slate-700">Colors:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText(catalogProduct?.colors)}</span></div>
+                {asDisplayText((catalogProduct as any)?.leadtime) && (
+                  <div><span className="font-medium text-slate-700">Lead time:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText((catalogProduct as any)?.leadtime)} days</span></div>
                 )}
                 {/* Keep rating/reviews if present */}
                {rating !== undefined && (
@@ -1327,6 +1341,9 @@ export default async function Page({ params }: Props) {
             content: (firstCard as any)?.content,
             subSuitableFor: (firstCard as any)?.subSuitableFor,
             colors: (firstCard as any)?.colors,
+            color: (firstCard as any)?.color,
+            moq: (firstCard as any)?.quantity,
+            leadtime: (firstCardSeo as any)?.leadtime,
           }}
         />
 
@@ -1457,6 +1474,9 @@ export default async function Page({ params }: Props) {
             content: (matchingProduct as any)?.content ?? (seo as any)?.content,
             subSuitableFor: (matchingProduct as any)?.subSuitableFor ?? (seo as any)?.subSuitableFor,
             colors: (matchingProduct as any)?.colors ?? (seo as any)?.colors,
+            color: (matchingProduct as any)?.color ?? (seo as any)?.color,
+            moq: (matchingProduct as any)?.quantity,
+            leadtime: (seo as any)?.leadtime,
           }}
         />
 
