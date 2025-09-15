@@ -759,7 +759,7 @@ function SectionHero(props: {
                   <div><span className="font-medium text-slate-700">Width:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText(catalogProduct?.cm)}{catalogProduct?.cm !== undefined ? " cm" : ""}{catalogProduct?.inch !== undefined ? ` / ${formatInchRounded(catalogProduct?.inch)} inch` : ""}</span></div>
                 )}
                            {asDisplayText(catalogProduct?.subfinish) && (
-                  <div><span className="font-medium text-slate-700">Subfinish:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText(catalogProduct?.subfinish)}</span></div>
+                  <div><span className="font-medium text-slate-700">Finish:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText(catalogProduct?.subfinish)}</span></div>
                 )}
                 {asDisplayText(catalogProduct?.design) && (
                   <div><span className="font-medium text-slate-700">Design:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText(catalogProduct?.design)}</span></div>
@@ -768,7 +768,7 @@ function SectionHero(props: {
                   <div><span className="font-medium text-slate-700">Motif:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText(catalogProduct?.motif)}</span></div>
                 )}
                 {asDisplayText(catalogProduct?.substructure) && (
-                  <div><span className="font-medium text-slate-700">Substructure:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText(catalogProduct?.substructure)}</span></div>
+                  <div><span className="font-medium text-slate-700">Structure:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText(catalogProduct?.substructure)}</span></div>
                 )}
                 {asDisplayText((catalogProduct as any)?.subsuitable ?? catalogProduct?.subSuitableFor) && (
                   <div><span className="font-medium text-slate-700">Suitable For:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText((catalogProduct as any)?.subsuitable ?? catalogProduct?.subSuitableFor)}</span></div>
