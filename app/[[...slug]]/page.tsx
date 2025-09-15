@@ -223,6 +223,7 @@ type ProductDoc = {
   colors?: string;
   color?: any;
   quantity?: number | string;
+  um?: string ;
 };
 
 interface SeoDocFull {
@@ -694,6 +695,7 @@ function SectionHero(props: {
     color?: any;
     moq?: number | string;
     leadtime?: number | string;
+    um?: string ;
   };
 }) {
   const { titleNode, subtitle, sku, rating, reviews, phone, heroImage, heroAlt, catalogProduct } = props;
@@ -775,7 +777,7 @@ function SectionHero(props: {
           
           
                 {catalogProduct?.moq !== undefined && (
-                  <div><span className="font-medium text-slate-700">MOQ:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText((catalogProduct as any)?.moq)}</span></div>
+                  <div><span className="font-medium text-slate-700">MOQ:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText((catalogProduct as any)?.moq)} {asDisplayText((catalogProduct as any)?.um)} </span></div>
                 )}
                 {asDisplayText((catalogProduct as any)?.color ?? catalogProduct?.colors) && (
                   <div><span className="font-medium text-slate-700">Colors:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText((catalogProduct as any)?.color ?? catalogProduct?.colors)}</span></div>
@@ -1344,6 +1346,7 @@ export default async function Page({ params }: Props) {
             color: (firstCard as any)?.color,
             moq: (firstCard as any)?.quantity,
             leadtime: (firstCardSeo as any)?.leadtime,
+            um:  (firstCard as any)?.um, 
           }}
         />
 
@@ -1477,6 +1480,7 @@ export default async function Page({ params }: Props) {
             color: (matchingProduct as any)?.color ?? (seo as any)?.color,
             moq: (matchingProduct as any)?.quantity,
             leadtime: (seo as any)?.leadtime,
+            um: (matchingProduct as any)?.um,
           }}
         />
 

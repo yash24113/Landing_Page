@@ -1975,6 +1975,12 @@
   .pl-8 {
     padding-left: calc(var(--spacing) * 8);
   }
+  .pl-28 {
+    padding-left: calc(var(--spacing) * 28);
+  }
+  .pl-\[0\.25rem\] {
+    padding-left: 0.25rem;
+  }
   .text-center {
     text-align: center;
   }
@@ -1986,6 +1992,9 @@
   }
   .align-middle {
     vertical-align: middle;
+  }
+  .align-top {
+    vertical-align: top;
   }
   .font-mono {
     font-family: var(--font-mono);
