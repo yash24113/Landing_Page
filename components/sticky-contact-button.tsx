@@ -181,7 +181,7 @@ export function StickyContactButton({
 
             {/* Body */}
             <div className="overflow-y-auto max-h-[calc(90vh-120px)]">
-              <div className="p-6">
+              <div className="p-6 bg-slate-900">
                 <div className="grid lg:grid-cols-2 gap-8">
                   <div>
                     <ContactForm onSuccess={() => setOpen(false)} />

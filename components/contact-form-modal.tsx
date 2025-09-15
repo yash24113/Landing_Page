@@ -83,7 +83,7 @@ export function ContactFormModal({ isOpen, onClose }: ContactFormModalProps) {
 
         {/* Content */}
         <div className="overflow-y-auto max-h-[calc(90vh-120px)]">
-          <div className="p-6">
+          <div className="p-6 bg-black">
             <div className="grid lg:grid-cols-2 gap-8">
               {/* Contact Form */}
               <div>

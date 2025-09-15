@@ -81,20 +81,20 @@ export function ContactDetails({
       </div>
 
       {/* Contact list */}
-      <div className="truncate md:whitespace-normal  text-blue-500">
+      <div className="truncate md:whitespace-normal  text-white">
         📞{" "}
         <a href={`tel:${sanitizeE164(phone)}`} className="hover:underline">
           {phone}
         </a>
       </div>
-      <div className="truncate md:whitespace-normal  text-blue-500">
+      <div className="truncate md:whitespace-normal  text-white">
         ✉️{" "}
         <a href={`mailto:${email}`} className="hover:underline">
           {email}
         </a>
       </div>
-      <div className="break-words  text-blue-500">🏢 {address}</div>
-      <div className=" text-blue-500">🕘 {hours}</div>
+      <div className="break-words  text-white">🏢 {address}</div>
+      <div className=" text-white">🕘 {hours}</div>
     </div>
   );
 }
