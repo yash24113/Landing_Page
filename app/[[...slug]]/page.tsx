@@ -4,6 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type React from "react";
+import { Star, StarHalf } from "lucide-react";
+
 
 import { WhatsAppButton } from "@/components/whatsapp-button";
 import { Chatbot } from "@/components/chatbot";
@@ -379,6 +381,27 @@ function parseJsonLd(input?: string) {
     return null;
   }
 }
+function StarRating({ value, outOf = 5 }: { value?: number | string; outOf?: number }) {
+  const v = typeof value === "string" ? parseFloat(value) : (value ?? 0);
+  const safe = Number.isFinite(v) ? Math.max(0, Math.min(outOf, v)) : 0;
+
+  const full = Math.floor(safe);
+  const hasHalf = safe - full >= 0.25 && safe - full < 0.75; // round halves nicely
+  const empty = outOf - full - (hasHalf ? 1 : 0);
+
+  return (
+    <span className="inline-flex items-center gap-0.5" aria-label={`Rating ${safe} out of ${outOf}`}>
+      {Array.from({ length: full }).map((_, i) => (
+        <Star key={`f${i}`} className="h-4 w-4 text-amber-500" fill="currentColor" />
+      ))}
+      {hasHalf && <StarHalf className="h-4 w-4 text-amber-500" />}
+      {Array.from({ length: empty }).map((_, i) => (
+        <Star key={`e${i}`} className="h-4 w-4 text-slate-300" />
+      ))}
+    </span>
+  );
+}
+
 
 /* ---------- JSON-LD builders (fixed to use BASE_URL + slug) ---------- */
 
@@ -747,9 +770,15 @@ function SectionHero(props: {
                   <div><span className="font-medium text-slate-700">Colors:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText(catalogProduct?.colors)}</span></div>
                 )}
                 {/* Keep rating/reviews if present */}
-                {rating !== undefined && (
-                  <div><span className="font-medium text-slate-700">Rating:</span><span className="ml-2 text-slate-900">{rating as any}/5</span></div>
-                )}
+               {rating !== undefined && (
+  <div className="flex items-center">
+    <span className="font-medium text-slate-700">Rating:</span>
+    <span className="ml-2">
+      <StarRating value={rating as any} />
+    </span>
+  </div>
+)}
+
                 {reviews !== undefined && (
                   <div><span className="font-medium text-slate-700">Reviews:</span><span className="ml-2 text-slate-900">{reviews as any}</span></div>
                 )}
