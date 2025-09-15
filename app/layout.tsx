@@ -17,8 +17,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       lang="en"
       className="scroll-smooth"
       data-ga={GA_ID ? "1" : "0"}
-      data-clarity={CLARITY_ID ? "1" : "0"}
-      data-site-url={SITE_URL}
+     data-clarity={CLARITY_ID ? "1" : "0"}
+     data-site-url={SITE_URL}
     >
       <body className="font-system antialiased">
         {/* Google Analytics 4 (gtag.js) */}

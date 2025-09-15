@@ -1,3 +1,4 @@
+// app/[[...slug]]/page.tsx
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -796,7 +797,7 @@ function OverviewSection(props: {
   );
 }
 
-/* Fixed: removed nested <a> and avoided nested <main> by using role="main" container */
+
 function ProductGrid(props: {
   title?: string;
   subtitle?: string;
@@ -811,9 +812,8 @@ function ProductGrid(props: {
           <h2 id="product-categories" className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4 sm:mb-6 text-balance">
             {title}
           </h2>
+          {subtitle && <p className="text-lg sm:text-xl text-slate-600 max-w-3xl mx-auto">{subtitle}</p>}
         </div>
-
-        {subtitle && <p className="text-lg sm:text-xl text-slate-600 max-w-3xl mx-auto">{subtitle}</p>}
 
         {products.length === 0 ? (
           <div className="text-center text-slate-600">No products for the selected location.</div>
@@ -829,7 +829,7 @@ function ProductGrid(props: {
 
               const CardInner = (
                 <div className="relative flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-lg border border-slate-100 hover:shadow-xl hover:border-blue-200 transition-all duration-200">
-             
+                  {/* Image */}
                   <div className="relative w-full aspect-[4/3] bg-white">
                     <Image
                       src={img}
@@ -838,7 +838,7 @@ function ProductGrid(props: {
                       className="object-contain object-center"
                       loading="lazy"
                       sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                      />
+                    />
                   </div>
 
                   {/* Content */}
@@ -851,15 +851,15 @@ function ProductGrid(props: {
                       {desc || "—"}
                     </p>
 
-                  
-                   
+                    {/* NOTE: Avoid nested <a>. This is a styled span now. */}
+                    {href !== "#" && (
                       <span
                         className="mt-3 inline-flex items-center font-semibold text-blue-700 group-hover:text-blue-800"
                         aria-hidden="true"
                       >
                         Read more →
                       </span>
-                  
+                    )}
                   </div>
                 </div>
               );
@@ -882,6 +882,7 @@ function ProductGrid(props: {
     </section>
   );
 }
+
 
 function ContactSection() {
   return (
@@ -923,53 +924,34 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const locJson = await fetchJson<any>(LOC_URL);
 
     const seos: any[] = Array.isArray(seoJson?.data) ? seoJson.data : [];
-    const rawLocs =
-      locJson?.data?.locations ?? locJson?.data ?? locJson?.locations ?? [];
+    const rawLocs = (locJson?.data?.locations ?? locJson?.data ?? locJson?.locations) ?? [];
     const locs: any[] = Array.isArray(rawLocs) ? rawLocs : [];
 
     const targetLocIds = new Set<string>(
       locs
-        .filter(
-          (l) =>
-            norm(l?.name) === DEFAULT_LOCATION_SLUG ||
-            norm(l?.slug) === DEFAULT_LOCATION_SLUG,
-        )
+        .filter((l) => norm(l?.name) === DEFAULT_LOCATION_SLUG || norm(l?.slug) === DEFAULT_LOCATION_SLUG)
         .map((l) => String(l?._id ?? "").trim())
-        .filter(Boolean),
+        .filter(Boolean)
     );
 
     const seoData =
-      seos.find((s) => isSeoForLocation(s, targetLocIds, DEFAULT_LOCATION_SLUG)) ||
-      seos[0] ||
-      null;
+      seos.find((s) => isSeoForLocation(s, targetLocIds, DEFAULT_LOCATION_SLUG)) || seos[0] || null;
 
     if (!seoData) return {};
 
     const title = seoData.title || "Premium Fabric";
-    const desc =
-      seoData.description || "High-quality fabric for garment manufacturing.";
+    const desc = seoData.description || "High-quality fabric for garment manufacturing.";
+
     const canonical = canonicalFromSeoSlug(seoData?.slug);
-    const origin = BASE_URL || "https://example.com";
-    const ogType = seoData.ogType
-      ? ogTypeSafe(seoData.ogType)
-      : seoData.ogVideoUrl
-        ? "video.other"
-        : "website";
+    const origin = (BASE_URL || "https://example.com");
+    const ogType = seoData.ogType ? ogTypeSafe(seoData.ogType) : (seoData.ogVideoUrl ? "video.other" : "website");
 
     return {
       title,
       description: desc,
       keywords:
-        seoData.keywords
-          ?.split(",")
-          .map((k: string) => k.trim())
-          .filter(Boolean) || [
-          "fabric",
-          "textile",
-          "garment",
-          "wholesale",
-          "manufacturer",
-        ],
+        seoData.keywords?.split(",").map((k: string) => k.trim()).filter(Boolean) ||
+        ["fabric", "textile", "garment", "wholesale", "manufacturer"],
       metadataBase: new URL(origin),
       applicationName: seoData.ogSiteName || COMPANY_NAME,
       authors: seoData.author_name ? [{ name: seoData.author_name }] : undefined,
@@ -982,24 +964,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       formatDetection: {
         email: false,
         address: false,
-        telephone:
-          seoData.formatDetection === "telephone=no" ? false : true,
+        telephone: seoData.formatDetection === "telephone=no" ? false : true,
       },
       verification:
         seoData.googleSiteVerification || seoData.msValidate
           ? {
               google: seoData.googleSiteVerification,
-              other: seoData.msValidate
-                ? { "msvalidate.01": seoData.msValidate }
-                : undefined,
+              other: seoData.msValidate ? { "msvalidate.01": seoData.msValidate } : undefined,
             }
           : undefined,
       themeColor: seoData.themeColor || "#ffffff",
       appleWebApp: seoData.mobileWebAppCapable
         ? {
             capable: seoData.mobileWebAppCapable === "yes",
-            statusBarStyle:
-              (seoData.appleStatusBarStyle as any) || "default",
+            statusBarStyle: (seoData.appleStatusBarStyle as any) || "default",
           }
         : undefined,
       openGraph: {
@@ -1029,9 +1007,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         site: seoData.twitterSite || "@ageb",
         title,
         description: desc,
-        images: seoData.twitterImage
-          ? [{ url: seoData.twitterImage }]
-          : [],
+        images: seoData.twitterImage ? [{ url: seoData.twitterImage }] : undefined,
       },
       alternates: {
         canonical,
@@ -1045,32 +1021,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (isAssetSlug(firstSeg)) return {};
   const seo = (await fetchSeoData(firstSeg)) as SeoDocFull | null;
   if (!seo) {
-    return {
-      title: "Page Not Found",
-      description: "The requested page could not be found.",
-    };
+    return { title: "Page Not Found", description: "The requested page could not be found." };
   }
 
   const title = seo.title;
   const desc = seo.description;
+
   const canonical = canonicalFromSeoSlug(seo?.slug);
-  const origin =
-    BASE_URL ||
-    (canonical || "https://example.com").split("/").slice(0, 3).join("/");
-  const ogType = seo.ogType
-    ? ogTypeSafe(seo.ogType)
-    : seo.ogVideoUrl
-      ? "video.other"
-      : "website";
+  const origin = BASE_URL || (canonical || "https://example.com").split("/").slice(0, 3).join("/");
+  const ogType = seo.ogType ? ogTypeSafe(seo.ogType) : (seo.ogVideoUrl ? "video.other" : "website");
   const ogImageAlt = seo.ogTitle || seo.title || "Product image";
 
   return {
     title,
     description: desc,
-    keywords: seo.keywords
-      ?.split(",")
-      .map((k) => k.trim())
-      .filter(Boolean),
+    keywords: seo.keywords?.split(",").map((k) => k.trim()).filter(Boolean),
     metadataBase: new URL(origin),
     applicationName: seo.ogSiteName || COMPANY_NAME,
     authors: seo.author_name ? [{ name: seo.author_name }] : undefined,
@@ -1083,16 +1048,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     formatDetection: {
       email: false,
       address: false,
-      telephone:
-        seo.formatDetection === "telephone=no" ? false : true,
+      telephone: seo.formatDetection === "telephone=no" ? false : true,
     },
     verification:
       seo.googleSiteVerification || seo.msValidate
         ? {
             google: seo.googleSiteVerification,
-            other: seo.msValidate
-              ? { "msvalidate.01": seo.msValidate }
-              : undefined,
+            other: seo.msValidate ? { "msvalidate.01": seo.msValidate } : undefined,
           }
         : undefined,
     themeColor: seo.themeColor || "#ffffff",
@@ -1106,21 +1068,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       url: canonical,
       siteName: seo.ogSiteName || COMPANY_NAME,
       locale: seo.ogLocale,
-      title,
+      title: title,
       description: desc,
       type: ogType as any,
-      images: seo.ogImage
-        ? [
-            { url: seo.ogImage, width: 1200, height: 630, alt: ogImageAlt },
-          ]
-        : [],
+      images: seo.ogImage ? [{ url: seo.ogImage, width: 1200, height: 630, alt: ogImageAlt }] : undefined,
     },
     twitter: {
       card: (twitterCardSafe(seo.twitterCard) as any) || "summary",
       site: seo.twitterSite,
       title: seo.twitterTitle || title,
       description: seo.twitterDescription || desc,
-      images: seo.twitterImage ? [{ url: seo.twitterImage }] : [],
+      images: seo.twitterImage ? [seo.twitterImage] : undefined,
     },
     alternates: {
       canonical,
@@ -1130,10 +1088,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-
 /* -------------------------------------------------
    Page (branching UI, reusing sections)
 -------------------------------------------------- */
+
 
 export default async function Page({ params }: Props) {
   const p = await params;
@@ -1243,7 +1201,7 @@ export default async function Page({ params }: Props) {
     );
 
     return (
-      <div role="main" className="min-h-screen bg-white pb-24 md:pb-0 overflow-x-hidden">
+      <main className="min-h-screen bg-white pb-24 md:pb-0 overflow-x-hidden">
         {/* Structured data */}
         <JsonLdInjector {...ld} />
 
@@ -1263,9 +1221,9 @@ export default async function Page({ params }: Props) {
             salesPrice: firstCard?.salesPrice || firstCardSeo?.salesPrice,
             productdescription: firstCard?.productdescription || firstCardSeo?.productdescription,
             img: firstCard?.img,
-            altimg1: firstCard?.altimg2,
-            altimg2: firstCard?.altimg1,
-            altimg3: firstCard?.altimg3,
+            altimg1:firstCard?.altimg2,
+            altimg2:firstCard?.altimg1,
+            altimg3:firstCard?.altimg3,
             image1: firstCard?.image1,
             image2: firstCard?.image2,
             gsm: firstCard?.gsm,
@@ -1277,8 +1235,8 @@ export default async function Page({ params }: Props) {
 
         <OverviewSection
           tagline="ISO 9001 Certified • 500+ Global Partners • Ships to 50+ Countries"
-          p1={desc1FromSeo || undefined}
-          p2={desc2FromSeo || undefined}
+         p1={desc1FromSeo || undefined}
+        p2={desc2FromSeo || undefined}
           extraContent={<CommitmentText />}
           image={overviewImage}
           imageAlt={overviewAlt}
@@ -1291,9 +1249,10 @@ export default async function Page({ params }: Props) {
         />
 
         <ContactSection />
-      </div>
+      </main>
     );
   }
+
   /* ============================
      SLUG DETAIL: product page
   ============================ */
@@ -1371,7 +1330,7 @@ export default async function Page({ params }: Props) {
     <>
       <JsonLdInjector {...ld} />
 
-      <div role="main" className="min-h-screen bg-white overflow-x-hidden">
+      <main className="min-h-screen bg-white overflow-x-hidden">
         <SectionHero
           titleNode={<>{locationTitle}</>}
           subtitle={locationTagline}
@@ -1413,7 +1372,7 @@ export default async function Page({ params }: Props) {
         />
 
         <ContactSection />
-      </div>
+      </main>
     </>
   );
 }
