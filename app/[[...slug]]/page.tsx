@@ -209,6 +209,16 @@ type ProductDoc = {
   salesPrice?: number;
   productdescription?: string;
   sku?: string;
+  // Added optional detailed attributes from product table
+  design?: string;
+  motif?: string;
+  weight?: string;
+  width?: string;
+  substructure?: string;
+  subfinish?: string;
+  content?: string;
+  subSuitableFor?: string; // maps "sub-suitable for"
+  colors?: string;
 };
 
 interface SeoDocFull {
@@ -626,7 +636,6 @@ function SectionHero(props: {
   titleNode: React.ReactNode;
   subtitle?: string;
   sku?: string | number;
-  price?: string | number;
   rating?: string | number;
   reviews?: string | number;
   phone?: string;
@@ -635,7 +644,6 @@ function SectionHero(props: {
   catalogProduct?: {
     name?: string;
     sku?: string;
-    salesPrice?: number;
     productdescription?: string;
     img?: string;
     image1?: string;
@@ -647,9 +655,35 @@ function SectionHero(props: {
     oz?: string | number;
     cm?: string | number;
     inch?: string | number;
+    // detailed attributes
+    design?: string;
+    motif?: string;
+    weight?: string;
+    width?: string;
+    substructure?: string;
+    subfinish?: string;
+    content?: string;
+    subSuitableFor?: string;
+    colors?: string;
   };
 }) {
-  const { titleNode, subtitle, sku, price, rating, reviews, phone, heroImage, heroAlt, catalogProduct } = props;
+  const { titleNode, subtitle, sku, rating, reviews, phone, heroImage, heroAlt, catalogProduct } = props;
+
+  // normalize attribute values to readable text (handles objects like { _id, name } or arrays)
+  const asDisplayText = (value: any): string | undefined => {
+    if (value === undefined || value === null) return undefined;
+    if (Array.isArray(value)) {
+      const parts = value.map((v) => asDisplayText(v)).filter(Boolean) as string[];
+      return parts.length ? parts.join(", ") : undefined;
+    }
+    if (typeof value === "object") {
+      if (typeof (value as any).name === "string") return (value as any).name;
+      if (typeof (value as any).title === "string") return (value as any).title;
+      return undefined;
+    }
+    const s = String(value).trim();
+    return s || undefined;
+  };
   return (
     <section id="hero" className="hero relative bg-white text-slate-900 overflow-hidden pt-4 pb-8 sm:pt-8">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
@@ -666,31 +700,43 @@ function SectionHero(props: {
               </p>
             )}
 
-            {(sku !== undefined || price !== undefined || rating !== undefined || reviews !== undefined) && (
-              <div className="bg-slate-100 rounded-lg p-4 grid grid-cols-2 gap-4 text-sm">
-                {sku !== undefined && (
-                  <div>
-                    <span className="text-slate-700">SKU:</span>
-                    <span className="ml-2 text-slate-900 break-words">{sku as any}</span>
-                  </div>
+            {(catalogProduct || rating !== undefined || reviews !== undefined) && (
+              <div className="bg-slate-100 rounded-lg p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                {/* Three-column product details from product table */}
+                {asDisplayText(catalogProduct?.design) && (
+                  <div><span className="font-medium text-slate-700">Design:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText(catalogProduct?.design)}</span></div>
                 )}
-                {price !== undefined && (
-                  <div>
-                    <span className="text-slate-700">Price:</span>
-                    <span className="ml-2 text-slate-900">{price as any}</span>
-                  </div>
+                {asDisplayText(catalogProduct?.motif) && (
+                  <div><span className="font-medium text-slate-700">Motif:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText(catalogProduct?.motif)}</span></div>
                 )}
+                {asDisplayText(catalogProduct?.substructure) && (
+                  <div><span className="font-medium text-slate-700">Substructure:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText(catalogProduct?.substructure)}</span></div>
+                )}
+                {asDisplayText(catalogProduct?.subfinish) && (
+                  <div><span className="font-medium text-slate-700">Subfinish:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText(catalogProduct?.subfinish)}</span></div>
+                )}
+                {asDisplayText(catalogProduct?.content) && (
+                  <div><span className="font-medium text-slate-700">Content:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText(catalogProduct?.content)}</span></div>
+                )}
+                {asDisplayText((catalogProduct as any)?.subsuitable ?? catalogProduct?.subSuitableFor) && (
+                  <div><span className="font-medium text-slate-700">Suitable For:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText((catalogProduct as any)?.subsuitable ?? catalogProduct?.subSuitableFor)}</span></div>
+                )}
+                {/* Computed fields */}
+                {(catalogProduct?.gsm !== undefined || catalogProduct?.oz !== undefined) && (
+                  <div><span className="font-medium text-slate-700">Weight:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText(catalogProduct?.gsm)}{catalogProduct?.gsm !== undefined ? " gsm" : ""}{catalogProduct?.oz !== undefined ? ` / ${asDisplayText(catalogProduct?.oz)} oz` : ""}</span></div>
+                )}
+                {(catalogProduct?.cm !== undefined || catalogProduct?.inch !== undefined) && (
+                  <div><span className="font-medium text-slate-700">Width:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText(catalogProduct?.cm)}{catalogProduct?.cm !== undefined ? " cm" : ""}{catalogProduct?.inch !== undefined ? ` / ${asDisplayText(catalogProduct?.inch)} inch` : ""}</span></div>
+                )}
+                {asDisplayText(catalogProduct?.colors) && (
+                  <div><span className="font-medium text-slate-700">Colors:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText(catalogProduct?.colors)}</span></div>
+                )}
+                {/* Keep rating/reviews if present */}
                 {rating !== undefined && (
-                  <div>
-                    <span className="text-slate-700">Rating:</span>
-                    <span className="ml-2 text-slate-900">{rating as any}/5</span>
-                  </div>
+                  <div><span className="font-medium text-slate-700">Rating:</span><span className="ml-2 text-slate-900">{rating as any}/5</span></div>
                 )}
                 {reviews !== undefined && (
-                  <div>
-                    <span className="text-slate-700">Reviews:</span>
-                    <span className="ml-2 text-slate-900">{reviews as any}</span>
-                  </div>
+                  <div><span className="font-medium text-slate-700">Reviews:</span><span className="ml-2 text-slate-900">{reviews as any}</span></div>
                 )}
               </div>
             )}
@@ -1209,7 +1255,6 @@ export default async function Page({ params }: Props) {
           titleNode={titleNode}
           subtitle={taglineFromSeo || "Connect with leading fabric suppliers worldwide. Quality textiles, competitive pricing, and reliable supply chains."}
           sku={firstCardSeo?.sku}
-          price={firstCardSeo?.salesPrice}
           rating={firstCardSeo?.rating_value}
           reviews={firstCardSeo?.rating_count}
           phone={COMPANY_PHONE}
@@ -1218,7 +1263,6 @@ export default async function Page({ params }: Props) {
           catalogProduct={{
             name: firstCard?.name,
             sku: firstCard?.sku || firstCardSeo?.sku,
-            salesPrice: firstCard?.salesPrice || firstCardSeo?.salesPrice,
             productdescription: firstCard?.productdescription || firstCardSeo?.productdescription,
             img: firstCard?.img,
             altimg1:firstCard?.altimg2,
@@ -1230,6 +1274,15 @@ export default async function Page({ params }: Props) {
             oz: firstCard?.oz,
             cm: firstCard?.cm,
             inch: firstCard?.inch,
+            design: (firstCard as any)?.design,
+            motif: (firstCard as any)?.motif,
+            weight: (firstCard as any)?.weight,
+            width: (firstCard as any)?.width,
+            substructure: (firstCard as any)?.substructure,
+            subfinish: (firstCard as any)?.subfinish,
+            content: (firstCard as any)?.content,
+            subSuitableFor: (firstCard as any)?.subSuitableFor,
+            colors: (firstCard as any)?.colors,
           }}
         />
 
@@ -1335,7 +1388,6 @@ export default async function Page({ params }: Props) {
           titleNode={<>{locationTitle}</>}
           subtitle={locationTagline}
           sku={seo.sku}
-          price={seo.salesPrice}
           rating={seo.rating_value}
           reviews={seo.rating_count}
           phone={COMPANY_PHONE}
@@ -1344,7 +1396,6 @@ export default async function Page({ params }: Props) {
           catalogProduct={{
             name: matchingProduct?.name,
             sku: matchingProduct?.sku || seo.sku,
-            salesPrice: matchingProduct?.salesPrice || seo.salesPrice,
             productdescription: matchingProduct?.productdescription || seo.productdescription,
             img: matchingProduct?.img,
             image1: matchingProduct?.image1,
@@ -1353,6 +1404,15 @@ export default async function Page({ params }: Props) {
             oz: matchingProduct?.oz,
             cm: matchingProduct?.cm,
             inch: matchingProduct?.inch,
+            design: (matchingProduct as any)?.design ?? (seo as any)?.design,
+            motif: (matchingProduct as any)?.motif ?? (seo as any)?.motif,
+            weight: (matchingProduct as any)?.weight ?? (seo as any)?.weight,
+            width: (matchingProduct as any)?.width ?? (seo as any)?.width,
+            substructure: (matchingProduct as any)?.substructure ?? (seo as any)?.substructure,
+            subfinish: (matchingProduct as any)?.subfinish ?? (seo as any)?.subfinish,
+            content: (matchingProduct as any)?.content ?? (seo as any)?.content,
+            subSuitableFor: (matchingProduct as any)?.subSuitableFor ?? (seo as any)?.subSuitableFor,
+            colors: (matchingProduct as any)?.colors ?? (seo as any)?.colors,
           }}
         />
 
