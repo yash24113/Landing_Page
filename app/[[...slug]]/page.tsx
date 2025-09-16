@@ -27,9 +27,8 @@ const DEFAULT_LOCATION_SLUG = "ahmedabad";
 // page.tsx
 
 
-// ✅ must be a literal for static analysis
-export const revalidate = 10; // 60 * 60 * 24 * 90
-
+export const dynamic = 'force-static';
+export const revalidate = 10; // literal required
 // Helper for fetch with ISR — merges any passed "next" config
 function fetchWithISR(
   url: string,

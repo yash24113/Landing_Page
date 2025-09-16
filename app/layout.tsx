@@ -4,8 +4,8 @@ import Script from "next/script";
 import ClientLayout from "./ClientLayout";
 import "./globals.css";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export const dynamic = 'force-static';
+export const revalidate = 10;
 
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID;           // e.g. G-XXXXXXXXXX
 const CLARITY_ID = process.env.NEXT_PUBLIC_CLARITY_ID; // e.g. abcdef1234
