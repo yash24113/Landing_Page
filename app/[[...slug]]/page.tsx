@@ -315,6 +315,22 @@ async function fetchJson<T>(url: string): Promise<T | null> {
   }
 }
 
+/* -------------------------------------------------
+   getStaticProps equivalent for App Router
+   (fetching landing/seo with ISR 90 days)
+-------------------------------------------------- */
+async function getLandingSeo(): Promise<any | null> {
+  try {
+    const res = await fetch("https://backend.amrita-fashions.com/landing/seo", {
+      next: { revalidate: 7776000 }, // 90 days in seconds
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
 /** Office info extractor (DB-only, strict) */
 function pickOfficeInfo(payload: any): OfficeInformation | null {
   const d =
@@ -927,7 +943,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   // ---------- HOME ----------
   if (!firstSeg) {
-    const [seoJson, locJson] = await Promise.all([fetchJson<any>(SEO_URL), fetchJson<any>(LOC_URL)]);
+    // Use App Router equivalent of getStaticProps for landing/seo
+    const [seoJson, locJson] = await Promise.all([getLandingSeo(), fetchJson<any>(LOC_URL)]);
     const seos: any[] = Array.isArray(seoJson?.data) ? seoJson.data : [];
     const rawLocs = (locJson?.data?.locations ?? locJson?.data ?? locJson?.locations) ?? [];
     const locs: any[] = Array.isArray(rawLocs) ? rawLocs : [];
@@ -1111,8 +1128,9 @@ export default async function Page({ params }: Props) {
      HOME (no slug)
   ============================ */
   if (!slug) {
+    // Use App Router equivalent of getStaticProps for landing/seo
     const [seoJson, prodJson, locJson] = await Promise.all([
-      fetchJson<any>(SEO_URL),
+      getLandingSeo(),
       fetchJson<any>(PRODUCT_URL),
       fetchJson<any>(LOC_URL),
     ]);
