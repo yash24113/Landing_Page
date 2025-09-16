@@ -16,7 +16,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html
       lang="en"
       className="scroll-smooth"
-      title="Amrita Global Enterprises"
+     
       data-ga={GA_ID ? "1" : "0"}
      data-clarity={CLARITY_ID ? "1" : "0"}
      data-site-url={SITE_URL}
