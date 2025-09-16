@@ -28,7 +28,7 @@ const DEFAULT_LOCATION_SLUG = "ahmedabad";
 
 
 // ✅ must be a literal for static analysis
-export const revalidate = 7776000; // 60 * 60 * 24 * 90
+export const revalidate = 10; // 60 * 60 * 24 * 90
 
 // Helper for fetch with ISR — merges any passed "next" config
 function fetchWithISR(
