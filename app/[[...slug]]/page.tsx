@@ -22,11 +22,10 @@ import { CommitmentText } from "@/components/commitment-text";
 const DEFAULT_LOCATION_SLUG = "ahmedabad";
 
 /* -------------------------------------------------
-   ISR SETTINGS (⭐ NEW: enables Incremental Static Regeneration)
-   Override with env: NEXT_REVALIDATE=300
+   ISR SETTINGS
 -------------------------------------------------- */
-
-export const revalidate = 7776000; // ⏱️ Rebuild this page in the background every N seconds
+export const revalidate = 7776000; // 90 days
+export const dynamic= "force-static"; // ✅ SSG + ISR in App Router
 
 /* -------------------------------------------------
    API URLs
@@ -35,13 +34,12 @@ const RAW_BASE = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, "") ?? ""
 const SEO_URL = RAW_BASE ? `${RAW_BASE}/seo` : "";
 const PRODUCT_URL = RAW_BASE ? `${RAW_BASE}/product` : "";
 const LOC_URL = RAW_BASE ? `${RAW_BASE}/locations` : "";
-
 const SEO_LIST_URL = RAW_BASE ? `${RAW_BASE}/seo` : "http://localhost:7000/landing/seo";
+const OFFICEINFO_URL = RAW_BASE ? `${RAW_BASE}/officeinformation` : "";
 
 /** Contact endpoint */
 const CONTACT_URL =
-  process.env.NEXT_PUBLIC_CONTACT_URL ??
-  (RAW_BASE ? `${RAW_BASE}/contacts` : "");
+  process.env.NEXT_PUBLIC_CONTACT_URL ?? (RAW_BASE ? `${RAW_BASE}/contacts` : "");
 
 /* -------------------------------------------------
    AUTH HEADERS
@@ -59,151 +57,12 @@ if (API_KEY) authHeaders[API_KEY_HEADER] = API_KEY;
 if (ADMIN_EMAIL) authHeaders[ADMIN_EMAIL_HEADER] = ADMIN_EMAIL;
 
 /* -------------------------------------------------
-   Company ENV (Organization/LocalBusiness/Contact)
-   Priority: DB → ENV → safe default
+   Site URL (do not change — from env)
 -------------------------------------------------- */
-const COMPANY_NAME = process.env.NEXT_PUBLIC_COMPANY_NAME || "Amrita Fashions";
-const COMPANY_EMAIL = process.env.NEXT_PUBLIC_COMPANY_EMAIL || "sales@example.com";
-const COMPANY_PHONE = process.env.NEXT_PUBLIC_COMPANY_PHONE || "+91-0000000000";
-const COMPANY_ADDRESS = process.env.NEXT_PUBLIC_COMPANY_ADDRESS || "";
-const COMPANY_LOGO_URL =
-  process.env.NEXT_PUBLIC_COMPANY_LOGO_URL ||
-  "https://amritafashions.com/wp-content/uploads/amrita-fashions-small-logo-india.webp";
 const COMPANY_SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || undefined;
-const COMPANY_SAME_AS = (process.env.NEXT_PUBLIC_COMPANY_SAME_AS || "")
-  .split(",")
-  .map((s) => s.trim())
-  .filter(Boolean);
-const COMPANY_LANGS = (process.env.NEXT_PUBLIC_COMPANY_LANGS || "English,Hindi,Gujarati")
-  .split(",")
-  .map((s) => s.trim())
-  .filter(Boolean);
-const COMPANY_FOUNDING_DATE = process.env.NEXT_PUBLIC_COMPANY_FOUNDING_DATE;
-const COMPANY_EMPLOYEE_RANGE = process.env.NEXT_PUBLIC_COMPANY_EMPLOYEE_RANGE;
-const COMPANY_AWARDS = (process.env.NEXT_PUBLIC_COMPANY_AWARDS || "")
-  .split("|")
-  .map((s) => s.trim())
-  .filter(Boolean);
 
 /* -------------------------------------------------
-   Utilities
--------------------------------------------------- */
-const norm = (s: any) => String(s ?? "").trim().toLowerCase();
-const toId = (v: any) =>
-  typeof v === "string" ? v.trim() : v?._id ? String(v._id).trim() : "";
-const nonEmpty = (s: any) => (typeof s === "string" && s.trim().length ? s.trim() : undefined);
-const asString = (v: any) => (v === undefined || v === null ? undefined : String(v));
-const asBoolString = (v: any) => (v === true ? "true" : v === false ? "false" : undefined);
-
-// phone sanitizer for tel: and JSON-LD
-function sanitizeE164(s: string) {
-  return s ? s.replace(/[^\d+]/g, "") : s;
-}
-
-// robust robots parser (keeps your intent if string absent)
-function parseRobots(s?: string) {
-  if (!s) return undefined;
-  const v = s.toLowerCase();
-  return {
-    index: !/noindex/.test(v),
-    follow: !/nofollow/.test(v),
-  } as const;
-}
-
-function pick<T>(dbVal: T | undefined | null, envVal?: T, fallback?: T) {
-  if (dbVal !== undefined && dbVal !== null && String(dbVal).trim() !== "") return dbVal as T;
-  if (envVal !== undefined && envVal !== null && String(envVal).trim() !== "") return envVal as T;
-  return fallback as T;
-}
-
-function isAssetSlug(slug?: string) {
-  return !!slug && slug.includes(".");
-}
-
-function parseAddressString(addr: string) {
-  if (!addr) return {} as any;
-  const parts = addr.split(",").map((p) => p.trim()).filter(Boolean);
-  const pinMatch = addr.match(/\b\d{5,6}\b/);
-  const postalCode = pinMatch ? pinMatch[0] : undefined;
-  return {
-    streetAddress: parts.slice(0, 3).join(", ") || undefined,
-    addressLocality: parts[3] || parts[2] || undefined,
-    addressRegion: parts[4] || parts.find((p) => /gujarat/i.test(p)) || undefined,
-    postalCode,
-    addressCountry: "IN",
-  };
-}
-
-/** ⭐ NEW: ISR-friendly JSON fetch (cached with revalidate) */
-async function fetchJson<T>(url: string): Promise<T | null> {
-  if (!url) return null;
-  try {
-    const res = await fetch(url, {
-      headers: authHeaders,
-      next: { revalidate: 7776000 }, // <-- cache & revalidate
-    });
-    if (!res.ok) return null;
-    return (await res.json()) as T;
-  } catch {
-    return null;
-  }
-}
-
-function pickImage(...candidates: Array<string | undefined | null>): string {
-  for (const c of candidates) {
-    const s = (c ?? "").toString().trim();
-    if (!s) continue;
-    if (s.startsWith("/") || s.startsWith("http://") || s.startsWith("https://")) {
-      return s;
-    }
-  }
-  return "/placeholder.svg?height=800&width=1200";
-}
-function pickImageNotEq(notEq: string, ...candidates: Array<string | undefined | null>): string {
-  for (const c of candidates) {
-    const s = (c ?? "").toString().trim();
-    if (!s) continue;
-    if ((s.startsWith("/") || s.startsWith("http://") || s.startsWith("https://")) && s !== notEq) {
-      return s;
-    }
-  }
-  return "/placeholder.svg?height=500&width=600";
-}
-
-/** Is this SEO row for the desired location? (by id OR locationCode === slug) */
-function isSeoForLocation(seoRow: any, locIds: Set<string>, locSlug: string) {
-  const locId = toId(seoRow?.location);
-  const locCode = norm(seoRow?.locationCode);
-  return (locId && locIds.has(locId)) || locCode === norm(locSlug);
-}
-
-/* -------------------------------------------------
-   Canonical / Hreflang helpers (ENV base + SEO.slug)
--------------------------------------------------- */
-const BASE_URL = (COMPANY_SITE_URL || "").replace(/\/+$/, ""); // no trailing slash
-
-function canonicalFromSeoSlug(seoSlug?: string) {
-  if (!BASE_URL) return undefined;
-  const cleaned = (seoSlug || "").trim().replace(/^\/+/, "");
-  return cleaned ? `${BASE_URL}/${cleaned}` : BASE_URL;
-}
-
-// Accepts only valid language codes; returns exactly ONE mapping (no x-default)
-const VALID_HREFLANG = /^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})?$/i;
-function pickFirstValidLang(input?: string): string | undefined {
-  if (!input) return undefined;
-  const tokens = input.split(/[, ]+/).map((s) => s.trim()).filter(Boolean);
-  for (const t of tokens) if (VALID_HREFLANG.test(t)) return t;
-  return undefined;
-}
-function hreflangMapFromSeo(canonical?: string, hreflang?: string) {
-  if (!canonical) return undefined;
-  const code = pickFirstValidLang(hreflang) || "en";
-  return { [code]: canonical };
-}
-
-/* -------------------------------------------------
-   Types (merged)
+   Types
 -------------------------------------------------- */
 type ProductDoc = {
   _id: string;
@@ -211,18 +70,15 @@ type ProductDoc = {
   slug?: string;
   img?: string;
   altimg1?: string;
-  image1?: string;
   altimg2?: string;
+  image1?: string;
   image2?: string;
-  altimg3?: string;
+  productdescription?: string;
+  sku?: string;
   gsm?: string | number;
   oz?: string | number;
   cm?: string | number;
   inch?: string | number;
-  salesPrice?: number;
-  productdescription?: string;
-  sku?: string;
-  // Added optional detailed attributes from product table
   design?: string;
   motif?: string;
   weight?: string;
@@ -230,12 +86,14 @@ type ProductDoc = {
   substructure?: string;
   subfinish?: string;
   content?: string;
-  subSuitableFor?: string; // maps "sub-suitable for"
+  subSuitableFor?: string;
   colors?: string;
   color?: any;
   quantity?: number | string;
-  um?: string ;
+  um?: string;
 };
+
+type IdLike = string | { _id?: string } | null | undefined;
 
 interface SeoDocFull {
   _id?: string;
@@ -345,16 +203,26 @@ interface SeoDocFull {
   OrganizationJsonLdaddressaddressCountry?: string;
 }
 
-/* -------------------------------------------------
-   Next.js dynamic flags
-   (❌ Removed force-dynamic/fetchCache no-store to allow ISR)
--------------------------------------------------- */
-// export const dynamic = "force-dynamic";   // removed
-// export const fetchCache = "force-no-store"; // removed
+type OfficeInformation = {
+  companyName?: string;
+  companyPhone1?: string;
+  companyPhone2?: string;
+  companyEmail?: string;
+  companyAddress?: string;
+  whatsappNumber?: string;
+  companyLogoUrl?: string;
+};
 
 /* -------------------------------------------------
-   OG/Twitter + JSON-LD helpers (merged)
+   Utilities
 -------------------------------------------------- */
+const norm = (s: any) => String(s ?? "").trim().toLowerCase();
+const toId = (v: any) =>
+  typeof v === "string" ? v.trim() : v?._id ? String(v._id).trim() : "";
+const nonEmpty = (s: any) =>
+  (typeof s === "string" && s.trim().length ? s.trim() : undefined);
+const asString = (v: any) =>
+  v === undefined || v === null ? undefined : String(v);
 const VALID_OG_TYPES = new Set([
   "website", "article", "book", "profile", "music.song", "music.album", "music.playlist",
   "music.radio_station", "video.movie", "video.episode", "video.tv_show", "video.other",
@@ -375,18 +243,17 @@ function twitterCardSafe(v: unknown) {
     | undefined;
 }
 
-function buildOtherMeta(seo: any) {
-  const other: Record<string, string> = {};
-  const set = (name: string, value: any) => {
-    const v = asString(value);
-    if (v !== undefined && v !== "") other[name] = v;
-  };
-  set("content-language", seo.contentLanguage);
-  set("x-ua-compatible", seo.xUaCompatible);
-  set("author_name", seo.author_name);
-  return other;
+function sanitizeE164(s: string) {
+  return s ? s.replace(/[^\d+]/g, "") : s;
 }
-
+function parseRobots(s?: string) {
+  if (!s) return undefined;
+  const v = s.toLowerCase();
+  return { index: !/noindex/.test(v), follow: !/nofollow/.test(v) } as const;
+}
+function isAssetSlug(slug?: string) {
+  return !!slug && slug.includes(".");
+}
 function parseJsonLd(input?: string) {
   if (!input || typeof input !== "string") return null;
   try {
@@ -396,14 +263,96 @@ function parseJsonLd(input?: string) {
     return null;
   }
 }
+function pickImage(...candidates: Array<string | undefined | null>): string {
+  for (const c of candidates) {
+    const s = (c ?? "").toString().trim();
+    if (!s) continue;
+    if (s.startsWith("/") || s.startsWith("http://") || s.startsWith("https://")) {
+      return s;
+    }
+  }
+  return "/placeholder.svg?height=800&width=1200";
+}
+function pickImageNotEq(notEq: string, ...candidates: Array<string | undefined | null>): string {
+  for (const c of candidates) {
+    const s = (c ?? "").toString().trim();
+    if (!s) continue;
+    if ((s.startsWith("/") || s.startsWith("http://") || s.startsWith("https://")) && s !== notEq) {
+      return s;
+    }
+  }
+  return "/placeholder.svg?height=500&width=600";
+}
+function parseAddressString(addr: string) {
+  if (!addr) return {} as any;
+  const parts = addr.split(",").map((p) => p.trim()).filter(Boolean);
+  const pinMatch = addr.match(/\b\d{5,6}\b/);
+  const postalCode = pinMatch ? pinMatch[0] : undefined;
+  return {
+    streetAddress: parts.slice(0, 3).join(", ") || undefined,
+    addressLocality: parts[3] || parts[2] || undefined,
+    addressRegion: parts[4] || parts.find((p) => /gujarat/i.test(p)) || undefined,
+    postalCode,
+    addressCountry: "IN",
+  };
+}
+const VALID_HREFLANG = /^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})?$/i;
+function pickFirstValidLang(input?: string): string | undefined {
+  if (!input) return undefined;
+  const tokens = input.split(/[, ]+/).map((s) => s.trim()).filter(Boolean);
+  for (const t of tokens) if (VALID_HREFLANG.test(t)) return t;
+  return undefined;
+}
+
+/** cached fetch with revalidate */
+async function fetchJson<T>(url: string): Promise<T | null> {
+  if (!url) return null;
+  try {
+    const res = await fetch(url, { headers: authHeaders, next: { revalidate } });
+    if (!res.ok) return null;
+    return (await res.json()) as T;
+  } catch {
+    return null;
+  }
+}
+
+/** Office info extractor (DB-only, strict) */
+function pickOfficeInfo(payload: any): OfficeInformation | null {
+  const d =
+    payload?.data?.officeInformation ??
+    payload?.data ??
+    payload?.officeInformation ??
+    payload;
+  if (!d) return null;
+  if (Array.isArray(d)) return d[0] ?? null;
+  if (typeof d === "object") return d as OfficeInformation;
+  return null;
+}
+
+/* -------------------------------------------------
+   Canonical / Hreflang helpers
+-------------------------------------------------- */
+const BASE_URL = (COMPANY_SITE_URL || "").replace(/\/+$/, "");
+function canonicalFromSeoSlug(seoSlug?: string) {
+  if (!BASE_URL) return undefined;
+  const cleaned = (seoSlug || "").trim().replace(/^\/+/, "");
+  return cleaned ? `${BASE_URL}/${cleaned}` : BASE_URL;
+}
+function hreflangMapFromSeo(canonical?: string, hreflang?: string) {
+  if (!canonical) return undefined;
+  const code = pickFirstValidLang(hreflang) || "en";
+  return { [code]: canonical };
+}
+
+/* -------------------------------------------------
+   Star rating UI
+-------------------------------------------------- */
 function StarRating({ value, outOf = 5 }: { value?: number | string; outOf?: number }) {
   const v = typeof value === "string" ? parseFloat(value) : (value ?? 0);
   const safe = Number.isFinite(v) ? Math.max(0, Math.min(outOf, v)) : 0;
-
   const full = Math.floor(safe);
-  const hasHalf = safe - full >= 0.25 && safe - full < 0.75; // round halves nicely
+  const hasHalf = safe - full >= 0.25 && safe - full < 0.75;
   const empty = outOf - full - (hasHalf ? 1 : 0);
-
   return (
     <span className="inline-flex items-center gap-0.5" aria-label={`Rating ${safe} out of ${outOf}`}>
       {Array.from({ length: full }).map((_, i) => (
@@ -417,34 +366,35 @@ function StarRating({ value, outOf = 5 }: { value?: number | string; outOf?: num
   );
 }
 
-/* ---------- JSON-LD builders (fixed to use BASE_URL + slug) ---------- */
-function buildLogoLdFromParts(seo: any) {
-  if (!seo?.LogoJsonLdcontext && !seo?.LogoJsonLdtype && !seo?.logoJsonLdurl) return null;
+/* -------------------------------------------------
+   JSON-LD builders (DB company injected)
+-------------------------------------------------- */
+type Company = { name: string; email: string; phone: string; address: string; logo?: string };
+
+function buildLogoLdFromParts(seo: any, company: Company) {
+  if (!seo?.LogoJsonLdcontext && !seo?.LogoJsonLdtype && !seo?.logoJsonLdurl && !company.logo) return null;
   return {
-    "@context": seo.LogoJsonLdcontext ,
-    "@type": seo.LogoJsonLdtype ,
-    url: nonEmpty(seo.logoJsonLdurl) || COMPANY_LOGO_URL,
+    "@context": seo.LogoJsonLdcontext || "https://schema.org",
+    "@type": seo.LogoJsonLdtype || "ImageObject",
+    url: nonEmpty(seo.logoJsonLdurl) || company.logo || "/placeholder.svg",
     width: nonEmpty(seo.logoJsonLdwidth),
     height: nonEmpty(seo.logoJsonLdheight),
   };
 }
 
-function buildLocalBusinessLdFromParts(seo: any) {
+function buildLocalBusinessLdFromParts(seo: any, company: Company) {
   const lat = parseFloat(seo?.LocalBusinessJsonLdgeoLatitude);
   const lng = parseFloat(seo?.LocalBusinessJsonLdgeoLongitude);
+  const images = [seo?.ogImage, seo?.twitterImage, company.logo].filter(Boolean) as string[];
 
-  const images = [seo?.ogImage, seo?.twitterImage].filter(Boolean) as string[];
-  if (images.length === 0) images.push(COMPANY_LOGO_URL ?? "/placeholder.svg?height=800&width=1200");
-
-  const addressFromEnv = parseAddressString(COMPANY_ADDRESS ?? "");
-
+  const addrFromDb = parseAddressString(company.address);
   const address = {
     "@type": "PostalAddress",
-    streetAddress: pick<string>(nonEmpty(seo?.LocalBusinessJsonLdaddressstreetAddress), addressFromEnv.streetAddress as string, undefined),
-    addressLocality: pick<string>(nonEmpty(seo?.LocalBusinessJsonLdaddressaddressLocality), addressFromEnv.addressLocality as string, undefined),
-    addressRegion: pick<string>(nonEmpty(seo?.LocalBusinessJsonLdaddressaddressRegion), addressFromEnv.addressRegion as string, undefined),
-    postalCode: pick<string>(nonEmpty(seo?.LocalBusinessJsonLdaddresspostalCode), addressFromEnv.postalCode as string, undefined),
-    addressCountry: pick<string>(nonEmpty(seo?.LocalBusinessJsonLdaddressaddressCountry), addressFromEnv.addressCountry as string, "IN"),
+    streetAddress: nonEmpty(seo?.LocalBusinessJsonLdaddressstreetAddress) || addrFromDb.streetAddress,
+    addressLocality: nonEmpty(seo?.LocalBusinessJsonLdaddressaddressLocality) || addrFromDb.addressLocality,
+    addressRegion: nonEmpty(seo?.LocalBusinessJsonLdaddressaddressRegion) || addrFromDb.addressRegion,
+    postalCode: nonEmpty(seo?.LocalBusinessJsonLdaddresspostalCode) || addrFromDb.postalCode,
+    addressCountry: nonEmpty(seo?.LocalBusinessJsonLdaddressaddressCountry) || addrFromDb.addressCountry || "IN",
   };
 
   const geo =
@@ -466,25 +416,20 @@ function buildLocalBusinessLdFromParts(seo: any) {
   return {
     "@context": "https://schema.org",
     "@type": "LocalBusiness",
-    name: pick<string>(nonEmpty(seo?.LocalBusinessJsonLdname), COMPANY_NAME, COMPANY_NAME),
+    name: company.name,
     url: canonical,
-    telephone: sanitizeE164(pick<string>(nonEmpty(seo?.LocalBusinessJsonLdtelephone), COMPANY_PHONE, COMPANY_PHONE) || ""),
-    email: pick<string>(nonEmpty(seo?.LocalBusinessJsonLdemail), COMPANY_EMAIL, COMPANY_EMAIL),
+    telephone: sanitizeE164(company.phone || ""),
+    email: company.email || undefined,
     address,
     geo,
-    image: images,
-    logo: pick<string>(nonEmpty(seo?.LocalBusinessJsonLdlogoUrl), COMPANY_LOGO_URL, COMPANY_LOGO_URL),
-    description: pick<string>(nonEmpty(seo?.description), undefined, undefined),
-    areaServed: pick<string>(nonEmpty(seo?.LocalBusinessJsonLdareaserved), undefined, undefined),
+    image: images.length ? images : undefined,
+    logo: company.logo,
+    description: nonEmpty(seo?.description),
+    areaServed: nonEmpty(seo?.LocalBusinessJsonLdareaserved),
     openingHoursSpecification,
     priceRange: "$$",
     paymentAccepted: ["Cash", "Credit Card", "Bank Transfer"],
     currenciesAccepted: ["INR", "USD", "EUR"],
-    hasOfferCatalog: {
-      "@type": "OfferCatalog",
-      name: "Fabric Catalog",
-      itemListElement: [{ "@type": "Offer", itemOffered: { "@type": "Product", name: "Premium Fabrics" } }],
-    },
   };
 }
 
@@ -498,10 +443,8 @@ function buildBreadcrumbLdFromParts(seo: any) {
     else if (s.includes("polyester")) productCategory = "Polyester Fabrics";
     else if (s.includes("linen")) productCategory = "Linen Fabrics";
   }
-
-  const base = (COMPANY_SITE_URL || "https://amritafashions.com").replace(/\/+$/, "");
+  const base = (COMPANY_SITE_URL || "https://example.com").replace(/\/+$/, "");
   const canonical = canonicalFromSeoSlug(seo?.slug) || base;
-
   const itemListElement = [
     { "@type": "ListItem", position: 1, name: "Home", item: `${base}/` },
     { "@type": "ListItem", position: 2, name: "Products", item: `${base}/products` },
@@ -518,44 +461,36 @@ function buildBreadcrumbLdFromParts(seo: any) {
       item: canonical,
     },
   ];
-
   return { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement };
 }
 
-function productJsonLd(seo: any, productName?: string) {
-  const images = [seo?.ogImage, seo?.twitterImage].filter(Boolean) as string[];
-  if (images.length === 0) {
-    images.push(COMPANY_LOGO_URL ?? "/placeholder.svg?height=800&width=1200");
-  }
-
+function productJsonLd(seo: any, productName: string | undefined, company: Company) {
+  const images = [seo?.ogImage, seo?.twitterImage, company.logo].filter(Boolean) as string[];
   const canonical = canonicalFromSeoSlug(seo?.slug) || COMPANY_SITE_URL || "https://example.com";
-
   const ld: any = {
     "@context": "https://schema.org",
     "@type": "Product",
     name: productName || nonEmpty(seo?.title),
     description: nonEmpty(seo?.description),
     sku: nonEmpty(seo?.sku) || undefined,
-    brand: { "@type": "Brand", name: COMPANY_NAME },
-    image: images,
+    brand: { "@type": "Brand", name: company.name },
+    image: images.length ? images : undefined,
     url: canonical,
     category: "Textile & Fabric",
-    manufacturer: { "@type": "Organization", name: COMPANY_NAME, url: canonical },
+    manufacturer: { "@type": "Organization", name: company.name, url: canonical },
     mpn: nonEmpty(seo?.productIdentifier) || undefined,
   };
-
   if (seo?.salesPrice) {
     ld.offers = {
       "@type": "Offer",
       price: seo.salesPrice,
       priceCurrency: "INR",
       availability: "https://schema.org/InStock",
-      seller: { "@type": "Organization", name: COMPANY_NAME },
+      seller: { "@type": "Organization", name: company.name },
       priceValidUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
       deliveryLeadTime: { "@type": "QuantitativeValue", value: 7, unitCode: "DAY" },
     };
   }
-
   if (seo?.rating_value && seo?.rating_count) {
     ld.aggregateRating = {
       "@type": "AggregateRating",
@@ -565,66 +500,53 @@ function productJsonLd(seo: any, productName?: string) {
       worstRating: 1,
     };
   }
-
   if (seo?.popularproduct) {
     ld.additionalProperty = { "@type": "PropertyValue", name: "Popular Product", value: "Yes" };
   }
-
   return ld;
 }
 
-function organizationJsonLd(seo: any) {
-  const images = [seo?.ogImage, seo?.twitterImage].filter(Boolean) as string[];
-  if (images.length === 0) {
-    images.push(COMPANY_LOGO_URL ?? "/placeholder.svg?height=800&width=1200");
-  }
-
-  const envAddr = parseAddressString(COMPANY_ADDRESS ?? "");
-
+function organizationJsonLd(seo: any, company: Company) {
+  const images = [seo?.ogImage, seo?.twitterImage, company.logo].filter(Boolean) as string[];
+  const addrFromDb = parseAddressString(company.address || "");
   const addr = {
     "@type": "PostalAddress",
-    streetAddress: pick<string>(nonEmpty(seo?.OrganizationJsonLdaddressstreetAddress), envAddr.streetAddress as string, "404, Safal Prelude, Corporate Rd"),
-    addressLocality: pick<string>(nonEmpty(seo?.OrganizationJsonLdaddressaddressLocality), envAddr.addressLocality as string, "Ahmedabad"),
-    addressRegion: pick<string>(nonEmpty(seo?.OrganizationJsonLdaddressaddressRegion), envAddr.addressRegion as string, "Gujarat"),
-    postalCode: pick<string>(nonEmpty(seo?.OrganizationJsonLdaddresspostalCode), envAddr.postalCode as string, "380015"),
-    addressCountry: pick<string>(nonEmpty(seo?.OrganizationJsonLdaddressaddressCountry), envAddr.addressCountry as string, "IN"),
+    streetAddress: nonEmpty(seo?.OrganizationJsonLdaddressstreetAddress) || addrFromDb.streetAddress,
+    addressLocality: nonEmpty(seo?.OrganizationJsonLdaddressaddressLocality) || addrFromDb.addressLocality,
+    addressRegion: nonEmpty(seo?.OrganizationJsonLdaddressaddressRegion) || addrFromDb.addressRegion,
+    postalCode: nonEmpty(seo?.OrganizationJsonLdaddresspostalCode) || addrFromDb.postalCode,
+    addressCountry: nonEmpty(seo?.OrganizationJsonLdaddressaddressCountry) || addrFromDb.addressCountry || "IN",
   };
-
   const orgUrl = canonicalFromSeoSlug(seo?.slug) || COMPANY_SITE_URL || "https://example.com";
-
   return {
     "@context": "https://schema.org",
     "@type": "Organization",
     "@id": `${orgUrl}/#organization`,
-    name: pick<string>(nonEmpty(seo?.OrganizationJsonLdname), COMPANY_NAME, COMPANY_NAME),
+    name: company.name,
     url: orgUrl,
-    logo: { "@type": "ImageObject", url: pick<string>(nonEmpty(seo?.OrganizationJsonLdlogoUrl), COMPANY_LOGO_URL, COMPANY_LOGO_URL), width: 131, height: 61 },
-    image: images,
+    logo: company.logo ? { "@type": "ImageObject", url: company.logo, width: 131, height: 61 } : undefined,
+    image: images.length ? images : undefined,
     description:
       nonEmpty(seo?.description) ||
-      "Leading B2B Fabric Supplier Worldwide - ISO 9001 Certified • 500+ Global Partners • Ships to 50+ Countries",
+      "Leading B2B Fabric Supplier Worldwide",
     address: addr,
     contactPoint: {
       "@type": "ContactPoint",
-      telephone: sanitizeE164(pick<string>(nonEmpty(seo?.OrganizationJsonLdtelephone), COMPANY_PHONE, COMPANY_PHONE) || ""),
+      telephone: sanitizeE164(company.phone || ""),
       contactType: "customer service",
-      email: pick<string>(nonEmpty(seo?.OrganizationJsonLdemail), COMPANY_EMAIL, COMPANY_EMAIL),
-      availableLanguage: COMPANY_LANGS,
+      email: company.email || undefined,
+      availableLanguage: ["en", "hi", "gu"],
     },
-    sameAs: (Array.isArray((seo as any)?.sameAs) && (seo as any)?.sameAs.length ? (seo as any).sameAs : COMPANY_SAME_AS) || undefined,
-    ...(COMPANY_FOUNDING_DATE ? { foundingDate: COMPANY_FOUNDING_DATE } : {}),
-    ...(COMPANY_EMPLOYEE_RANGE ? { numberOfEmployees: COMPANY_EMPLOYEE_RANGE } : {}),
-    ...(COMPANY_AWARDS.length ? { award: COMPANY_AWARDS } : {}),
   };
 }
 
-function websiteJsonLd(seo: any) {
+function websiteJsonLd(seo: any, company: Company) {
   const canonical = canonicalFromSeoSlug(seo?.slug) || COMPANY_SITE_URL || "https://example.com";
   const base = (COMPANY_SITE_URL || canonical).replace(/\/+$/, "");
   return {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    name: COMPANY_NAME,
+    name: company.name || "Website",
     url: canonical,
     description: "Leading B2B Fabric Supplier Worldwide - Premium Quality Textiles",
     potentialAction: {
@@ -632,7 +554,7 @@ function websiteJsonLd(seo: any) {
       target: { "@type": "EntryPoint", urlTemplate: `${base}/search?q={search_term_string}` },
       "query-input": "required name=search_term_string",
     },
-    publisher: { "@type": "Organization", name: COMPANY_NAME },
+    publisher: { "@type": "Organization", name: company.name || "Company" },
   };
 }
 
@@ -652,21 +574,21 @@ function faqJsonLd() {
   };
 }
 
-/* ---------- NEW: module-scoped JSON-LD aggregator (used below) ---------- */
-function jsonLdFor(seoBase: any, productName?: string) {
+/** JSON-LD aggregator with DB company injected */
+function jsonLdFor(seoBase: any, productName: string | undefined, company: Company) {
   const videoLd = parseJsonLd(seoBase?.VideoJsonLd);
-  const logoLd = parseJsonLd(seoBase?.LogoJsonLd) ?? buildLogoLdFromParts(seoBase);
+  const logoLd = parseJsonLd(seoBase?.LogoJsonLd) ?? buildLogoLdFromParts(seoBase, company);
   const breadcrumbLd = buildBreadcrumbLdFromParts(seoBase);
-  const localBusinessLd = buildLocalBusinessLdFromParts(seoBase);
-  const productLd = productJsonLd(seoBase, productName);
-  const organizationLd = organizationJsonLd(seoBase);
-  const websiteLd = websiteJsonLd(seoBase);
+  const localBusinessLd = buildLocalBusinessLdFromParts(seoBase, company);
+  const productLd = productJsonLd(seoBase, productName, company);
+  const organizationLd = organizationJsonLd(seoBase, company);
+  const websiteLd = websiteJsonLd(seoBase, company);
   const faqLd = faqJsonLd();
   return { videoLd, logoLd, breadcrumbLd, localBusinessLd, productLd, organizationLd, websiteLd, faqLd };
 }
 
 /* -------------------------------------------------
-   Reusable UI Sections (shared by home & slug)
+   Reusable UI Sections
 -------------------------------------------------- */
 function SectionHero(props: {
   titleNode: React.ReactNode;
@@ -677,39 +599,10 @@ function SectionHero(props: {
   phone?: string;
   heroImage: string;
   heroAlt: string;
-  catalogProduct?: {
-    name?: string;
-    sku?: string;
-    productdescription?: string;
-    img?: string;
-    image1?: string;
-    image2?: string;
-    altimg1?: string;
-    altimg2?: string;
-    altimg3?: string;
-    gsm?: string | number;
-    oz?: string | number;
-    cm?: string | number;
-    inch?: string | number;
-    // detailed attributes
-    design?: string;
-    motif?: string;
-    weight?: string;
-    width?: string;
-    substructure?: string;
-    subfinish?: string;
-    content?: string;
-    subSuitableFor?: string;
-    colors?: string;
-    color?: any;
-    moq?: number | string;
-    leadtime?: number | string;
-    um?: string ;
-  };
+  catalogProduct?: Partial<ProductDoc> & { leadtime?: number | string };
 }) {
   const { titleNode, subtitle, sku, rating, reviews, phone, heroImage, heroAlt, catalogProduct } = props;
 
-  // normalize attribute values to readable text (handles objects like { _id, name } or arrays)
   const asDisplayText = (value: any): string | undefined => {
     if (value === undefined || value === null) return undefined;
     if (Array.isArray(value)) {
@@ -724,8 +617,6 @@ function SectionHero(props: {
     const s = String(value).trim();
     return s || undefined;
   };
-  
-  // numeric display helpers
   const asNumber = (value: any): number | undefined => {
     if (value === undefined || value === null) return undefined;
     const n = Number(String(value).replace(/[^0-9.\-]/g, ""));
@@ -734,11 +625,12 @@ function SectionHero(props: {
   const formatInchRounded = (value: any): string | undefined => {
     const n = asNumber(value);
     return n === undefined ? asDisplayText(value) : String(Math.round(n));
-  };
+    };
   const formatOzOneDecimal = (value: any): string | undefined => {
     const n = asNumber(value);
     return n === undefined ? asDisplayText(value) : n.toFixed(1);
   };
+
   return (
     <section id="hero" className="hero relative bg-white text-slate-900 overflow-hidden pt-4 pb-8 sm:pt-8">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
@@ -757,17 +649,16 @@ function SectionHero(props: {
 
             {(catalogProduct || rating !== undefined || reviews !== undefined) && (
               <div className="bg-slate-100 rounded-lg p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
-                {/* Three-column product details from product table */}
-                   {asDisplayText(catalogProduct?.content) && (
+                {asDisplayText(catalogProduct?.content) && (
                   <div><span className="font-medium text-slate-700">Content:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText(catalogProduct?.content)}</span></div>
                 )}
-                      {(catalogProduct?.gsm !== undefined || catalogProduct?.oz !== undefined) && (
+                {(catalogProduct?.gsm !== undefined || catalogProduct?.oz !== undefined) && (
                   <div><span className="font-medium text-slate-700">Weight:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText(catalogProduct?.gsm)}{catalogProduct?.gsm !== undefined ? " gsm" : ""}{catalogProduct?.oz !== undefined ? ` / ${formatOzOneDecimal(catalogProduct?.oz)} oz` : ""}</span></div>
                 )}
-                      {(catalogProduct?.cm !== undefined || catalogProduct?.inch !== undefined) && (
+                {(catalogProduct?.cm !== undefined || catalogProduct?.inch !== undefined) && (
                   <div><span className="font-medium text-slate-700">Width:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText(catalogProduct?.cm)}{catalogProduct?.cm !== undefined ? " cm" : ""}{catalogProduct?.inch !== undefined ? ` / ${formatInchRounded(catalogProduct?.inch)} inch` : ""}</span></div>
                 )}
-                           {asDisplayText(catalogProduct?.subfinish) && (
+                {asDisplayText(catalogProduct?.subfinish) && (
                   <div><span className="font-medium text-slate-700">Finish:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText(catalogProduct?.subfinish)}</span></div>
                 )}
                 {asDisplayText(catalogProduct?.design) && (
@@ -782,11 +673,8 @@ function SectionHero(props: {
                 {asDisplayText((catalogProduct as any)?.subsuitable ?? catalogProduct?.subSuitableFor) && (
                   <div><span className="font-medium text-slate-700">Suitable For:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText((catalogProduct as any)?.subsuitable ?? catalogProduct?.subSuitableFor)}</span></div>
                 )}
-                {/* Computed fields */}
-          
-          
-                {catalogProduct?.moq !== undefined && (
-                  <div><span className="font-medium text-slate-700">MOQ:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText((catalogProduct as any)?.moq)} {asDisplayText((catalogProduct as any)?.um)} </span></div>
+                {catalogProduct?.quantity !== undefined && (
+                  <div><span className="font-medium text-slate-700">MOQ:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText((catalogProduct as any)?.quantity)} {asDisplayText((catalogProduct as any)?.um)}</span></div>
                 )}
                 {asDisplayText((catalogProduct as any)?.color ?? catalogProduct?.colors) && (
                   <div><span className="font-medium text-slate-700">Colors:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText((catalogProduct as any)?.color ?? catalogProduct?.colors)}</span></div>
@@ -794,16 +682,12 @@ function SectionHero(props: {
                 {asDisplayText((catalogProduct as any)?.leadtime) && (
                   <div><span className="font-medium text-slate-700">Lead time:</span><span className="ml-2 text-slate-900 break-words">{asDisplayText((catalogProduct as any)?.leadtime)} days</span></div>
                 )}
-                {/* Keep rating/reviews if present */}
-               {rating !== undefined && (
-  <div className="flex items-center">
-    <span className="font-medium text-slate-700">Rating:</span>
-    <span className="ml-2">
-      <StarRating value={rating as any} />
-    </span>
-  </div>
-)}
-
+                {rating !== undefined && (
+                  <div className="flex items-center">
+                    <span className="font-medium text-slate-700">Rating:</span>
+                    <span className="ml-2"><StarRating value={rating as any} /></span>
+                  </div>
+                )}
                 {reviews !== undefined && (
                   <div><span className="font-medium text-slate-700">Reviews:</span><span className="ml-2 text-slate-900">{reviews as any}</span></div>
                 )}
@@ -965,12 +849,8 @@ function ProductGrid(props: {
                       {desc || "—"}
                     </p>
 
-                    {/* NOTE: Avoid nested <a>. This is a styled span now. */}
                     {href !== "#" && (
-                      <span
-                        className="mt-3 inline-flex items-center font-semibold text-blue-700 group-hover:text-blue-800"
-                        aria-hidden="true"
-                      >
+                      <span className="mt-3 inline-flex items-center font-semibold text-blue-700 group-hover:text-blue-800" aria-hidden="true">
                         Read more →
                       </span>
                     )}
@@ -1019,24 +899,36 @@ function ContactSection() {
 }
 
 /* -------------------------------------------------
-   Props (optional catch-all)
+   Props
 -------------------------------------------------- */
 type Props = { params: Promise<{ slug?: string[] }> };
 
 /* -------------------------------------------------
-   Metadata (home vs slug)
-   (Uses ISR-cached fetchJson under the hood)
+   Metadata (fetches DB company too)
 -------------------------------------------------- */
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const p = await params;
   const slugSegs = p.slug ?? [];
   const firstSeg = slugSegs[0];
 
+  // DB company
+  const officeJson = await fetchJson<any>(OFFICEINFO_URL);
+  const office = pickOfficeInfo(officeJson);
+  const COMPANY_DB: Company = {
+    name: (office?.companyName ?? "").trim(),
+    email: (office?.companyEmail ?? "").trim(),
+    phone:
+      (office?.companyPhone1 ?? "").trim() ||
+      (office?.whatsappNumber ?? "").trim() ||
+      (office?.companyPhone2 ?? "").trim() ||
+      "",
+    address: (office?.companyAddress ?? "").trim(),
+    logo: (office?.companyLogoUrl ?? "").trim(),
+  };
+
   // ---------- HOME ----------
   if (!firstSeg) {
-    const seoJson = await fetchJson<any>(SEO_URL);
-    const locJson = await fetchJson<any>(LOC_URL);
-
+    const [seoJson, locJson] = await Promise.all([fetchJson<any>(SEO_URL), fetchJson<any>(LOC_URL)]);
     const seos: any[] = Array.isArray(seoJson?.data) ? seoJson.data : [];
     const rawLocs = (locJson?.data?.locations ?? locJson?.data ?? locJson?.locations) ?? [];
     const locs: any[] = Array.isArray(rawLocs) ? rawLocs : [];
@@ -1049,13 +941,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     );
 
     const seoData =
-      seos.find((s) => isSeoForLocation(s, targetLocIds, DEFAULT_LOCATION_SLUG)) || seos[0] || null;
+      seos.find((s) => {
+        const locId = toId(s?.location);
+        const locCode = norm(s?.locationCode);
+        return (locId && targetLocIds.has(locId)) || locCode === norm(DEFAULT_LOCATION_SLUG);
+      }) || seos[0] || null;
 
     if (!seoData) return {};
 
     const title = seoData.title || "Premium Fabric";
     const desc = seoData.description || "High-quality fabric for garment manufacturing.";
-
     const canonical = canonicalFromSeoSlug(seoData?.slug);
     const origin = (BASE_URL || "https://example.com");
     const ogType = seoData.ogType ? ogTypeSafe(seoData.ogType) : (seoData.ogVideoUrl ? "video.other" : "website");
@@ -1067,19 +962,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         seoData.keywords?.split(",").map((k: string) => k.trim()).filter(Boolean) ||
         ["fabric", "textile", "garment", "wholesale", "manufacturer"],
       metadataBase: new URL(origin),
-      applicationName: seoData.ogSiteName || COMPANY_NAME,
+      applicationName: COMPANY_DB.name || undefined,
       authors: seoData.author_name ? [{ name: seoData.author_name }] : undefined,
       creator: seoData.author_name,
-      publisher: seoData.ogSiteName || COMPANY_NAME,
+      publisher: COMPANY_DB.name || undefined,
       generator: "Next.js",
       referrer: "origin-when-cross-origin",
       robots: parseRobots(seoData.robots),
       viewport: { width: "device-width", initialScale: 1 },
-      formatDetection: {
-        email: false,
-        address: false,
-        telephone: seoData.formatDetection === "telephone=no" ? false : true,
-      },
+      formatDetection: { email: false, address: false, telephone: seoData.formatDetection === "telephone=no" ? false : true },
       verification:
         seoData.googleSiteVerification || seoData.msValidate
           ? {
@@ -1089,54 +980,46 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
           : undefined,
       themeColor: seoData.themeColor || "#ffffff",
       appleWebApp: seoData.mobileWebAppCapable
-        ? {
-            capable: seoData.mobileWebAppCapable === "yes",
-            statusBarStyle: (seoData.appleStatusBarStyle as any) || "default",
-          }
+        ? { capable: seoData.mobileWebAppCapable === "yes", statusBarStyle: (seoData.appleStatusBarStyle as any) || "default" }
         : undefined,
       openGraph: {
         url: canonical,
-        siteName: seoData.ogSiteName || COMPANY_NAME,
+        siteName: COMPANY_DB.name || undefined,
         locale: seoData.ogLocale || "en_US",
         title,
         description: desc,
         type: ogType as any,
-        images: seoData.ogImage
-          ? [{ url: seoData.ogImage, width: 1200, height: 630, alt: title }]
-          : [],
+        images: seoData.ogImage ? [{ url: seoData.ogImage, width: 1200, height: 630, alt: title }] : [],
         videos: seoData.ogVideoUrl
-          ? [
-              {
-                url: seoData.ogVideoUrl,
-                secureUrl: seoData.ogVideoSecureUrl,
-                type: seoData.ogVideoType as any,
-                width: seoData.ogVideoWidth,
-                height: seoData.ogVideoHeight,
-              },
-            ]
+          ? [{ url: seoData.ogVideoUrl, secureUrl: seoData.ogVideoSecureUrl, type: seoData.ogVideoType as any, width: seoData.ogVideoWidth, height: seoData.ogVideoHeight }]
           : [],
       },
       twitter: {
         card: twitterCardSafe(seoData.twitterCard) || "summary_large_image",
-        site: seoData.twitterSite || "@ageb",
+        site: seoData.twitterSite || undefined,
         title,
         description: desc,
         images: seoData.twitterImage ? [{ url: seoData.twitterImage }] : undefined,
       },
-      alternates: {
-        canonical,
-        languages: hreflangMapFromSeo(canonical, seoData?.hreflang),
-      },
-      other: buildOtherMeta(seoData),
+      alternates: { canonical, languages: hreflangMapFromSeo(canonical, seoData?.hreflang) },
+      other: (() => {
+        const other: Record<string, string> = {};
+        const set = (name: string, value: any) => {
+          const v = asString(value);
+          if (v !== undefined && v !== "") other[name] = v;
+        };
+        set("content-language", seoData.contentLanguage);
+        set("x-ua-compatible", seoData.xUaCompatible);
+        set("author_name", seoData.author_name);
+        return other;
+      })(),
     };
   }
 
   // ---------- SLUG DETAIL ----------
   if (isAssetSlug(firstSeg)) return {};
   const seo = (await fetchSeoData(firstSeg)) as SeoDocFull | null;
-  if (!seo) {
-    return { title: "Page Not Found", description: "The requested page could not be found." };
-  }
+  if (!seo) return { title: "Page Not Found", description: "The requested page could not be found." };
 
   const title = seo.title;
   const desc = seo.description;
@@ -1151,19 +1034,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     description: desc,
     keywords: seo.keywords?.split(",").map((k) => k.trim()).filter(Boolean),
     metadataBase: new URL(origin),
-    applicationName: seo.ogSiteName || COMPANY_NAME,
+    applicationName: COMPANY_DB.name || undefined,
     authors: seo.author_name ? [{ name: seo.author_name }] : undefined,
     creator: seo.author_name,
-    publisher: seo.ogSiteName || COMPANY_NAME,
+    publisher: COMPANY_DB.name || undefined,
     generator: "Next.js",
     referrer: "origin-when-cross-origin",
     robots: parseRobots(seo.robots),
     viewport: { width: "device-width", initialScale: 1 },
-    formatDetection: {
-      email: false,
-      address: false,
-      telephone: seo.formatDetection === "telephone=no" ? false : true,
-    },
+    formatDetection: { email: false, address: false, telephone: seo.formatDetection === "telephone=no" ? false : true },
     verification:
       seo.googleSiteVerification || seo.msValidate
         ? {
@@ -1173,20 +1052,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         : undefined,
     themeColor: seo.themeColor || "#ffffff",
     appleWebApp: seo.mobileWebAppCapable
-      ? {
-          capable: seo.mobileWebAppCapable === "yes",
-          statusBarStyle: (seo.appleStatusBarStyle as any) || "default",
-        }
+      ? { capable: seo.mobileWebAppCapable === "yes", statusBarStyle: (seo.appleStatusBarStyle as any) || "default" }
       : undefined,
     openGraph: {
       url: canonical,
-      siteName: seo.ogSiteName || COMPANY_NAME,
+      siteName: COMPANY_DB.name || undefined,
       locale: seo.ogLocale,
       title: title,
       description: desc,
       type: ogType as any,
-     
-
       images: seo.ogImage ? [{ url: seo.ogImage, width: 1200, height: 630, alt: ogImageAlt }] : undefined,
     },
     twitter: {
@@ -1196,23 +1070,43 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description: seo.twitterDescription || desc,
       images: seo.twitterImage ? [seo.twitterImage] : undefined,
     },
-    alternates: {
-      canonical,
-      languages: hreflangMapFromSeo(canonical, seo?.hreflang),
-    },
-    other: buildOtherMeta(seo),
+    alternates: { canonical, languages: hreflangMapFromSeo(canonical, seo?.hreflang) },
+    other: (() => {
+      const other: Record<string, string> = {};
+      const set = (name: string, value: any) => {
+        const v = asString(value);
+        if (v !== undefined && v !== "") other[name] = v;
+      };
+      set("content-language", seo.contentLanguage);
+      set("x-ua-compatible", seo.xUaCompatible);
+      set("author_name", seo.author_name);
+      return other;
+    })(),
   };
 }
 
 /* -------------------------------------------------
-   Page (branching UI, reusing sections)
+   Page
 -------------------------------------------------- */
-
-
 export default async function Page({ params }: Props) {
   const p = await params;
   const slugSegs = p.slug ?? [];
   const slug = slugSegs[0];
+
+  // DB-only company info
+  const officeJson = await fetchJson<any>(OFFICEINFO_URL);
+  const office = pickOfficeInfo(officeJson);
+  const COMPANY_DB: Company = {
+    name: (office?.companyName ?? "").trim(),
+    email: (office?.companyEmail ?? "").trim(),
+    phone:
+      (office?.companyPhone1 ?? "").trim() ||
+      (office?.whatsappNumber ?? "").trim() ||
+      (office?.companyPhone2 ?? "").trim() ||
+      "",
+    address: (office?.companyAddress ?? "").trim(),
+    logo: (office?.companyLogoUrl ?? "").trim(),
+  };
 
   /* ============================
      HOME (no slug)
@@ -1237,7 +1131,13 @@ export default async function Page({ params }: Props) {
         .filter(Boolean),
     );
 
-    const locSeoRows = seos.filter((s) => isSeoForLocation(s, targetLocIds, DEFAULT_LOCATION_SLUG));
+    const isSeoForLocation = (s: any) => {
+      const locId = toId(s?.location);
+      const locCode = norm(s?.locationCode);
+      return (locId && targetLocIds.has(locId)) || locCode === norm(DEFAULT_LOCATION_SLUG);
+    };
+
+    const locSeoRows = seos.filter((s) => isSeoForLocation(s));
 
     const productById = new Map<string, any>();
     const productBySlug = new Map<string, any>();
@@ -1270,7 +1170,7 @@ export default async function Page({ params }: Props) {
       const pid = toId(s.product);
       const sSlug = String(s?.slug ?? "").trim();
       if (!pid || !sSlug) continue;
-      if (isSeoForLocation(s, targetLocIds, DEFAULT_LOCATION_SLUG)) {
+      if (isSeoForLocation(s)) {
         slugByProduct.set(pid, sSlug);
       } else if (!slugByProduct.has(pid)) {
         slugByProduct.set(pid, sSlug);
@@ -1278,15 +1178,11 @@ export default async function Page({ params }: Props) {
     }
 
     const firstCard = ahmedabadProducts[0] || products[0] || null;
+    const isRowForCard = (s: any) =>
+      (toId(s.product) === (firstCard?._id ?? "")) || norm(s.slug) === norm(firstCard?.slug);
     const firstCardSeo =
-      seos.find(
-        (s) =>
-          isSeoForLocation(s, targetLocIds, DEFAULT_LOCATION_SLUG) &&
-          (toId(s.product) === (firstCard?._id ?? "") || norm(s.slug) === norm(firstCard?.slug)),
-      ) ||
-      seos.find(
-        (s) => toId(s.product) === (firstCard?._id ?? "") || norm(s.slug) === norm(firstCard?.slug),
-      ) ||
+      seos.find((s) => isSeoForLocation(s) && isRowForCard(s)) ||
+      seos.find((s) => isRowForCard(s)) ||
       locSeoRows[0] ||
       seos[0] ||
       null;
@@ -1302,17 +1198,14 @@ export default async function Page({ params }: Props) {
     const overviewImage = pickImageNotEq(heroImage, firstCard?.image2, firstCard?.image1, firstCard?.img);
     const overviewAlt = firstCard?.name ? `${firstCard.name} — secondary view` : "";
 
-    const ld = jsonLdFor(firstCardSeo || seos[0] || {}, firstCard?.name);
+    // JSON-LD with DB company
+    const ld = jsonLdFor(firstCardSeo || seos[0] || {}, firstCard?.name, COMPANY_DB);
 
     const titleNode: React.ReactNode = titleFromSeo ? (
       titleFromSeo
     ) : (
       <>
-        Premium{" "}
-        <span className="text-black">
-          {heroName}
-        </span>{" "}
-        for Global Manufacturers
+           Premium <span className="text-black">{heroName}</span> for Global Manufacturers
       </>
     );
 
@@ -1323,11 +1216,14 @@ export default async function Page({ params }: Props) {
 
         <SectionHero
           titleNode={titleNode}
-          subtitle={taglineFromSeo || "Connect with leading fabric suppliers worldwide. Quality textiles, competitive pricing, and reliable supply chains."}
+          subtitle={
+            taglineFromSeo ||
+            "Connect with leading fabric suppliers worldwide. Quality textiles, competitive pricing, and reliable supply chains."
+          }
           sku={firstCardSeo?.sku}
           rating={firstCardSeo?.rating_value}
           reviews={firstCardSeo?.rating_count}
-          phone={COMPANY_PHONE}
+          phone={COMPANY_DB.phone}
           heroImage={heroImage}
           heroAlt={heroAlt}
           catalogProduct={{
@@ -1335,9 +1231,6 @@ export default async function Page({ params }: Props) {
             sku: firstCard?.sku || firstCardSeo?.sku,
             productdescription: firstCard?.productdescription || firstCardSeo?.productdescription,
             img: firstCard?.img,
-            altimg1:firstCard?.altimg2,
-            altimg2:firstCard?.altimg1,
-            altimg3:firstCard?.altimg3,
             image1: firstCard?.image1,
             image2: firstCard?.image2,
             gsm: firstCard?.gsm,
@@ -1354,23 +1247,26 @@ export default async function Page({ params }: Props) {
             subSuitableFor: (firstCard as any)?.subSuitableFor,
             colors: (firstCard as any)?.colors,
             color: (firstCard as any)?.color,
-            moq: (firstCard as any)?.quantity,
+            quantity: (firstCard as any)?.quantity,
             leadtime: (firstCardSeo as any)?.leadtime,
-            um:  (firstCard as any)?.um, 
+            um: (firstCard as any)?.um,
           }}
         />
 
         <OverviewSection
           tagline="ISO 9001 Certified • 500+ Global Partners • Ships to 50+ Countries"
-         p1={desc1FromSeo || undefined}
-        p2={desc2FromSeo || undefined}
+          p1={desc1FromSeo || undefined}
+          p2={desc2FromSeo || undefined}
           extraContent={<CommitmentText />}
           image={overviewImage}
           imageAlt={overviewAlt}
         />
 
         <ProductGrid
-          subtitle={taglineFromSeo || "Comprehensive range of premium fabrics for every manufacturing need"}
+          subtitle={
+            taglineFromSeo ||
+            "Comprehensive range of premium fabrics for every manufacturing need"
+          }
           products={ahmedabadProducts}
           slugByProduct={slugByProduct}
         />
@@ -1406,9 +1302,8 @@ export default async function Page({ params }: Props) {
     const sSlug = String(s?.slug ?? "").trim();
 
     let sameLocation = false;
-    if (currentLocId && locId) {
-      sameLocation = currentLocId === locId;
-    } else if (!currentLocId || !locId) {
+    if (currentLocId && locId) sameLocation = currentLocId === locId;
+    else if (!currentLocId || !locId) {
       if (currentLocCode && locCode) sameLocation = currentLocCode === locCode;
     }
 
@@ -1425,8 +1320,13 @@ export default async function Page({ params }: Props) {
 
   // Linked product for hero images
   const linkedProductId =
-    typeof seo.product === "string" ? seo.product.trim() : (seo.product as any)?._id ? String((seo.product as any)._id).trim() : "";
-  const matchingProduct: ProductDoc | null = allProducts.find((p) => p._id === linkedProductId) || null;
+    typeof seo.product === "string"
+      ? seo.product.trim()
+      : (seo.product as any)?._id
+      ? String((seo.product as any)._id).trim()
+      : "";
+  const matchingProduct: ProductDoc | null =
+    allProducts.find((p) => p._id === linkedProductId) || null;
 
   // HERO / overview images
   let heroImage = "/placeholder.svg?height=600&width=800";
@@ -1450,8 +1350,8 @@ export default async function Page({ params }: Props) {
   const locationDesc1 = seo.productlocationdescription1?.trim() || "";
   const locationDesc2 = seo.productlocationdescription2?.trim() || "";
 
-  // JSON-LD blocks for slug
-  const ld = jsonLdFor(seo, matchingProduct?.name);
+  // JSON-LD blocks for slug (using DB-only company)
+  const ld = jsonLdFor(seo, matchingProduct?.name, COMPANY_DB);
 
   return (
     <>
@@ -1464,7 +1364,7 @@ export default async function Page({ params }: Props) {
           sku={seo.sku}
           rating={seo.rating_value}
           reviews={seo.rating_count}
-          phone={COMPANY_PHONE}
+          phone={COMPANY_DB.phone}
           heroImage={heroImage}
           heroAlt={heroAlt}
           catalogProduct={{
@@ -1488,7 +1388,7 @@ export default async function Page({ params }: Props) {
             subSuitableFor: (matchingProduct as any)?.subSuitableFor ?? (seo as any)?.subSuitableFor,
             colors: (matchingProduct as any)?.colors ?? (seo as any)?.colors,
             color: (matchingProduct as any)?.color ?? (seo as any)?.color,
-            moq: (matchingProduct as any)?.quantity,
+            quantity: (matchingProduct as any)?.quantity,
             leadtime: (seo as any)?.leadtime,
             um: (matchingProduct as any)?.um,
           }}
@@ -1504,7 +1404,10 @@ export default async function Page({ params }: Props) {
         />
 
         <ProductGrid
-          subtitle={locationTagline || "Comprehensive range of premium fabrics for every manufacturing need"}
+          subtitle={
+            locationTagline ||
+            "Comprehensive range of premium fabrics for every manufacturing need"
+          }
           products={relatedProducts}
           slugByProduct={slugByProduct}
         />
@@ -1516,7 +1419,7 @@ export default async function Page({ params }: Props) {
 }
 
 /* -------------------------------------------------
-   Server actions
+   Server actions (unchanged)
 -------------------------------------------------- */
 export async function saveContactDraft(fd: FormData) {
   "use server";
@@ -1603,12 +1506,27 @@ export async function submitContact(formData: FormData) {
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      return { ok: false as const, status: res.status, message: err?.message || "Failed to create contact", error: err?.error };
+      return {
+        ok: false as const,
+        status: res.status,
+        message: err?.message || "Failed to create contact",
+        error: err?.error,
+      };
     }
 
     const json = await res.json().catch(() => ({}));
-    return { ok: true as const, status: 201, message: json?.message || "Contact created successfully", data: json?.data ?? null };
+    return {
+      ok: true as const,
+      status: 201,
+      message: json?.message || "Contact created successfully",
+      data: json?.data ?? null,
+    };
   } catch (e: any) {
-    return { ok: false as const, status: 500, message: "Network/Server error while creating contact", error: e?.message };
+    return {
+      ok: false as const,
+      status: 500,
+      message: "Network/Server error while creating contact",
+      error: e?.message,
+    };
   }
 }
