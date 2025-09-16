@@ -1,8 +1,8 @@
 {
+  "/_not-found/page": "app/_not-found/page.js",
+  "/robots.txt/route": "app/robots.txt/route.js",
   "/manifest.webmanifest/route": "app/manifest.webmanifest/route.js",
   "/api/contact/route": "app/api/contact/route.js",
-  "/robots.txt/route": "app/robots.txt/route.js",
-  "/_not-found/page": "app/_not-found/page.js",
   "/api/chat/route": "app/api/chat/route.js",
   "/sitemap.xml/route": "app/sitemap.xml/route.js",
   "/[[...slug]]/page": "app/[[...slug]]/page.js"
