@@ -24,7 +24,15 @@ const DEFAULT_LOCATION_SLUG = "ahmedabad";
 /* -------------------------------------------------
    ISR SETTINGS
 -------------------------------------------------- */
-export const revalidate = 5; // 90 days
+export const revalidate = 7776000; // 90 days
+
+// Helper for fetch with ISR
+function fetchWithISR(url: string, options: RequestInit = {}) {
+  return fetch(url, {
+    ...options,
+    next: { revalidate },
+  });
+}
 
 /* -------------------------------------------------
    API URLs
@@ -307,7 +315,7 @@ function pickFirstValidLang(input?: string): string | undefined {
 async function fetchJson<T>(url: string): Promise<T | null> {
   if (!url) return null;
   try {
-    const res = await fetch(url, { headers: authHeaders, next: { revalidate } });
+    const res = await fetchWithISR(url, { headers: authHeaders });
     if (!res.ok) return null;
     return (await res.json()) as T;
   } catch {
@@ -321,9 +329,7 @@ async function fetchJson<T>(url: string): Promise<T | null> {
 -------------------------------------------------- */
 async function getLandingSeo(): Promise<any | null> {
   try {
-    const res = await fetch("https://backend.amrita-fashions.com/landing/seo", {
-      next: { revalidate: 5 }, // 90 days in seconds
-    });
+    const res = await fetchWithISR("https://backend.amrita-fashions.com/landing/seo");
     if (!res.ok) return null;
     return await res.json();
   } catch {
