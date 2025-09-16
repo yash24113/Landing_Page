@@ -38,10 +38,16 @@ function fetchWithISR(
   options: RequestInit & { next?: { revalidate?: number } } = {}
 ) {
   const { next: nextOpt, ...rest } = options || {};
+  // Remove cache-control headers if present
+  if (rest.headers) {
+    const headers = { ...rest.headers } as Record<string, any>;
+    delete headers['cache-control'];
+    delete headers['Cache-Control'];
+    rest.headers = headers;
+  }
   return fetch(url, {
     ...rest,
     next: {
-      // let callers override; otherwise use our constant
       ...(nextOpt || {}),
       revalidate: nextOpt?.revalidate ?? REVALIDATE_SECONDS,
     },
