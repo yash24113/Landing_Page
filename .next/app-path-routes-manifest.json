@@ -1,7 +1,7 @@
 {
+  "/manifest.webmanifest/route": "/manifest.webmanifest",
   "/api/contact/route": "/api/contact",
   "/robots.txt/route": "/robots.txt",
-  "/manifest.webmanifest/route": "/manifest.webmanifest",
   "/_not-found/page": "/_not-found",
   "/api/chat/route": "/api/chat",
   "/sitemap.xml/route": "/sitemap.xml",

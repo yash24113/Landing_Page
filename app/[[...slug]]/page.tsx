@@ -24,17 +24,30 @@ const DEFAULT_LOCATION_SLUG = "ahmedabad";
 /* -------------------------------------------------
    ISR SETTINGS
 -------------------------------------------------- */
+// page.tsx
+
 export const dynamic = "force-static";
-export const revalidate = 7776000 ; // 90 days
+
+// ✅ must be a literal for static analysis
+const REVALIDATE_SECONDS = 7_776_000 as const; // 60 * 60 * 24 * 90
+export const revalidate = 7776000;
 
 // Helper for fetch with ISR — merges any passed "next" config
-function fetchWithISR(url: string, options: RequestInit & { next?: { revalidate?: number } } = {}) {
+function fetchWithISR(
+  url: string,
+  options: RequestInit & { next?: { revalidate?: number } } = {}
+) {
   const { next: nextOpt, ...rest } = options || {};
   return fetch(url, {
     ...rest,
-    next: { ...(nextOpt || {}), revalidate },
+    next: {
+      // let callers override; otherwise use our constant
+      ...(nextOpt || {}),
+      revalidate: nextOpt?.revalidate ?? REVALIDATE_SECONDS,
+    },
   });
 }
+
 
 /* -------------------------------------------------
    API URLs
