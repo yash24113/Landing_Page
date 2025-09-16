@@ -24,7 +24,7 @@ const DEFAULT_LOCATION_SLUG = "ahmedabad";
 /* -------------------------------------------------
    ISR SETTINGS
 -------------------------------------------------- */
-export const dynamic = 'force-static';
+// export const dynamic = 'force-static';
 export const revalidate = 7776000; // 90 days
 
 // Helper for fetch with ISR
