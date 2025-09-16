@@ -29,7 +29,7 @@ const DEFAULT_LOCATION_SLUG = "ahmedabad";
 // export const dynamic = "force-static";
 
 // ✅ must be a literal for static analysis
-const REVALIDATE_SECONDS = 7_776_000 as const; // 60 * 60 * 24 * 90
+const REVALIDATE_SECONDS = 7776000 as const; // 60 * 60 * 24 * 90
 export const revalidate = 5;
 
 // Helper for fetch with ISR — merges any passed "next" config
