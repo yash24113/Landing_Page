@@ -26,7 +26,7 @@ const DEFAULT_LOCATION_SLUG = "ahmedabad";
 -------------------------------------------------- */
 // page.tsx
 
-export const dynamic = "force-static";
+// export const dynamic = "force-static";
 
 // ✅ must be a literal for static analysis
 const REVALIDATE_SECONDS = 7_776_000 as const; // 60 * 60 * 24 * 90
