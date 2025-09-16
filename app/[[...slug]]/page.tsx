@@ -24,7 +24,7 @@ const DEFAULT_LOCATION_SLUG = "ahmedabad";
 /* -------------------------------------------------
    ISR SETTINGS
 -------------------------------------------------- */
-export const revalidate = 7776000; // 90 days
+export const revalidate = 5; // 90 days
 
 /* -------------------------------------------------
    API URLs
@@ -322,7 +322,7 @@ async function fetchJson<T>(url: string): Promise<T | null> {
 async function getLandingSeo(): Promise<any | null> {
   try {
     const res = await fetch("https://backend.amrita-fashions.com/landing/seo", {
-      next: { revalidate: 7776000 }, // 90 days in seconds
+      next: { revalidate: 5 }, // 90 days in seconds
     });
     if (!res.ok) return null;
     return await res.json();
