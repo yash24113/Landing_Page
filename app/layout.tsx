@@ -5,7 +5,7 @@ import ClientLayout from "./ClientLayout";
 import "./globals.css";
 
 export const dynamic = 'force-static';
-export const revalidate = 10;
+export const revalidate = 2592000;
 
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID;           // e.g. G-XXXXXXXXXX
 const CLARITY_ID = process.env.NEXT_PUBLIC_CLARITY_ID; // e.g. abcdef1234

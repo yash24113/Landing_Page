@@ -28,7 +28,7 @@ const DEFAULT_LOCATION_SLUG = "ahmedabad";
 
 
 export const dynamic = 'force-static';
-export const revalidate = 10; // literal required
+export const revalidate = 2592000; // literal required
 // Helper for fetch with ISR — merges any passed "next" config
 function fetchWithISR(
   url: string,
