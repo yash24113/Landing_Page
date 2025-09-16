@@ -26,11 +26,10 @@ const DEFAULT_LOCATION_SLUG = "ahmedabad";
 -------------------------------------------------- */
 // page.tsx
 
-// export const dynamic = "force-static";
+ export const dynamic = "force-static";
 
 // ✅ must be a literal for static analysis
-const REVALIDATE_SECONDS = 7776000 as const; // 60 * 60 * 24 * 90
-export const revalidate = 5;
+export const revalidate = 7776000; // 60 * 60 * 24 * 90
 
 // Helper for fetch with ISR — merges any passed "next" config
 function fetchWithISR(
