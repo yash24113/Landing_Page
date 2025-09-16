@@ -89,6 +89,25 @@
     "object": {
       "fromentries": "^2.0.8"
     }
+    
+  },
+  
+  "browserslist": {
+    "production": [
+      "supports es6-module",
+      "last 2 Chrome versions",
+      "last 2 Edge versions",
+      "last 2 Firefox versions",
+      "last 2 Safari versions",
+      "not safari < 15",
+      "not ios_saf < 15",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
   },
   "packageManager": "pnpm@9.12.3"
 }
