@@ -4,6 +4,11 @@
 import React from "react";
 
 /** Defaults from env (all optional) */
+
+// const contact_respose = `process.env.NEXT_BACKEDN_API+/landing/officeinformation`;
+
+// console.log("contact_respose", contact_respose);
+
 const BRAND_NAME = process.env.NEXT_PUBLIC_BRAND_NAME || "FabricPro";
 const ENV_PHONE = process.env.NEXT_PUBLIC_COMPANY_PHONE || "+91 9925155141";
 const ENV_EMAIL = process.env.NEXT_PUBLIC_COMPANY_EMAIL || "rajesh.goyal@amritafashions.com";

@@ -6,7 +6,6 @@ import { notFound } from "next/navigation";
 import type React from "react";
 import { Star, StarHalf } from "lucide-react";
 
-
 import { WhatsAppButton } from "@/components/whatsapp-button";
 import { Chatbot } from "@/components/chatbot";
 import { FAQ } from "@/components/faq";
@@ -21,6 +20,13 @@ import { CommitmentText } from "@/components/commitment-text";
    Config
 -------------------------------------------------- */
 const DEFAULT_LOCATION_SLUG = "ahmedabad";
+
+/* -------------------------------------------------
+   ISR SETTINGS (⭐ NEW: enables Incremental Static Regeneration)
+   Override with env: NEXT_REVALIDATE=300
+-------------------------------------------------- */
+
+export const revalidate = 7776000; // ⏱️ Rebuild this page in the background every N seconds
 
 /* -------------------------------------------------
    API URLs
@@ -128,9 +134,14 @@ function parseAddressString(addr: string) {
   };
 }
 
+/** ⭐ NEW: ISR-friendly JSON fetch (cached with revalidate) */
 async function fetchJson<T>(url: string): Promise<T | null> {
+  if (!url) return null;
   try {
-    const res = await fetch(url, { cache: "no-store", headers: authHeaders });
+    const res = await fetch(url, {
+      headers: authHeaders,
+      next: { revalidate: 7776000 }, // <-- cache & revalidate
+    });
     if (!res.ok) return null;
     return (await res.json()) as T;
   } catch {
@@ -336,10 +347,10 @@ interface SeoDocFull {
 
 /* -------------------------------------------------
    Next.js dynamic flags
+   (❌ Removed force-dynamic/fetchCache no-store to allow ISR)
 -------------------------------------------------- */
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
-export const fetchCache = "force-no-store";
+// export const dynamic = "force-dynamic";   // removed
+// export const fetchCache = "force-no-store"; // removed
 
 /* -------------------------------------------------
    OG/Twitter + JSON-LD helpers (merged)
@@ -406,14 +417,12 @@ function StarRating({ value, outOf = 5 }: { value?: number | string; outOf?: num
   );
 }
 
-
 /* ---------- JSON-LD builders (fixed to use BASE_URL + slug) ---------- */
-
 function buildLogoLdFromParts(seo: any) {
   if (!seo?.LogoJsonLdcontext && !seo?.LogoJsonLdtype && !seo?.logoJsonLdurl) return null;
   return {
-    "@context": seo.LogoJsonLdcontext || "https://schema.org",
-    "@type": seo.LogoJsonLdtype || "ImageObject",
+    "@context": seo.LogoJsonLdcontext ,
+    "@type": seo.LogoJsonLdtype ,
     url: nonEmpty(seo.logoJsonLdurl) || COMPANY_LOGO_URL,
     width: nonEmpty(seo.logoJsonLdwidth),
     height: nonEmpty(seo.logoJsonLdheight),
@@ -903,7 +912,6 @@ function OverviewSection(props: {
   );
 }
 
-
 function ProductGrid(props: {
   title?: string;
   subtitle?: string;
@@ -989,7 +997,6 @@ function ProductGrid(props: {
   );
 }
 
-
 function ContactSection() {
   return (
     <>
@@ -1018,6 +1025,7 @@ type Props = { params: Promise<{ slug?: string[] }> };
 
 /* -------------------------------------------------
    Metadata (home vs slug)
+   (Uses ISR-cached fetchJson under the hood)
 -------------------------------------------------- */
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const p = await params;
@@ -1177,6 +1185,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title: title,
       description: desc,
       type: ogType as any,
+     
+
       images: seo.ogImage ? [{ url: seo.ogImage, width: 1200, height: 630, alt: ogImageAlt }] : undefined,
     },
     twitter: {

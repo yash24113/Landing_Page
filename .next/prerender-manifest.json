@@ -1,11 +1,1 @@
-{
-  "version": 4,
-  "routes": {},
-  "dynamicRoutes": {},
-  "notFoundRoutes": [],
-  "preview": {
-    "previewModeId": "4d962c427bec082099fd9256ccbd2c26",
-    "previewModeSigningKey": "284d2d595eeb6789f9261ab5e0e6c8fe7ac12d4f9980ce93c52c157715bcd5b6",
-    "previewModeEncryptionKey": "636a7ad18d3a6ee5b91e09e4c37dd7f46835e40807d9283ea9c54d3bbc98f100"
-  }
-}
+{"version":4,"routes":{"/red-solid-dyed-100-cotton-poplin-fabric-carbon-or-laffer-finish-surat":{}},"dynamicRoutes":{"/[[...slug]]":{"dataRoute":null,"dataRouteRegex":null,"fallback":null,"fallbackRevalidate":false,"fallbackSourceRoute":"/[[...slug]]","routeRegex":"^(?:\\/(.+?))?(?:\\/)?$","allowHeader":[]}},"notFoundRoutes":[],"preview":{"previewModeId":"e7ec7869ac0bcf72decdadab93a8a8ed","previewModeSigningKey":"dd9eece15be08219f2024e9c130c85500b7c38196c3a589213e954128a663d8d","previewModeEncryptionKey":"e3a47ecc67a6a228f0956d72378a1b3cf73612f9ee698ddee32c298738ee56eb"}}
