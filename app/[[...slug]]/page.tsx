@@ -26,7 +26,6 @@ const DEFAULT_LOCATION_SLUG = "ahmedabad";
 -------------------------------------------------- */
 // page.tsx
 
- export const dynamic = "force-dynamic";
 
 // ✅ must be a literal for static analysis
 export const revalidate = 7776000; // 60 * 60 * 24 * 90
