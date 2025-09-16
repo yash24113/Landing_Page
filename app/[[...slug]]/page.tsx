@@ -48,7 +48,7 @@ function fetchWithISR(
     ...rest,
     next: {
       ...(nextOpt || {}),
-      revalidate: nextOpt?.revalidate ?? REVALIDATE_SECONDS,
+      revalidate: nextOpt?.revalidate,
     },
   });
 }
