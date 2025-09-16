@@ -25,7 +25,6 @@ const DEFAULT_LOCATION_SLUG = "ahmedabad";
    ISR SETTINGS
 -------------------------------------------------- */
 export const revalidate = 7776000; // 90 days
-export const dynamic= "force-static"; // ✅ SSG + ISR in App Router
 
 /* -------------------------------------------------
    API URLs
