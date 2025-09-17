@@ -48,7 +48,7 @@ export function CommitmentText(_: Props) {
           obj?.description1 ??
           obj?.description2 ??
           obj?.description3 ??
-          "Welcome to Amrita! We are passionate about offering reliable solutions that make life smarter and more convenient. With a team driven by creativity and expertise, we focus on quality, customer satisfaction, and long-term trust. At Amrita, our mission is simple—to provide products and services that add real value to your everyday life.";
+          "Welcome to Amrita Global! We are passionate about offering reliable solutions that make life smarter and more convenient. With a team driven by creativity and expertise, we focus on quality, customer satisfaction, and long-term trust. At Amrita, our mission is simple—to provide products and services that add real value to your everyday life.";
 
         const cleaned = typeof val === "string" ? val.trim() : "";
         if (!cancelled) setHtml(cleaned);
