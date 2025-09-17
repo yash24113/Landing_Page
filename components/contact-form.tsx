@@ -63,7 +63,7 @@ type OfficeInformation = {
 ---------------------------------------------- */
 export function ContactForm({
   onSuccess,
-  submitUrl = DEFAULT_CONTACT_URL,
+  submitUrl= DEFAULT_CONTACT_URL,
   submitHeaders,
   draftKey = "contact_draft_id",
 }: ContactFormProps = {}) {
