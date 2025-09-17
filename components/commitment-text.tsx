@@ -43,11 +43,11 @@ export function CommitmentText(_: Props) {
         // prefer medium → small → large; also accept legacy description1/2/3
         const val =
           obj?.descriptionmedium ??
-          obj?.descriptionsmall ??
-          obj?.descriptionlarger ??
-          obj?.description1 ??
-          obj?.description2 ??
-          obj?.description3 ??
+          // obj?.descriptionsmall ??
+          // obj?.descriptionlarger ??
+          // obj?.description1 ??
+          // obj?.description2 ??
+          // obj?.description3 ??
           "Demo About Us text";
         const cleaned = typeof val === "string" ? val.trim() : "";
         if (!cancelled) setHtml(cleaned);
