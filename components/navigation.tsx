@@ -4,38 +4,52 @@ import Link from "next/link";
 import { createPortal } from "react-dom";
 
 /* -----------------------------------------------
-   Hook: media query (SSR-safe)
+   Hook: media query (SSR/TS-safe)
 ------------------------------------------------ */
 function useMediaQuery(query: string) {
   const [matches, setMatches] = React.useState(false);
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;
+
     const mql = window.matchMedia(query);
-    const onChange = () => setMatches(mql.matches);
-    // set initial
+    const onChange = (e: MediaQueryListEvent) => setMatches(e.matches);
+
+    // Set initial
     setMatches(mql.matches);
-    // subscribe
-    mql.addEventListener ? mql.addEventListener("change", onChange) : mql.addListener(onChange);
-    return () => {
-      mql.removeEventListener ? mql.removeEventListener("change", onChange) : mql.removeListener(onChange);
-    };
+
+    // Feature-detect: newer browsers
+    // (Some TS DOM libs don't declare addEventListener on MediaQueryList)
+
+    const anyMql = mql as any;
+    if (typeof anyMql.addEventListener === "function") {
+      anyMql.addEventListener("change", onChange);
+      return () => anyMql.removeEventListener("change", onChange);
+    } else {
+      // Fallback for Safari/old Chromium
+      // @ts-ignore - deprecated in types but still present at runtime
+      mql.addListener(onChange);
+      return () => {
+        // @ts-ignore - deprecated in types but still present at runtime
+        mql.removeListener(onChange);
+      };
+    }
   }, [query]);
 
   return matches;
 }
 
 /* -----------------------------------------------
-   Helpers: phone / bidi cleanup
+   Helpers: bidi/phone cleanup
 ------------------------------------------------ */
 const stripBidi = (s: string) => s.replace(/[\u200e\u200f\u202a-\u202e]/g, "").trim();
 const sanitizeForTel = (s: string) => {
-  const t = stripBidi(s).replace(/"/g, "");
+  const t = stripBidi(String(s)).replace(/"/g, "");
   const plus = t.trim().startsWith("+") ? "+" : "";
   const digits = t.replace(/[^\d]/g, "");
-  return `${plus}${digits}`;
+  return digits ? `${plus}${digits}` : "";
 };
-const sanitizeForWhatsApp = (s: string) => stripBidi(s).replace(/[^0-9]/g, "");
+const sanitizeForWhatsApp = (s: string) => stripBidi(String(s)).replace(/[^0-9]/g, "");
 
 /* -----------------------------------------------
    ENV + Endpoint build (no trailing slash)
@@ -68,7 +82,9 @@ export function Navigation() {
     process.env.NEXT_PUBLIC_COMPANY_PHONE || "+91 9925155141"
   );
   const [rawWa, setRawWa] = React.useState(
-    process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || (process.env.NEXT_PUBLIC_COMPANY_PHONE || "+91 9925155141")
+    process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ||
+      process.env.NEXT_PUBLIC_COMPANY_PHONE ||
+      "+91 9925155141"
   );
 
   React.useEffect(() => setMounted(true), []);
@@ -76,37 +92,40 @@ export function Navigation() {
   // Fetch office information (companyName, phone, WhatsApp)
   React.useEffect(() => {
     let cancelled = false;
+    const ctrl = new AbortController();
 
     (async () => {
       try {
         const res = await fetch(OFFICE_INFO_URL, {
           headers: authHeaders,
           cache: "no-store",
+          signal: ctrl.signal,
         });
         if (!res.ok) throw new Error(`Office info fetch failed: ${res.status}`);
 
         const json = await res.json();
         // expects { data: [ { companyName, companyPhone1, whatsappNumber, ... } ], total: 1 }
         const first = Array.isArray(json?.data) ? json.data[0] : undefined;
-        if (!first) return;
+        if (!first || cancelled) return;
 
         const name = String(first.companyName ?? "").trim();
         const phone = String(first.companyPhone1 ?? first.companyPhone2 ?? "").trim();
         const wa = String(first.whatsappNumber ?? phone ?? "").trim();
 
-        if (cancelled) return;
-
         if (name) setCompanyName(name);
         if (phone) setRawPhone(phone);
         if (wa) setRawWa(wa);
       } catch (err) {
-        // silently fall back to env values
-        console.error("Office info fetch error:", err);
+        if ((err as Error).name !== "AbortError") {
+          // silently fall back to env values
+          console.error("Office info fetch error:", err);
+        }
       }
     })();
 
     return () => {
       cancelled = true;
+      ctrl.abort();
     };
   }, []);
 
@@ -128,7 +147,9 @@ export function Navigation() {
 
   // 3) Close on ESC
   React.useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
@@ -138,10 +159,14 @@ export function Navigation() {
   /* -----------------------------------------------
      Build tel/WA hrefs from fetched (or env) values
   ------------------------------------------------ */
-  const telHref = `tel:${sanitizeForTel(rawPhone)}`;
-  const waHref = `https://wa.me/${sanitizeForWhatsApp(rawWa)}?text=${encodeURIComponent(
-    "Hi! I'm interested in your fabrics and need some assistance."
-  )}`;
+  const telSan = sanitizeForTel(rawPhone);
+  const waSan = sanitizeForWhatsApp(rawWa);
+  const telHref = telSan ? `tel:${telSan}` : undefined;
+  const waHref = waSan
+    ? `https://wa.me/${waSan}?text=${encodeURIComponent(
+        "Hi! I'm interested in your fabrics and need some assistance."
+      )}`
+    : undefined;
 
   // 🔗 CHAT: tell the chatbot to open
   const handleChat = () => {
@@ -292,7 +317,8 @@ export function Navigation() {
             </a>
 
             <a
-              href={telHref}
+              href={telHref || "#"}
+              aria-disabled={!telHref}
               onClick={close}
               className="flex items-center justify-center gap-2 rounded-xl border border-blue-400
                          bg-white text-blue-700 font-semibold py-3 shadow-sm hover:shadow
@@ -305,9 +331,9 @@ export function Navigation() {
             </a>
 
             <a
-              href={waHref}
-              target="_blank"
-              rel="noopener noreferrer"
+              href={waHref || "#"}
+              target={waHref ? "_blank" : undefined}
+              rel={waHref ? "noopener noreferrer" : undefined}
               onClick={close}
               className="flex items-center justify-center gap-2 rounded-xl border border-green-500
                          bg-green-500/10 text-green-700 font-semibold py-3 shadow-sm hover:shadow
