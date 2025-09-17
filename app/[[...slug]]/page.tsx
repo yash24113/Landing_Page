@@ -1249,7 +1249,7 @@ export default async function Page({ params }: Props) {
       titleFromSeo
     ) : (
       <>
-           Premium <span className="text-black">{heroName}</span> for Global Manufacturers
+           <span className="text-black">Premium {heroName} for Global Manufacturers</span>
       </>
     );
 
