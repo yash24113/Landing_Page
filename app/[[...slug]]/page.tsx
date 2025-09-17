@@ -15,6 +15,8 @@ import { CatalogButton } from '@/components/catalog-button';
 import { fetchSeoData } from '@/lib/seo'; // and fetchProductData (dynamic import below)
 import { ContactDetails } from '@/components/contact-details';
 import { CommitmentText } from '@/components/commitment-text';
+import { Footer } from '@/components/footer';
+import { StickyContactButton } from '@/components/sticky-contact-button';
 
 /* -------------------------------------------------
    Config
@@ -24,17 +26,14 @@ const DEFAULT_LOCATION_SLUG = 'ahmedabad';
 /* -------------------------------------------------
    ISR SETTINGS
 -------------------------------------------------- */
-// page.tsx
-
 export const dynamic = 'force-static';
-export const revalidate = 2592000; // literal required
-// Helper for fetch with ISR — merges any passed "next" config
+export const revalidate = 2592000; // 30 days literal
+
 function fetchWithISR(
   url: string,
   options: RequestInit & { next?: { revalidate?: number } } = {}
 ) {
   const { next: nextOpt, ...rest } = options || {};
-  // Remove cache-control headers if present
   if (rest.headers) {
     const headers = { ...rest.headers } as Record<string, any>;
     delete headers['cache-control'];
@@ -43,10 +42,7 @@ function fetchWithISR(
   }
   return fetch(url, {
     ...rest,
-    next: {
-      ...(nextOpt || {}),
-      revalidate: nextOpt?.revalidate,
-    },
+    next: { ...(nextOpt || {}), revalidate: nextOpt?.revalidate },
   });
 }
 
@@ -85,7 +81,7 @@ if (API_KEY) authHeaders[API_KEY_HEADER] = API_KEY;
 if (ADMIN_EMAIL) authHeaders[ADMIN_EMAIL_HEADER] = ADMIN_EMAIL;
 
 /* -------------------------------------------------
-   Site URL (do not change — from env)
+   Site URL
 -------------------------------------------------- */
 const COMPANY_SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || undefined;
 
@@ -150,7 +146,7 @@ interface SeoDocFull {
   title?: string;
   description?: string;
 
-  hreflang?: string; // e.g. "en" or "en-IN"
+  hreflang?: string;
   x_default?: string;
   author_name?: string;
 
@@ -244,16 +240,14 @@ type OfficeInformation = {
 /* -------------------------------------------------
    Utilities
 -------------------------------------------------- */
-const norm = (s: any) =>
-  String(s ?? '')
-    .trim()
-    .toLowerCase();
+const norm = (s: any) => String(s ?? '').trim().toLowerCase();
 const toId = (v: any) =>
   typeof v === 'string' ? v.trim() : v?._id ? String(v._id).trim() : '';
 const nonEmpty = (s: any) =>
   typeof s === 'string' && s.trim().length ? s.trim() : undefined;
 const asString = (v: any) =>
   v === undefined || v === null ? undefined : String(v);
+
 const VALID_OG_TYPES = new Set([
   'website',
   'article',
@@ -268,23 +262,14 @@ const VALID_OG_TYPES = new Set([
   'video.tv_show',
   'video.other',
 ]);
-const VALID_TWITTER_CARDS = new Set([
-  'summary',
-  'summary_large_image',
-  'player',
-  'app',
-]);
+const VALID_TWITTER_CARDS = new Set(['summary', 'summary_large_image', 'player', 'app']);
 
 function ogTypeSafe(v: unknown) {
-  const t = String(v ?? '')
-    .toLowerCase()
-    .trim();
+  const t = String(v ?? '').toLowerCase().trim();
   return (VALID_OG_TYPES.has(t) ? t : 'website') as any;
 }
 function twitterCardSafe(v: unknown) {
-  const t = String(v ?? '')
-    .toLowerCase()
-    .trim();
+  const t = String(v ?? '').toLowerCase().trim();
   return (VALID_TWITTER_CARDS.has(t) ? (t as any) : undefined) as
     | 'summary'
     | 'summary_large_image'
@@ -317,29 +302,17 @@ function pickImage(...candidates: Array<string | undefined | null>): string {
   for (const c of candidates) {
     const s = (c ?? '').toString().trim();
     if (!s) continue;
-    if (
-      s.startsWith('/') ||
-      s.startsWith('http://') ||
-      s.startsWith('https://')
-    ) {
+    if (s.startsWith('/') || s.startsWith('http://') || s.startsWith('https://')) {
       return s;
     }
   }
   return '/placeholder.svg?height=800&width=1200';
 }
-function pickImageNotEq(
-  notEq: string,
-  ...candidates: Array<string | undefined | null>
-): string {
+function pickImageNotEq(notEq: string, ...candidates: Array<string | undefined | null>): string {
   for (const c of candidates) {
     const s = (c ?? '').toString().trim();
     if (!s) continue;
-    if (
-      (s.startsWith('/') ||
-        s.startsWith('http://') ||
-        s.startsWith('https://')) &&
-      s !== notEq
-    ) {
+    if ((s.startsWith('/') || s.startsWith('http://') || s.startsWith('https://')) && s !== notEq) {
       return s;
     }
   }
@@ -356,8 +329,7 @@ function parseAddressString(addr: string) {
   return {
     streetAddress: parts.slice(0, 3).join(', ') || undefined,
     addressLocality: parts[3] || parts[2] || undefined,
-    addressRegion:
-      parts[4] || parts.find((p) => /gujarat/i.test(p)) || undefined,
+    addressRegion: parts[4] || parts.find((p) => /gujarat/i.test(p)) || undefined,
     postalCode,
     addressCountry: 'IN',
   };
@@ -365,10 +337,7 @@ function parseAddressString(addr: string) {
 const VALID_HREFLANG = /^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})?$/i;
 function pickFirstValidLang(input?: string): string | undefined {
   if (!input) return undefined;
-  const tokens = input
-    .split(/[, ]+/)
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const tokens = input.split(/[, ]+/).map((s) => s.trim()).filter(Boolean);
   for (const t of tokens) if (VALID_HREFLANG.test(t)) return t;
   return undefined;
 }
@@ -386,14 +355,11 @@ async function fetchJson<T>(url: string): Promise<T | null> {
 }
 
 /* -------------------------------------------------
-   getStaticProps equivalent for App Router
-   (fetching landing/seo with ISR 90 days)
+   getStaticProps-like helper for Home SEO
 -------------------------------------------------- */
 async function getLandingSeo(): Promise<any | null> {
   try {
-    const res = await fetchWithISR(
-      'https://backend.amrita-fashions.com/landing/seo'
-    );
+    const res = await fetchWithISR('https://backend.amrita-fashions.com/landing/seo');
     if (!res.ok) return null;
     return await res.json();
   } catch {
@@ -445,16 +411,9 @@ function StarRating({
   const hasHalf = safe - full >= 0.25 && safe - full < 0.75;
   const empty = outOf - full - (hasHalf ? 1 : 0);
   return (
-    <span
-      className="inline-flex items-center gap-0.5"
-      aria-label={`Rating ${safe} out of ${outOf}`}
-    >
+    <span className="inline-flex items-center gap-0.5" aria-label={`Rating ${safe} out of ${outOf}`}>
       {Array.from({ length: full }).map((_, i) => (
-        <Star
-          key={`f${i}`}
-          className="h-4 w-4 text-amber-500"
-          fill="currentColor"
-        />
+        <Star key={`f${i}`} className="h-4 w-4 text-amber-500" fill="currentColor" />
       ))}
       {hasHalf && <StarHalf className="h-4 w-4 text-amber-500" />}
       {Array.from({ length: empty }).map((_, i) => (
@@ -467,22 +426,10 @@ function StarRating({
 /* -------------------------------------------------
    JSON-LD builders (DB company injected)
 -------------------------------------------------- */
-type Company = {
-  name: string;
-  email: string;
-  phone: string;
-  address: string;
-  logo?: string;
-};
+type Company = { name: string; email: string; phone: string; address: string; logo?: string };
 
 function buildLogoLdFromParts(seo: any, company: Company) {
-  if (
-    !seo?.LogoJsonLdcontext &&
-    !seo?.LogoJsonLdtype &&
-    !seo?.logoJsonLdurl &&
-    !company.logo
-  )
-    return null;
+  if (!seo?.LogoJsonLdcontext && !seo?.LogoJsonLdtype && !seo?.logoJsonLdurl && !company.logo) return null;
   return {
     '@context': seo.LogoJsonLdcontext || 'https://schema.org',
     '@type': seo.LogoJsonLdtype || 'ImageObject',
@@ -495,49 +442,28 @@ function buildLogoLdFromParts(seo: any, company: Company) {
 function buildLocalBusinessLdFromParts(seo: any, company: Company) {
   const lat = parseFloat(seo?.LocalBusinessJsonLdgeoLatitude);
   const lng = parseFloat(seo?.LocalBusinessJsonLdgeoLongitude);
-  const images = [seo?.ogImage, seo?.twitterImage, company.logo].filter(
-    Boolean
-  ) as string[];
+  const images = [seo?.ogImage, seo?.twitterImage, company.logo].filter(Boolean) as string[];
 
   const addrFromDb = parseAddressString(company.address);
   const address = {
     '@type': 'PostalAddress',
-    streetAddress:
-      nonEmpty(seo?.LocalBusinessJsonLdaddressstreetAddress) ||
-      addrFromDb.streetAddress,
-    addressLocality:
-      nonEmpty(seo?.LocalBusinessJsonLdaddressaddressLocality) ||
-      addrFromDb.addressLocality,
-    addressRegion:
-      nonEmpty(seo?.LocalBusinessJsonLdaddressaddressRegion) ||
-      addrFromDb.addressRegion,
-    postalCode:
-      nonEmpty(seo?.LocalBusinessJsonLdaddresspostalCode) ||
-      addrFromDb.postalCode,
-    addressCountry:
-      nonEmpty(seo?.LocalBusinessJsonLdaddressaddressCountry) ||
-      addrFromDb.addressCountry ||
-      'IN',
+    streetAddress: nonEmpty(seo?.LocalBusinessJsonLdaddressstreetAddress) || addrFromDb.streetAddress,
+    addressLocality: nonEmpty(seo?.LocalBusinessJsonLdaddressaddressLocality) || addrFromDb.addressLocality,
+    addressRegion: nonEmpty(seo?.LocalBusinessJsonLdaddressaddressRegion) || addrFromDb.addressRegion,
+    postalCode: nonEmpty(seo?.LocalBusinessJsonLdaddresspostalCode) || addrFromDb.postalCode,
+    addressCountry: nonEmpty(seo?.LocalBusinessJsonLdaddressaddressCountry) || addrFromDb.addressCountry || 'IN',
   };
 
-  const geo =
-    Number.isFinite(lat) && Number.isFinite(lng)
-      ? { '@type': 'GeoCoordinates', latitude: lat, longitude: lng }
-      : undefined;
+  const geo = Number.isFinite(lat) && Number.isFinite(lng)
+    ? { '@type': 'GeoCoordinates', latitude: lat, longitude: lng }
+    : undefined;
 
   const canonical = canonicalFromSeoSlug(seo?.slug) || COMPANY_SITE_URL;
 
   const openingHoursSpecification = [
     {
       '@type': 'OpeningHoursSpecification',
-      dayOfWeek: [
-        'Monday',
-        'Tuesday',
-        'Wednesday',
-        'Thursday',
-        'Friday',
-        'Saturday',
-      ],
+      dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
       opens: '09:30',
       closes: '19:00',
     },
@@ -577,12 +503,7 @@ function buildBreadcrumbLdFromParts(seo: any) {
   const canonical = canonicalFromSeoSlug(seo?.slug) || base;
   const itemListElement = [
     { '@type': 'ListItem', position: 1, name: 'Home', item: `${base}/` },
-    {
-      '@type': 'ListItem',
-      position: 2,
-      name: 'Products',
-      item: `${base}/products`,
-    },
+    { '@type': 'ListItem', position: 2, name: 'Products', item: `${base}/products` },
     {
       '@type': 'ListItem',
       position: 3,
@@ -592,32 +513,16 @@ function buildBreadcrumbLdFromParts(seo: any) {
     {
       '@type': 'ListItem',
       position: 4,
-      name:
-        nonEmpty(seo?.BreadcrumbJsonLdname) ||
-        nonEmpty(seo?.title) ||
-        productCategory,
+      name: nonEmpty(seo?.BreadcrumbJsonLdname) || nonEmpty(seo?.title) || productCategory,
       item: canonical,
     },
   ];
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'BreadcrumbList',
-    itemListElement,
-  };
+  return { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement };
 }
 
-function productJsonLd(
-  seo: any,
-  productName: string | undefined,
-  company: Company
-) {
-  const images = [seo?.ogImage, seo?.twitterImage, company.logo].filter(
-    Boolean
-  ) as string[];
-  const canonical =
-    canonicalFromSeoSlug(seo?.slug) ||
-    COMPANY_SITE_URL ||
-    'https://example.com';
+function productJsonLd(seo: any, productName: string | undefined, company: Company) {
+  const images = [seo?.ogImage, seo?.twitterImage, company.logo].filter(Boolean) as string[];
+  const canonical = canonicalFromSeoSlug(seo?.slug) || COMPANY_SITE_URL || 'https://example.com';
   const ld: any = {
     '@context': 'https://schema.org',
     '@type': 'Product',
@@ -628,11 +533,7 @@ function productJsonLd(
     image: images.length ? images : undefined,
     url: canonical,
     category: 'Textile & Fabric',
-    manufacturer: {
-      '@type': 'Organization',
-      name: company.name,
-      url: canonical,
-    },
+    manufacturer: { '@type': 'Organization', name: company.name, url: canonical },
     mpn: nonEmpty(seo?.productIdentifier) || undefined,
   };
   if (seo?.salesPrice) {
@@ -642,14 +543,8 @@ function productJsonLd(
       priceCurrency: 'INR',
       availability: 'https://schema.org/InStock',
       seller: { '@type': 'Organization', name: company.name },
-      priceValidUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
-        .toISOString()
-        .split('T')[0],
-      deliveryLeadTime: {
-        '@type': 'QuantitativeValue',
-        value: 7,
-        unitCode: 'DAY',
-      },
+      priceValidUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      deliveryLeadTime: { '@type': 'QuantitativeValue', value: 7, unitCode: 'DAY' },
     };
   }
   if (seo?.rating_value && seo?.rating_count) {
@@ -662,55 +557,32 @@ function productJsonLd(
     };
   }
   if (seo?.popularproduct) {
-    ld.additionalProperty = {
-      '@type': 'PropertyValue',
-      name: 'Popular Product',
-      value: 'Yes',
-    };
+    ld.additionalProperty = { '@type': 'PropertyValue', name: 'Popular Product', value: 'Yes' };
   }
   return ld;
 }
 
 function organizationJsonLd(seo: any, company: Company) {
-  const images = [seo?.ogImage, seo?.twitterImage, company.logo].filter(
-    Boolean
-  ) as string[];
+  const images = [seo?.ogImage, seo?.twitterImage, company.logo].filter(Boolean) as string[];
   const addrFromDb = parseAddressString(company.address || '');
   const addr = {
     '@type': 'PostalAddress',
-    streetAddress:
-      nonEmpty(seo?.OrganizationJsonLdaddressstreetAddress) ||
-      addrFromDb.streetAddress,
-    addressLocality:
-      nonEmpty(seo?.OrganizationJsonLdaddressaddressLocality) ||
-      addrFromDb.addressLocality,
-    addressRegion:
-      nonEmpty(seo?.OrganizationJsonLdaddressaddressRegion) ||
-      addrFromDb.addressRegion,
-    postalCode:
-      nonEmpty(seo?.OrganizationJsonLdaddresspostalCode) ||
-      addrFromDb.postalCode,
-    addressCountry:
-      nonEmpty(seo?.OrganizationJsonLdaddressaddressCountry) ||
-      addrFromDb.addressCountry ||
-      'IN',
+    streetAddress: nonEmpty(seo?.OrganizationJsonLdaddressstreetAddress) || addrFromDb.streetAddress,
+    addressLocality: nonEmpty(seo?.OrganizationJsonLdaddressaddressLocality) || addrFromDb.addressLocality,
+    addressRegion: nonEmpty(seo?.OrganizationJsonLdaddressaddressRegion) || addrFromDb.addressRegion,
+    postalCode: nonEmpty(seo?.OrganizationJsonLdaddresspostalCode) || addrFromDb.postalCode,
+    addressCountry: nonEmpty(seo?.OrganizationJsonLdaddressaddressCountry) || addrFromDb.addressCountry || 'IN',
   };
-  const orgUrl =
-    canonicalFromSeoSlug(seo?.slug) ||
-    COMPANY_SITE_URL ||
-    'https://example.com';
+  const orgUrl = canonicalFromSeoSlug(seo?.slug) || COMPANY_SITE_URL || 'https://example.com';
   return {
     '@context': 'https://schema.org',
     '@type': 'Organization',
     '@id': `${orgUrl}/#organization`,
     name: company.name,
     url: orgUrl,
-    logo: company.logo
-      ? { '@type': 'ImageObject', url: company.logo, width: 131, height: 61 }
-      : undefined,
+    logo: company.logo ? { '@type': 'ImageObject', url: company.logo, width: 131, height: 61 } : undefined,
     image: images.length ? images : undefined,
-    description:
-      nonEmpty(seo?.description) || 'Leading B2B Fabric Supplier Worldwide',
+    description: nonEmpty(seo?.description) || 'Leading B2B Fabric Supplier Worldwide',
     address: addr,
     contactPoint: {
       '@type': 'ContactPoint',
@@ -723,24 +595,17 @@ function organizationJsonLd(seo: any, company: Company) {
 }
 
 function websiteJsonLd(seo: any, company: Company) {
-  const canonical =
-    canonicalFromSeoSlug(seo?.slug) ||
-    COMPANY_SITE_URL ||
-    'https://example.com';
+  const canonical = canonicalFromSeoSlug(seo?.slug) || COMPANY_SITE_URL || 'https://example.com';
   const base = (COMPANY_SITE_URL || canonical).replace(/\/+$/, '');
   return {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
     name: company.name || 'Website',
     url: canonical,
-    description:
-      'Leading B2B Fabric Supplier Worldwide - Premium Quality Textiles',
+    description: 'Leading B2B Fabric Supplier Worldwide - Premium Quality Textiles',
     potentialAction: {
       '@type': 'SearchAction',
-      target: {
-        '@type': 'EntryPoint',
-        urlTemplate: `${base}/search?q={search_term_string}`,
-      },
+      target: { '@type': 'EntryPoint', urlTemplate: `${base}/search?q={search_term_string}` },
       'query-input': 'required name=search_term_string',
     },
     publisher: { '@type': 'Organization', name: company.name || 'Company' },
@@ -765,62 +630,35 @@ function faqJsonLd() {
         'We offer flexible payment terms including T/T, L/C, and for established clients, 30-60 day terms.',
     },
     {
-      question:
-        'How do you ensure consistent quality across large fabric orders?',
+      question: 'How do you ensure consistent quality across large fabric orders?',
       answer:
         'Strict QC processes including pre-production samples, in-line inspection, and final checks before shipment.',
     },
-    {
-      question:
-        'What is your typical lead time for fabric manufacturing and delivery?',
-      answer: 'Standard fabrics: 15-20 days, custom fabrics: 25-35 days.',
-    },
-    {
-      question: 'Do you offer custom fabric development services?',
-      answer:
-        'Yes, we specialize in custom fabric development for clothing brands and manufacturers.',
-    },
+    { question: 'What is your typical lead time for fabric manufacturing and delivery?', answer: 'Standard fabrics: 15-20 days, custom fabrics: 25-35 days.' },
+    { question: 'Do you offer custom fabric development services?', answer: 'Yes, we specialize in custom fabric development for clothing brands and manufacturers.' },
   ];
   return {
     '@context': 'https://schema.org',
     '@type': 'FAQPage',
-    mainEntity: faqs.map((faq) => ({
-      '@type': 'Question',
-      name: faq.question,
-      acceptedAnswer: { '@type': 'Answer', text: faq.answer },
-    })),
+    mainEntity: faqs.map((faq) => ({ '@type': 'Question', name: faq.question, acceptedAnswer: { '@type': 'Answer', text: faq.answer } })),
   };
 }
 
 /** JSON-LD aggregator with DB company injected */
-function jsonLdFor(
-  seoBase: any,
-  productName: string | undefined,
-  company: Company
-) {
+function jsonLdFor(seoBase: any, productName: string | undefined, company: Company) {
   const videoLd = parseJsonLd(seoBase?.VideoJsonLd);
-  const logoLd =
-    parseJsonLd(seoBase?.LogoJsonLd) ?? buildLogoLdFromParts(seoBase, company);
+  const logoLd = parseJsonLd(seoBase?.LogoJsonLd) ?? buildLogoLdFromParts(seoBase, company);
   const breadcrumbLd = buildBreadcrumbLdFromParts(seoBase);
   const localBusinessLd = buildLocalBusinessLdFromParts(seoBase, company);
   const productLd = productJsonLd(seoBase, productName, company);
   const organizationLd = organizationJsonLd(seoBase, company);
   const websiteLd = websiteJsonLd(seoBase, company);
   const faqLd = faqJsonLd();
-  return {
-    videoLd,
-    logoLd,
-    breadcrumbLd,
-    localBusinessLd,
-    productLd,
-    organizationLd,
-    websiteLd,
-    faqLd,
-  };
+  return { videoLd, logoLd, breadcrumbLd, localBusinessLd, productLd, organizationLd, websiteLd, faqLd };
 }
 
 /* -------------------------------------------------
-   Reusable UI Sections
+   Reusable UI Sections (unchanged)
 -------------------------------------------------- */
 function SectionHero(props: {
   titleNode: React.ReactNode;
@@ -845,12 +683,10 @@ function SectionHero(props: {
     catalogProduct,
   } = props;
 
-  const asDisplayText = (value: any): string | undefined => {
+ const asDisplayText = (value: any): string | undefined => {
     if (value === undefined || value === null) return undefined;
     if (Array.isArray(value)) {
-      const parts = value
-        .map((v) => asDisplayText(v))
-        .filter(Boolean) as string[];
+      const parts = value.map((v) => asDisplayText(v)).filter(Boolean) as string[];
       return parts.length ? parts.join(', ') : undefined;
     }
     if (typeof value === 'object') {
@@ -861,6 +697,9 @@ function SectionHero(props: {
     const s = String(value).trim();
     return s || undefined;
   };
+
+
+
   const asNumber = (value: any): number | undefined => {
     if (value === undefined || value === null) return undefined;
     const n = Number(String(value).replace(/[^0-9.\-]/g, ''));
@@ -876,10 +715,7 @@ function SectionHero(props: {
   };
 
   return (
-    <section
-      id="hero"
-      className="hero relative bg-white text-slate-900 overflow-hidden pt-4 pb-8 sm:pt-8"
-    >
+    <section id="hero" className="hero relative bg-white text-slate-900 overflow-hidden pt-4 pb-8 sm:pt-8">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
         <div className="flex flex-col lg:grid lg:grid-cols-2 gap-8 items-center">
           {/* Left */}
@@ -894,9 +730,7 @@ function SectionHero(props: {
               </p>
             )}
 
-            {(catalogProduct ||
-              rating !== undefined ||
-              reviews !== undefined) && (
+            {(catalogProduct || rating !== undefined || reviews !== undefined) && (
               <div className="bg-slate-100 rounded-lg p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
                 {asDisplayText(catalogProduct?.content) && (
                   <div>
@@ -906,29 +740,23 @@ function SectionHero(props: {
                     </span>
                   </div>
                 )}
-                {(catalogProduct?.gsm !== undefined ||
-                  catalogProduct?.oz !== undefined) && (
+                {(catalogProduct?.gsm !== undefined || catalogProduct?.oz !== undefined) && (
                   <div>
                     <span className="font-medium text-slate-700">Weight:</span>
                     <span className="ml-2 text-slate-900 break-words">
                       {asDisplayText(catalogProduct?.gsm)}
                       {catalogProduct?.gsm !== undefined ? ' gsm' : ''}
-                      {catalogProduct?.oz !== undefined
-                        ? ` / ${formatOzOneDecimal(catalogProduct?.oz)} oz`
-                        : ''}
+                      {catalogProduct?.oz !== undefined ? ` / ${formatOzOneDecimal(catalogProduct?.oz)} oz` : ''}
                     </span>
                   </div>
                 )}
-                {(catalogProduct?.cm !== undefined ||
-                  catalogProduct?.inch !== undefined) && (
+                {(catalogProduct?.cm !== undefined || catalogProduct?.inch !== undefined) && (
                   <div>
                     <span className="font-medium text-slate-700">Width:</span>
                     <span className="ml-2 text-slate-900 break-words">
                       {asDisplayText(catalogProduct?.cm)}
                       {catalogProduct?.cm !== undefined ? ' cm' : ''}
-                      {catalogProduct?.inch !== undefined
-                        ? ` / ${formatInchRounded(catalogProduct?.inch)} inch`
-                        : ''}
+                      {catalogProduct?.inch !== undefined ? ` / ${formatInchRounded(catalogProduct?.inch)} inch` : ''}
                     </span>
                   </div>
                 )}
@@ -958,27 +786,17 @@ function SectionHero(props: {
                 )}
                 {asDisplayText(catalogProduct?.substructure) && (
                   <div>
-                    <span className="font-medium text-slate-700">
-                      Structure:
-                    </span>
+                    <span className="font-medium text-slate-700">Structure:</span>
                     <span className="ml-2 text-slate-900 break-words">
                       {asDisplayText(catalogProduct?.substructure)}
                     </span>
                   </div>
                 )}
-                {asDisplayText(
-                  (catalogProduct as any)?.subsuitable ??
-                    catalogProduct?.subSuitableFor
-                ) && (
+                {asDisplayText((catalogProduct as any)?.subsuitable ?? catalogProduct?.subSuitableFor) && (
                   <div>
-                    <span className="font-medium text-slate-700">
-                      Suitable For:
-                    </span>
+                    <span className="font-medium text-slate-700">Suitable For:</span>
                     <span className="ml-2 text-slate-900 break-words">
-                      {asDisplayText(
-                        (catalogProduct as any)?.subsuitable ??
-                          catalogProduct?.subSuitableFor
-                      )}
+                      {asDisplayText((catalogProduct as any)?.subsuitable ?? catalogProduct?.subSuitableFor)}
                     </span>
                   </div>
                 )}
@@ -986,28 +804,21 @@ function SectionHero(props: {
                   <div>
                     <span className="font-medium text-slate-700">MOQ:</span>
                     <span className="ml-2 text-slate-900 break-words">
-                      {asDisplayText((catalogProduct as any)?.quantity)}{' '}
-                      {asDisplayText((catalogProduct as any)?.um)}
+                      {asDisplayText((catalogProduct as any)?.quantity)} {asDisplayText((catalogProduct as any)?.um)}
                     </span>
                   </div>
                 )}
-                {asDisplayText(
-                  (catalogProduct as any)?.color ?? catalogProduct?.colors
-                ) && (
+                {asDisplayText((catalogProduct as any)?.color ?? catalogProduct?.colors) && (
                   <div>
                     <span className="font-medium text-slate-700">Colors:</span>
                     <span className="ml-2 text-slate-900 break-words">
-                      {asDisplayText(
-                        (catalogProduct as any)?.color ?? catalogProduct?.colors
-                      )}
+                      {asDisplayText((catalogProduct as any)?.color ?? catalogProduct?.colors)}
                     </span>
                   </div>
                 )}
                 {asDisplayText((catalogProduct as any)?.leadtime) && (
                   <div>
-                    <span className="font-medium text-slate-700">
-                      Lead time:
-                    </span>
+                    <span className="font-medium text-slate-700">Lead time:</span>
                     <span className="ml-2 text-slate-900 break-words">
                       {asDisplayText((catalogProduct as any)?.leadtime)} days
                     </span>
@@ -1034,17 +845,11 @@ function SectionHero(props: {
 
             {/* CTAs */}
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-              <a
-                href="#contact"
-                className="px-6 sm:px-8 py-3 sm:py-4 btn-primary"
-              >
+              <a href="#contact" className="px-6 sm:px-8 py-3 sm:py-4 btn-primary">
                 Get Quote Now
               </a>
               {phone && (
-                <a
-                  href={`tel:${sanitizeE164(phone)}`}
-                  className="px-6 sm:px-8 py-3 sm:py-4 btn-secondary"
-                >
+                <a href={`tel:${sanitizeE164(phone)}`} className="px-6 sm:px-8 py-3 sm:py-4 btn-secondary">
                   📞 Call Now
                 </a>
               )}
@@ -1121,34 +926,18 @@ function OverviewSection(props: {
 
         <div className="grid lg:grid-cols-2 gap-10 sm:gap-16 items-center">
           <div className="space-y-6">
-            {p1 && (
-              <p className="text-base sm:text-lg text-slate-700 leading-relaxed whitespace-pre-wrap break-words">
-                {p1}
-              </p>
-            )}
-            {p2 && (
-              <p className="text-base sm:text-lg text-slate-700 leading-relaxed whitespace-pre-wrap break-words">
-                {p2}
-              </p>
-            )}
+            {p1 && <p className="text-base sm:text-lg text-slate-700 leading-relaxed whitespace-pre-wrap break-words">{p1}</p>}
+            {p2 && <p className="text-base sm:text-lg text-slate-700 leading-relaxed whitespace-pre-wrap break-words">{p2}</p>}
             {extraContent}
 
             <div className="grid grid-cols-2 gap-4 sm:gap-6 mt-6 sm:mt-8">
               <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-slate-200 text-center">
-                <div className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">
-                  500+
-                </div>
-                <div className="text-slate-600 text-sm sm:text-base">
-                  Global Partners
-                </div>
+                <div className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">500+</div>
+                <div className="text-slate-600 text-sm sm:text-base">Global Partners</div>
               </div>
               <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-slate-200 text-center">
-                <div className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">
-                  50+
-                </div>
-                <div className="text-slate-600 text-sm sm:text-base">
-                  Countries Served
-                </div>
+                <div className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">50+</div>
+                <div className="text-slate-600 text-sm sm:text-base">Countries Served</div>
               </div>
             </div>
           </div>
@@ -1183,43 +972,23 @@ function ProductGrid(props: {
     slugByProduct,
   } = props;
   return (
-    <section
-      id="products"
-      className="py-14 sm:py-20 bg-white"
-      aria-labelledby="product-categories"
-    >
+    <section id="products" className="py-14 sm:py-20 bg-white" aria-labelledby="product-categories">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
         <div className="text-center mb-12 sm:mb-16">
-          <h2
-            id="product-categories"
-            className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4 sm:mb-6 text-balance"
-          >
+          <h2 id="product-categories" className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4 sm:mb-6 text-balance">
             {title}
           </h2>
-          {subtitle && (
-            <p className="text-lg sm:text-xl text-slate-600 max-w-3xl mx-auto">
-              {subtitle}
-            </p>
-          )}
+          {subtitle && <p className="text-lg sm:text-xl text-slate-600 max-w-3xl mx-auto">{subtitle}</p>}
         </div>
 
         {products.length === 0 ? (
-          <div className="text-center text-slate-600">
-            No products for the selected location.
-          </div>
+          <div className="text-center text-slate-600">No products for the selected location.</div>
         ) : (
           <div className="grid gap-6 sm:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
             {products.map((p) => {
-              const img = (
-                p.img ??
-                p.image1 ??
-                p.image2 ??
-                '/placeholder.svg?height=300&width=400'
-              ).toString();
+              const img = (p.img ?? p.image1 ?? p.image2 ?? '/placeholder.svg?height=300&width=400').toString();
               const pid = String(p?._id ?? '').trim();
-              const rawSlug = (slugByProduct.get(pid) || p?.slug || '')
-                .toString()
-                .trim();
+              const rawSlug = (slugByProduct.get(pid) || p?.slug || '').toString().trim();
               const safeSlug = rawSlug.replace(/^\/+/, '');
               const href = safeSlug ? `/${encodeURIComponent(safeSlug)}` : '#';
               const desc = (p.productdescription || '').toString();
@@ -1249,10 +1018,7 @@ function ProductGrid(props: {
                     </p>
 
                     {href !== '#' && (
-                      <span
-                        className="mt-3 inline-flex items-center font-semibold text-blue-700 group-hover:text-blue-800"
-                        aria-hidden="true"
-                      >
+                      <span className="mt-3 inline-flex items-center font-semibold text-blue-700 group-hover:text-blue-800" aria-hidden="true">
                         Read more →
                       </span>
                     )}
@@ -1295,6 +1061,8 @@ function ContactSection() {
         </div>
       </section>
       <WhatsAppButton />
+      <StickyContactButton />
+
       {/* <Chatbot /> */}
     </>
   );
@@ -1306,7 +1074,7 @@ function ContactSection() {
 type Props = { params: Promise<{ slug?: string[] }> };
 
 /* -------------------------------------------------
-   Metadata (fetches DB company too)
+   Metadata (unchanged flow)
 -------------------------------------------------- */
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const p = await params;
@@ -1330,23 +1098,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   // ---------- HOME ----------
   if (!firstSeg) {
-    // Use App Router equivalent of getStaticProps for landing/seo
-    const [seoJson, locJson] = await Promise.all([
-      getLandingSeo(),
-      fetchJson<any>(LOC_URL),
-    ]);
+    const [seoJson, locJson] = await Promise.all([getLandingSeo(), fetchJson<any>(LOC_URL)]);
     const seos: any[] = Array.isArray(seoJson?.data) ? seoJson.data : [];
-    const rawLocs =
-      locJson?.data?.locations ?? locJson?.data ?? locJson?.locations ?? [];
+    const rawLocs = locJson?.data?.locations ?? locJson?.data ?? locJson?.locations ?? [];
     const locs: any[] = Array.isArray(rawLocs) ? rawLocs : [];
 
     const targetLocIds = new Set<string>(
       locs
-        .filter(
-          (l) =>
-            norm(l?.name) === DEFAULT_LOCATION_SLUG ||
-            norm(l?.slug) === DEFAULT_LOCATION_SLUG
-        )
+        .filter((l) => norm(l?.name) === DEFAULT_LOCATION_SLUG || norm(l?.slug) === DEFAULT_LOCATION_SLUG)
         .map((l) => String(l?._id ?? '').trim())
         .filter(Boolean)
     );
@@ -1355,63 +1114,38 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       seos.find((s) => {
         const locId = toId(s?.location);
         const locCode = norm(s?.locationCode);
-        return (
-          (locId && targetLocIds.has(locId)) ||
-          locCode === norm(DEFAULT_LOCATION_SLUG)
-        );
-      }) ||
-      seos[0] ||
-      null;
+        return (locId && targetLocIds.has(locId)) || locCode === norm(DEFAULT_LOCATION_SLUG);
+      }) || seos[0] || null;
 
     if (!seoData) return {};
 
     const title = seoData.title || 'Premium Fabric';
-    const desc =
-      seoData.description || 'High-quality fabric for garment manufacturing.';
+    const desc = seoData.description || 'High-quality fabric for garment manufacturing.';
     const canonical = canonicalFromSeoSlug(seoData?.slug);
     const origin = BASE_URL || 'https://example.com';
-    const ogType = seoData.ogType
-      ? ogTypeSafe(seoData.ogType)
-      : seoData.ogVideoUrl
-        ? 'video.other'
-        : 'website';
+    const ogType = seoData.ogType ? ogTypeSafe(seoData.ogType) : seoData.ogVideoUrl ? 'video.other' : 'website';
 
     return {
       title,
       description: desc,
-      keywords: seoData.keywords
-        ?.split(',')
-        .map((k: string) => k.trim())
-        .filter(Boolean) || [
-        'fabric',
-        'textile',
-        'garment',
-        'wholesale',
-        'manufacturer',
-      ],
+      keywords:
+        seoData.keywords?.split(',').map((k: string) => k.trim()).filter(Boolean) ||
+        ['fabric', 'textile', 'garment', 'wholesale', 'manufacturer'],
       metadataBase: new URL(origin),
       applicationName: COMPANY_DB.name || undefined,
-      authors: seoData.author_name
-        ? [{ name: seoData.author_name }]
-        : undefined,
+      authors: seoData.author_name ? [{ name: seoData.author_name }] : undefined,
       creator: seoData.author_name,
       publisher: COMPANY_DB.name || undefined,
       generator: 'Next.js',
       referrer: 'origin-when-cross-origin',
       robots: parseRobots(seoData.robots),
       viewport: { width: 'device-width', initialScale: 1 },
-      formatDetection: {
-        email: false,
-        address: false,
-        telephone: seoData.formatDetection === 'telephone=no' ? false : true,
-      },
+      formatDetection: { email: false, address: false, telephone: seoData.formatDetection === 'telephone=no' ? false : true },
       verification:
         seoData.googleSiteVerification || seoData.msValidate
           ? {
               google: seoData.googleSiteVerification,
-              other: seoData.msValidate
-                ? { 'msvalidate.01': seoData.msValidate }
-                : undefined,
+              other: seoData.msValidate ? { 'msvalidate.01': seoData.msValidate } : undefined,
             }
           : undefined,
       themeColor: seoData.themeColor || '#ffffff',
@@ -1428,9 +1162,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         title,
         description: desc,
         type: ogType as any,
-        images: seoData.ogImage
-          ? [{ url: seoData.ogImage, width: 1200, height: 630, alt: title }]
-          : [],
+        images: seoData.ogImage ? [{ url: seoData.ogImage, width: 1200, height: 630, alt: title }] : [],
         videos: seoData.ogVideoUrl
           ? [
               {
@@ -1448,14 +1180,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         site: seoData.twitterSite || undefined,
         title,
         description: desc,
-        images: seoData.twitterImage
-          ? [{ url: seoData.twitterImage }]
-          : undefined,
+        images: seoData.twitterImage ? [{ url: seoData.twitterImage }] : undefined,
       },
-      alternates: {
-        canonical,
-        languages: hreflangMapFromSeo(canonical, seoData?.hreflang),
-      },
+      alternates: { canonical, languages: hreflangMapFromSeo(canonical, seoData?.hreflang) },
       other: (() => {
         const other: Record<string, string> = {};
         const set = (name: string, value: any) => {
@@ -1474,32 +1201,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (isAssetSlug(firstSeg)) return {};
   const seo = (await fetchSeoData(firstSeg)) as SeoDocFull | null;
   if (!seo)
-    return {
-      title: 'Page Not Found',
-      description: 'The requested page could not be found.',
-    };
+    return { title: 'Page Not Found', description: 'The requested page could not be found.' };
 
   const title = seo.title;
   const desc = seo.description;
-
   const canonical = canonicalFromSeoSlug(seo?.slug);
-  const origin =
-    BASE_URL ||
-    (canonical || 'https://example.com').split('/').slice(0, 3).join('/');
-  const ogType = seo.ogType
-    ? ogTypeSafe(seo.ogType)
-    : seo.ogVideoUrl
-      ? 'video.other'
-      : 'website';
+  const origin = BASE_URL || (canonical || 'https://example.com').split('/').slice(0, 3).join('/');
+  const ogType = seo.ogType ? ogTypeSafe(seo.ogType) : seo.ogVideoUrl ? 'video.other' : 'website';
   const ogImageAlt = seo.ogTitle || seo.title || 'Product image';
 
   return {
     title,
     description: desc,
-    keywords: seo.keywords
-      ?.split(',')
-      .map((k) => k.trim())
-      .filter(Boolean),
+    keywords: seo.keywords?.split(',').map((k) => k.trim()).filter(Boolean),
     metadataBase: new URL(origin),
     applicationName: COMPANY_DB.name || undefined,
     authors: seo.author_name ? [{ name: seo.author_name }] : undefined,
@@ -1509,26 +1223,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     referrer: 'origin-when-cross-origin',
     robots: parseRobots(seo.robots),
     viewport: { width: 'device-width', initialScale: 1 },
-    formatDetection: {
-      email: false,
-      address: false,
-      telephone: seo.formatDetection === 'telephone=no' ? false : true,
-    },
+    formatDetection: { email: false, address: false, telephone: seo.formatDetection === 'telephone=no' ? false : true },
     verification:
       seo.googleSiteVerification || seo.msValidate
         ? {
             google: seo.googleSiteVerification,
-            other: seo.msValidate
-              ? { 'msvalidate.01': seo.msValidate }
-              : undefined,
+            other: seo.msValidate ? { 'msvalidate.01': seo.msValidate } : undefined,
           }
         : undefined,
     themeColor: seo.themeColor || '#ffffff',
     appleWebApp: seo.mobileWebAppCapable
-      ? {
-          capable: seo.mobileWebAppCapable === 'yes',
-          statusBarStyle: (seo.appleStatusBarStyle as any) || 'default',
-        }
+      ? { capable: seo.mobileWebAppCapable === 'yes', statusBarStyle: (seo.appleStatusBarStyle as any) || 'default' }
       : undefined,
     openGraph: {
       url: canonical,
@@ -1537,9 +1242,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title: title,
       description: desc,
       type: ogType as any,
-      images: seo.ogImage
-        ? [{ url: seo.ogImage, width: 1200, height: 630, alt: ogImageAlt }]
-        : undefined,
+      images: seo.ogImage ? [{ url: seo.ogImage, width: 1200, height: 630, alt: ogImageAlt }] : undefined,
     },
     twitter: {
       card: (twitterCardSafe(seo.twitterCard) as any) || 'summary',
@@ -1548,10 +1251,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description: seo.twitterDescription || desc,
       images: seo.twitterImage ? [seo.twitterImage] : undefined,
     },
-    alternates: {
-      canonical,
-      languages: hreflangMapFromSeo(canonical, seo?.hreflang),
-    },
+    alternates: { canonical, languages: hreflangMapFromSeo(canonical, seo?.hreflang) },
     other: (() => {
       const other: Record<string, string> = {};
       const set = (name: string, value: any) => {
@@ -1566,15 +1266,24 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-/* -------------------------------------------------
-   Page
--------------------------------------------------- */
-export default async function Page({ params }: Props) {
-  const p = await params;
-  const slugSegs = p.slug ?? [];
-  const slug = slugSegs[0];
 
-  // DB-only company info
+type PageResolved = {
+  seoForHead: any;
+  heroImage: string;
+  heroAlt: string;
+  overviewImage: string;
+  overviewAlt: string;
+  titleNode: React.ReactNode;
+  subtitle?: string;
+  desc1?: string;
+  desc2?: string;
+  products: ProductDoc[];
+  slugByProduct: Map<string, string>;
+  catalogProduct: Partial<ProductDoc> & { leadtime?: number | string };
+};
+
+async function resolvePageData(slug?: string): Promise<PageResolved> {
+  // company (DB-only)
   const officeJson = await fetchJson<any>(OFFICEINFO_URL);
   const office = pickOfficeInfo(officeJson);
   const COMPANY_DB: Company = {
@@ -1589,11 +1298,11 @@ export default async function Page({ params }: Props) {
     logo: (office?.companyLogoUrl ?? '').trim(),
   };
 
-  /* ============================
-     HOME (no slug)
-  ============================ */
+  // SHARED LOADS
+  const [{ fetchProductData: fetchProductDataSlug }] = await Promise.all([import('@/lib/seo')]);
+
   if (!slug) {
-    // Use App Router equivalent of getStaticProps for landing/seo
+    // ---------- HOME: Ahmedabad products ----------
     const [seoJson, prodJson, locJson] = await Promise.all([
       getLandingSeo(),
       fetchJson<any>(PRODUCT_URL),
@@ -1601,54 +1310,44 @@ export default async function Page({ params }: Props) {
     ]);
 
     const seos: any[] = Array.isArray(seoJson?.data) ? seoJson.data : [];
-    const products: any[] = Array.isArray(prodJson?.data) ? prodJson.data : [];
+    const products: ProductDoc[] = Array.isArray(prodJson?.data) ? prodJson.data : [];
 
-    const rawLocs =
-      locJson?.data?.locations ?? locJson?.data ?? locJson?.locations ?? [];
+    const rawLocs = locJson?.data?.locations ?? locJson?.data ?? locJson?.locations ?? [];
     const locs: any[] = Array.isArray(rawLocs) ? rawLocs : [];
 
     const targetLocIds = new Set<string>(
       locs
-        .filter(
-          (l) =>
-            norm(l?.name) === DEFAULT_LOCATION_SLUG ||
-            norm(l?.slug) === DEFAULT_LOCATION_SLUG
-        )
+        .filter((l) => norm(l?.name) === DEFAULT_LOCATION_SLUG || norm(l?.slug) === DEFAULT_LOCATION_SLUG)
         .map((l) => String(l?._id ?? '').trim())
         .filter(Boolean)
     );
 
-    const isSeoForLocation = (s: any) => {
+    const isSeoForAhmedabad = (s: any) => {
       const locId = toId(s?.location);
       const locCode = norm(s?.locationCode);
-      return (
-        (locId && targetLocIds.has(locId)) ||
-        locCode === norm(DEFAULT_LOCATION_SLUG)
-      );
+      return (locId && targetLocIds.has(locId)) || locCode === norm(DEFAULT_LOCATION_SLUG);
     };
 
-    const locSeoRows = seos.filter((s) => isSeoForLocation(s));
+    const locSeoRows = seos.filter((s) => isSeoForAhmedabad(s));
 
-    const productById = new Map<string, any>();
-    const productBySlug = new Map<string, any>();
+    // Map products by id/slug
+    const productById = new Map<string, ProductDoc>();
+    const productBySlug = new Map<string, ProductDoc>();
     for (const p of products) {
       const pid = String(p?._id ?? '').trim();
       if (pid) productById.set(pid, p);
-      const pslug = String(p?.slug ?? '')
-        .trim()
-        .toLowerCase();
+      const pslug = String(p?.slug ?? '').trim().toLowerCase();
       if (pslug) productBySlug.set(pslug, p);
     }
 
-    const ahmedabadProducts: any[] = [];
+    const ahmedabadProducts: ProductDoc[] = [];
     const seen = new Set<string>();
     for (const s of locSeoRows) {
       const pid = toId(s?.product);
       const sSlug = norm(s?.slug);
-      let prod: any | undefined = undefined;
+      let prod: ProductDoc | undefined = undefined;
       if (pid && productById.has(pid)) prod = productById.get(pid);
-      else if (sSlug && productBySlug.has(sSlug))
-        prod = productBySlug.get(sSlug);
+      else if (sSlug && productBySlug.has(sSlug)) prod = productBySlug.get(sSlug);
       if (prod) {
         const key = String(prod._id);
         if (!seen.has(key)) {
@@ -1663,7 +1362,7 @@ export default async function Page({ params }: Props) {
       const pid = toId(s.product);
       const sSlug = String(s?.slug ?? '').trim();
       if (!pid || !sSlug) continue;
-      if (isSeoForLocation(s)) {
+      if (isSeoForAhmedabad(s)) {
         slugByProduct.set(pid, sSlug);
       } else if (!slugByProduct.has(pid)) {
         slugByProduct.set(pid, sSlug);
@@ -1672,151 +1371,86 @@ export default async function Page({ params }: Props) {
 
     const firstCard = ahmedabadProducts[0] || products[0] || null;
     const isRowForCard = (s: any) =>
-      toId(s.product) === (firstCard?._id ?? '') ||
-      norm(s.slug) === norm(firstCard?.slug);
+      toId(s.product) === (firstCard?._id ?? '') || norm(s.slug) === norm(firstCard?.slug);
     const firstCardSeo =
-      seos.find((s) => isSeoForLocation(s) && isRowForCard(s)) ||
+      seos.find((s) => isSeoForAhmedabad(s) && isRowForCard(s)) ||
       seos.find((s) => isRowForCard(s)) ||
       locSeoRows[0] ||
       seos[0] ||
       null;
 
-    const titleFromSeo = String(
-      firstCardSeo?.productlocationtitle ?? ''
-    ).trim();
-    const taglineFromSeo = String(
-      firstCardSeo?.productlocationtagline ?? ''
-    ).trim();
-    const desc1FromSeo = String(
-      firstCardSeo?.productlocationdescription1 ?? ''
-    ).trim();
-    const desc2FromSeo = String(
-      firstCardSeo?.productlocationdescription2 ?? ''
-    ).trim();
+    const titleFromSeo = String(firstCardSeo?.productlocationtitle ?? '').trim();
+    const taglineFromSeo = String(firstCardSeo?.productlocationtagline ?? '').trim();
+    const desc1FromSeo = String(firstCardSeo?.productlocationdescription1 ?? '').trim();
+    const desc2FromSeo = String(firstCardSeo?.productlocationdescription2 ?? '').trim();
 
-    const heroImage = pickImage(
-      firstCard?.img,
-      firstCard?.image1,
-      firstCard?.image2
-    );
+    const heroImage = pickImage(firstCard?.img, firstCard?.image1, firstCard?.image2);
     const heroName = (firstCard?.name || 'Fabrics').toString();
     const heroAlt = heroName;
-    const overviewImage = pickImageNotEq(
-      heroImage,
-      firstCard?.image2,
-      firstCard?.image1,
-      firstCard?.img
-    );
-    const overviewAlt = firstCard?.name
-      ? `${firstCard.name} — secondary view`
-      : '';
-
-    // JSON-LD with DB company
-    const ld = jsonLdFor(
-      firstCardSeo || seos[0] || {},
-      firstCard?.name,
-      COMPANY_DB
-    );
+    const overviewImage = pickImageNotEq(heroImage, firstCard?.image2, firstCard?.image1, firstCard?.img);
+    const overviewAlt = firstCard?.name ? `${firstCard.name} — secondary view` : '';
 
     const titleNode: React.ReactNode = titleFromSeo ? (
       titleFromSeo
     ) : (
       <>
-        <span className="text-black">
-          Premium {heroName} for Global Manufacturers
-        </span>
+        <span className="text-black">Premium {heroName} for Global Manufacturers</span>
       </>
     );
 
-    return (
-      <main className="min-h-screen bg-white pb-24 md:pb-0 overflow-x-hidden">
-        {/* Structured data */}
-        <JsonLdInjector {...ld} />
-
-        <SectionHero
-          titleNode={titleNode}
-          subtitle={
-            taglineFromSeo ||
-            'Connect with leading fabric suppliers worldwide. Quality textiles, competitive pricing, and reliable supply chains.'
-          }
-          sku={firstCardSeo?.sku}
-          rating={firstCardSeo?.rating_value}
-          reviews={firstCardSeo?.rating_count}
-          phone={COMPANY_DB.phone}
-          heroImage={heroImage}
-          heroAlt={heroAlt}
-          catalogProduct={{
-            name: firstCard?.name,
-            sku: firstCard?.sku || firstCardSeo?.sku,
-            productdescription:
-              firstCard?.productdescription || firstCardSeo?.productdescription,
-            img: firstCard?.img,
-            image1: firstCard?.image1,
-            image2: firstCard?.image2,
-            gsm: firstCard?.gsm,
-            oz: firstCard?.oz,
-            cm: firstCard?.cm,
-            inch: firstCard?.inch,
-            design: (firstCard as any)?.design,
-            motif: (firstCard as any)?.motif,
-            weight: (firstCard as any)?.weight,
-            width: (firstCard as any)?.width,
-            substructure: (firstCard as any)?.substructure,
-            subfinish: (firstCard as any)?.subfinish,
-            content: (firstCard as any)?.content,
-            subSuitableFor: (firstCard as any)?.subSuitableFor,
-            colors: (firstCard as any)?.colors,
-            color: (firstCard as any)?.color,
-            quantity: (firstCard as any)?.quantity,
-            leadtime: (firstCardSeo as any)?.leadtime,
-            um: (firstCard as any)?.um,
-          }}
-        />
-
-        <OverviewSection
-          tagline="ISO 9001 Certified • 500+ Global Partners • Ships to 50+ Countries"
-          p1={desc1FromSeo || undefined}
-          p2={desc2FromSeo || undefined}
-          extraContent={<CommitmentText />}
-          image={overviewImage}
-          imageAlt={overviewAlt}
-        />
-
-        <ProductGrid
-          subtitle={
-            taglineFromSeo ||
-            'Comprehensive range of premium fabrics for every manufacturing need'
-          }
-          products={ahmedabadProducts}
-          slugByProduct={slugByProduct}
-        />
-
-        <ContactSection />
-      </main>
-    );
+    return {
+      seoForHead: firstCardSeo || seos[0] || {},
+      heroImage,
+      heroAlt,
+      overviewImage,
+      overviewAlt,
+      titleNode,
+      subtitle: taglineFromSeo || 'Connect with leading fabric suppliers worldwide. Quality textiles, competitive pricing, and reliable supply chains.',
+      desc1: desc1FromSeo || undefined,
+      desc2: desc2FromSeo || undefined,
+      products: ahmedabadProducts,
+      slugByProduct,
+      catalogProduct: {
+        name: firstCard?.name,
+        sku: firstCard?.sku || firstCardSeo?.sku,
+        productdescription: firstCard?.productdescription || firstCardSeo?.productdescription,
+        img: firstCard?.img,
+        image1: firstCard?.image1,
+        image2: firstCard?.image2,
+        gsm: firstCard?.gsm,
+        oz: firstCard?.oz,
+        cm: firstCard?.cm,
+        inch: firstCard?.inch,
+        design: (firstCard as any)?.design,
+        motif: (firstCard as any)?.motif,
+        weight: (firstCard as any)?.weight,
+        width: (firstCard as any)?.width,
+        substructure: (firstCard as any)?.substructure,
+        subfinish: (firstCard as any)?.subfinish,
+        content: (firstCard as any)?.content,
+        subSuitableFor: (firstCard as any)?.subSuitableFor,
+        colors: (firstCard as any)?.colors,
+        color: (firstCard as any)?.color,
+        quantity: (firstCard as any)?.quantity,
+        leadtime: (firstCardSeo as any)?.leadtime,
+        um: (firstCard as any)?.um,
+      },
+    };
   }
 
-  /* ============================
-     SLUG DETAIL: product page
-  ============================ */
-  if (isAssetSlug(slug)) return null;
+  // ---------- SLUG DETAIL: same-location products ----------
+  if (isAssetSlug(slug)) notFound();
 
-  const [{ fetchProductData }] = await Promise.all([import('@/lib/seo')]);
-  const [rawSeo, productsArr] = await Promise.all([
-    fetchSeoData(slug),
-    fetchProductData(),
-  ]);
+  // const [{ fetchProductData }] = await Promise.all([import('@/lib/seo')]);
+  const [rawSeo, productsArr] = await Promise.all([fetchSeoData(slug), fetchProductDataSlug()]);
   if (!rawSeo) notFound();
   const seo = rawSeo as SeoDocFull;
 
-  // RELATED (same location)
   const currentLocId = toId(seo.location);
   const currentLocCode = norm(seo.locationCode);
 
   const seoListJson = await fetchJson<any>(SEO_LIST_URL);
-  const allSeos: SeoDocFull[] = Array.isArray(seoListJson?.data)
-    ? seoListJson.data
-    : [];
+  const allSeos: SeoDocFull[] = Array.isArray(seoListJson?.data) ? seoListJson.data : [];
 
   const relatedProductIds = new Set<string>();
   const slugByProduct = new Map<string, string>();
@@ -1840,12 +1474,8 @@ export default async function Page({ params }: Props) {
     }
   }
 
-  const allProducts: ProductDoc[] = Array.isArray(productsArr)
-    ? (productsArr as ProductDoc[])
-    : [];
-  const relatedProducts: ProductDoc[] = allProducts.filter((p) =>
-    relatedProductIds.has(String(p?._id))
-  );
+  const allProducts: ProductDoc[] = Array.isArray(productsArr) ? (productsArr as ProductDoc[]) : [];
+  const relatedProducts: ProductDoc[] = allProducts.filter((p) => relatedProductIds.has(String(p?._id)));
 
   // Linked product for hero images
   const linkedProductId =
@@ -1854,238 +1484,137 @@ export default async function Page({ params }: Props) {
       : (seo.product as any)?._id
         ? String((seo.product as any)._id).trim()
         : '';
-  const matchingProduct: ProductDoc | null =
-    allProducts.find((p) => p._id === linkedProductId) || null;
+  const matchingProduct: ProductDoc | null = allProducts.find((p) => p._id === linkedProductId) || null;
 
-  // HERO / overview images
   let heroImage = '/placeholder.svg?height=600&width=800';
   let heroAlt = 'Premium fabric warehouse with organized textile rolls';
   if (matchingProduct?.img) {
     heroImage = matchingProduct.img;
     heroAlt = matchingProduct.altimg1 || heroAlt;
   }
-  const overviewImage = (matchingProduct?.image2 ||
-    matchingProduct?.image1 ||
-    matchingProduct?.img ||
-    '/placeholder.svg?height=500&width=600') as string;
-  const overviewAlt = matchingProduct?.altimg2
-    ? `${matchingProduct.altimg2}`
-    : 'Modern textile manufacturing facility';
+  const overviewImage = (matchingProduct?.image2 || matchingProduct?.image1 || matchingProduct?.img || '/placeholder.svg?height=500&width=600') as string;
+  const overviewAlt = matchingProduct?.altimg2 ? `${matchingProduct.altimg2}` : 'Modern textile manufacturing facility';
 
-  // dynamic copy
   const locationTitle = seo.productlocationtitle?.trim() || '';
   const locationTagline = seo.productlocationtagline?.trim() || '';
   const locationDesc1 = seo.productlocationdescription1?.trim() || '';
   const locationDesc2 = seo.productlocationdescription2?.trim() || '';
 
-  // JSON-LD blocks for slug (using DB-only company)
-  const ld = jsonLdFor(seo, matchingProduct?.name, COMPANY_DB);
+  return {
+    seoForHead: seo,
+    heroImage,
+    heroAlt,
+    overviewImage,
+    overviewAlt,
+    titleNode: <>{locationTitle}</>,
+    subtitle: locationTagline || 'Comprehensive range of premium fabrics for every manufacturing need',
+    desc1: locationDesc1,
+    desc2: locationDesc2,
+        products: relatedProducts,
+    slugByProduct,
+    catalogProduct: {
+      name: matchingProduct?.name,
+      sku: matchingProduct?.sku || seo.sku,
+      productdescription:
+        matchingProduct?.productdescription || seo.productdescription,
+      img: matchingProduct?.img,
+      image1: matchingProduct?.image1,
+      image2: matchingProduct?.image2,
+      gsm: matchingProduct?.gsm,
+      oz: matchingProduct?.oz,
+      cm: matchingProduct?.cm,
+      inch: matchingProduct?.inch,
+      design: (matchingProduct as any)?.design ?? (seo as any)?.design,
+      motif: (matchingProduct as any)?.motif ?? (seo as any)?.motif,
+      weight: (matchingProduct as any)?.weight ?? (seo as any)?.weight,
+      width: (matchingProduct as any)?.width ?? (seo as any)?.width,
+      substructure:
+        (matchingProduct as any)?.substructure ?? (seo as any)?.substructure,
+      subfinish:
+        (matchingProduct as any)?.subfinish ?? (seo as any)?.subfinish,
+      content: (matchingProduct as any)?.content ?? (seo as any)?.content,
+      subSuitableFor:
+        (matchingProduct as any)?.subSuitableFor ??
+        (seo as any)?.subSuitableFor,
+      colors: (matchingProduct as any)?.colors ?? (seo as any)?.colors,
+      color: (matchingProduct as any)?.color ?? (seo as any)?.color,
+      quantity: (matchingProduct as any)?.quantity,
+      leadtime: (seo as any)?.leadtime,
+      um: (matchingProduct as any)?.um,
+    },
+  };
+}
+
+/* -------------------------------------------------
+   Page (unified) — uses resolvePageData for both cases
+-------------------------------------------------- */
+export default async function Page({ params }: Props) {
+  const p = await params;
+  const slug = p.slug?.[0];
+
+  // Resolve all data for either case (home vs slug)
+  const resolved = await resolvePageData(slug);
+
+  // DB-only company (for JSON-LD publisher/org info)
+  const officeJson = await fetchJson<any>(OFFICEINFO_URL);
+  const office = pickOfficeInfo(officeJson);
+  const COMPANY_DB: Company = {
+    name: (office?.companyName ?? '').trim(),
+    email: (office?.companyEmail ?? '').trim(),
+    phone:
+      (office?.companyPhone1 ?? '').trim() ||
+      (office?.whatsappNumber ?? '').trim() ||
+      (office?.companyPhone2 ?? '').trim() ||
+      '',
+    address: (office?.companyAddress ?? '').trim(),
+    logo: (office?.companyLogoUrl ?? '').trim(),
+  };
+
+  // Structured data for current view
+  const ld = jsonLdFor(
+    resolved.seoForHead,
+    (resolved.catalogProduct as any)?.name,
+    COMPANY_DB
+  );
 
   return (
     <>
       <JsonLdInjector {...ld} />
 
-      <main className="min-h-screen bg-white overflow-x-hidden">
+      <main className="min-h-screen bg-white pb-24 md:pb-0 overflow-x-hidden">
         <SectionHero
-          titleNode={<>{locationTitle}</>}
-          subtitle={locationTagline}
-          sku={seo.sku}
-          rating={seo.rating_value}
-          reviews={seo.rating_count}
+          titleNode={resolved.titleNode}
+          subtitle={resolved.subtitle}
+          sku={(resolved.seoForHead as any)?.sku}
+          rating={(resolved.seoForHead as any)?.rating_value}
+          reviews={(resolved.seoForHead as any)?.rating_count}
           phone={COMPANY_DB.phone}
-          heroImage={heroImage}
-          heroAlt={heroAlt}
-          catalogProduct={{
-            name: matchingProduct?.name,
-            sku: matchingProduct?.sku || seo.sku,
-            productdescription:
-              matchingProduct?.productdescription || seo.productdescription,
-            img: matchingProduct?.img,
-            image1: matchingProduct?.image1,
-            image2: matchingProduct?.image2,
-            gsm: matchingProduct?.gsm,
-            oz: matchingProduct?.oz,
-            cm: matchingProduct?.cm,
-            inch: matchingProduct?.inch,
-            design: (matchingProduct as any)?.design ?? (seo as any)?.design,
-            motif: (matchingProduct as any)?.motif ?? (seo as any)?.motif,
-            weight: (matchingProduct as any)?.weight ?? (seo as any)?.weight,
-            width: (matchingProduct as any)?.width ?? (seo as any)?.width,
-            substructure:
-              (matchingProduct as any)?.substructure ??
-              (seo as any)?.substructure,
-            subfinish:
-              (matchingProduct as any)?.subfinish ?? (seo as any)?.subfinish,
-            content: (matchingProduct as any)?.content ?? (seo as any)?.content,
-            subSuitableFor:
-              (matchingProduct as any)?.subSuitableFor ??
-              (seo as any)?.subSuitableFor,
-            colors: (matchingProduct as any)?.colors ?? (seo as any)?.colors,
-            color: (matchingProduct as any)?.color ?? (seo as any)?.color,
-            quantity: (matchingProduct as any)?.quantity,
-            leadtime: (seo as any)?.leadtime,
-            um: (matchingProduct as any)?.um,
-          }}
+          heroImage={resolved.heroImage}
+          heroAlt={resolved.heroAlt}
+          catalogProduct={resolved.catalogProduct}
         />
 
         <OverviewSection
           heading="Leading B2B Fabric Supplier Worldwide"
-          p1={locationDesc1}
-          p2={locationDesc2}
+          tagline="ISO 9001 Certified • 500+ Global Partners • Ships to 50+ Countries"
+          p1={resolved.desc1}
+          p2={resolved.desc2}
           extraContent={<CommitmentText />}
-          image={overviewImage}
-          imageAlt={overviewAlt}
+          image={resolved.overviewImage}
+          imageAlt={resolved.overviewAlt}
         />
 
         <ProductGrid
           subtitle={
-            locationTagline ||
-            'Comprehensive range of premium fabrics for every manufacturing need'
+            resolved.subtitle || 'Comprehensive range of premium fabrics for every manufacturing need'
           }
-          products={relatedProducts}
-          slugByProduct={slugByProduct}
+          products={resolved.products}
+          slugByProduct={resolved.slugByProduct}
         />
 
         <ContactSection />
+        <Footer />
       </main>
     </>
   );
-}
-
-/* -------------------------------------------------
-   Server actions (unchanged)
--------------------------------------------------- */
-export async function saveContactDraft(fd: FormData) {
-  'use server';
-  const draftId = (fd.get('draftId') ?? '').toString().trim();
-
-  const body: any = {
-    companyName: (fd.get('companyName') ?? '').toString(),
-    contactPerson: (fd.get('contactPerson') ?? '').toString(),
-    email: (fd.get('email') ?? '').toString(),
-    phoneNumber: (fd.get('phoneNumber') ?? '').toString(),
-    businessType: (fd.get('businessType') ?? '').toString(),
-    annualFabricVolume: (fd.get('annualFabricVolume') ?? '').toString(),
-    primaryMarkets: (fd.get('primaryMarkets') ?? '').toString(),
-    specificationsRequirements: (
-      fd.get('specificationsRequirements') ?? ''
-    ).toString(),
-    timeline: (fd.get('timeline') ?? '').toString(),
-    additionalMessage: (fd.get('additionalMessage') ?? '').toString(),
-    status: 'draft',
-    stepCompleted: Number(fd.get('stepCompleted') ?? 0) || 0,
-  };
-
-  const ftoi = fd
-    .getAll('fabricTypesOfInterest')
-    .map((x) => x.toString().trim())
-    .filter(Boolean);
-  body.fabricTypesOfInterest = ftoi;
-
-  try {
-    if (!draftId) {
-      const res = await fetch(CONTACT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders },
-        body: JSON.stringify(body),
-        cache: 'no-store',
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        return {
-          ok: false as const,
-          message: json?.message || 'Failed to create draft',
-        };
-      }
-      return { ok: true as const, id: json?.data?._id, data: json?.data };
-    } else {
-      const res = await fetch(`${CONTACT_URL}/${draftId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', ...authHeaders },
-        body: JSON.stringify(body),
-        cache: 'no-store',
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        return {
-          ok: false as const,
-          message: json?.message || 'Failed to update draft',
-        };
-      }
-      return { ok: true as const, id: draftId, data: json?.data };
-    }
-  } catch (e: any) {
-    return { ok: false as const, message: e?.message || 'Draft save error' };
-  }
-}
-
-export async function submitContact(formData: FormData) {
-  'use server';
-  const draftId = (formData.get('draftId') ?? '').toString().trim();
-
-  const payload: any = {
-    companyName: (formData.get('companyName') ?? '').toString().trim(),
-    contactPerson: (formData.get('contactPerson') ?? '').toString().trim(),
-    email: (formData.get('email') ?? '').toString().trim(),
-    phoneNumber: (formData.get('phoneNumber') ?? '').toString().trim(),
-    businessType: (formData.get('businessType') ?? '').toString().trim(),
-    annualFabricVolume: (formData.get('annualFabricVolume') ?? '')
-      .toString()
-      .trim(),
-    primaryMarkets: (formData.get('primaryMarkets') ?? '').toString().trim(),
-    specificationsRequirements: (
-      formData.get('specificationsRequirements') ?? ''
-    )
-      .toString()
-      .trim(),
-    timeline: (formData.get('timeline') ?? '').toString().trim(),
-    additionalMessage: (formData.get('additionalMessage') ?? '')
-      .toString()
-      .trim(),
-    status: 'submitted',
-    stepCompleted: 3,
-  };
-
-  const ftoi = formData
-    .getAll('fabricTypesOfInterest')
-    .map((v) => v.toString().trim())
-    .filter(Boolean);
-  payload.fabricTypesOfInterest = ftoi;
-
-  try {
-    const res = await fetch(
-      draftId ? `${CONTACT_URL}/${draftId}` : CONTACT_URL,
-      {
-        method: draftId ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders },
-        body: JSON.stringify(payload),
-        cache: 'no-store',
-      }
-    );
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      return {
-        ok: false as const,
-        status: res.status,
-        message: err?.message || 'Failed to create contact',
-        error: err?.error,
-      };
-    }
-
-    const json = await res.json().catch(() => ({}));
-    return {
-      ok: true as const,
-      status: 201,
-      message: json?.message || 'Contact created successfully',
-      data: json?.data ?? null,
-    };
-  } catch (e: any) {
-    return {
-      ok: false as const,
-      status: 500,
-      message: 'Network/Server error while creating contact',
-      error: e?.message,
-    };
-  }
 }
