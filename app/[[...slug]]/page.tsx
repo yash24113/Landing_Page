@@ -54,6 +54,7 @@ const RAW_BASE =
 const SEO_URL = RAW_BASE ? `${RAW_BASE}/seo` : '';
 const PRODUCT_URL = RAW_BASE ? `${RAW_BASE}/product` : '';
 const LOC_URL = RAW_BASE ? `${RAW_BASE}/locations` : '';
+const ABOUTUS_URL = RAW_BASE ? `${RAW_BASE}/aboutus` : '';
 const SEO_LIST_URL = RAW_BASE
   ? `${RAW_BASE}/seo`
   : 'http://localhost:7000/landing/seo';
@@ -63,6 +64,36 @@ const OFFICEINFO_URL = RAW_BASE ? `${RAW_BASE}/officeinformation` : '';
 const CONTACT_URL =
   process.env.NEXT_PUBLIC_CONTACT_URL ??
   (RAW_BASE ? `${RAW_BASE}/contacts` : '');
+
+
+  export async function fetchAboutUs() {
+  try {
+    const res = await fetchWithISR(ABOUTUS_URL, {
+      headers: { "Content-Type": "application/json" },
+      next: { revalidate: 2592000 }, // 30 days
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (err) {
+    console.error("Failed to fetch About Us:", err);
+    return null;
+  }
+}
+
+/** Fetch Office Information data with ISR */
+export async function fetchOfficeInformation() {
+  try {
+    const res = await fetchWithISR(OFFICEINFO_URL, {
+      headers: { "Content-Type": "application/json" },
+      next: { revalidate: 2592000 }, // 30 days
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (err) {
+    console.error("Failed to fetch Office Information:", err);
+    return null;
+  }
+}
 
 /* -------------------------------------------------
    AUTH HEADERS
@@ -1081,32 +1112,59 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const slugSegs = p.slug ?? [];
   const firstSeg = slugSegs[0];
 
-  // DB company
-  const officeJson = await fetchJson<any>(OFFICEINFO_URL);
+  /* -------------------------------------------------
+     Office Info (with ISR)
+  -------------------------------------------------- */
+  let officeJson: any = null;
+  try {
+    const res = await fetchWithISR(OFFICEINFO_URL, {
+      headers: { "Content-Type": "application/json" },
+      next: { revalidate: 2592000 }, // 30 days
+    });
+    if (res.ok) officeJson = await res.json();
+  } catch (err) {
+    console.error("Failed to fetch office info:", err);
+  }
+
   const office = pickOfficeInfo(officeJson);
   const COMPANY_DB: Company = {
-    name: (office?.companyName ?? '').trim(),
-    email: (office?.companyEmail ?? '').trim(),
+    name: (office?.companyName ?? "").trim(),
+    email: (office?.companyEmail ?? "").trim(),
     phone:
-      (office?.companyPhone1 ?? '').trim() ||
-      (office?.whatsappNumber ?? '').trim() ||
-      (office?.companyPhone2 ?? '').trim() ||
-      '',
-    address: (office?.companyAddress ?? '').trim(),
-    logo: (office?.companyLogoUrl ?? '').trim(),
+      (office?.companyPhone1 ?? "").trim() ||
+      (office?.whatsappNumber ?? "").trim() ||
+      (office?.companyPhone2 ?? "").trim() ||
+      "",
+    address: (office?.companyAddress ?? "").trim(),
+    logo: (office?.companyLogoUrl ?? "").trim(),
   };
 
-  // ---------- HOME ----------
+  /* -------------------------------------------------
+     HOME (no slug)
+  -------------------------------------------------- */
   if (!firstSeg) {
-    const [seoJson, locJson] = await Promise.all([getLandingSeo(), fetchJson<any>(LOC_URL)]);
+    const [seoJson, locJson, aboutJson] = await Promise.all([
+      getLandingSeo(), // already uses fetchWithISR internally
+      fetchWithISR(LOC_URL, {
+        headers: { "Content-Type": "application/json" },
+        next: { revalidate: 2592000 },
+      }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetchWithISR("https://backend.amrita-fashions.com/landing/aboutus", {
+        headers: { "Content-Type": "application/json" },
+        next: { revalidate: 2592000 },
+      }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+    ]);
+
     const seos: any[] = Array.isArray(seoJson?.data) ? seoJson.data : [];
     const rawLocs = locJson?.data?.locations ?? locJson?.data ?? locJson?.locations ?? [];
     const locs: any[] = Array.isArray(rawLocs) ? rawLocs : [];
 
     const targetLocIds = new Set<string>(
       locs
-        .filter((l) => norm(l?.name) === DEFAULT_LOCATION_SLUG || norm(l?.slug) === DEFAULT_LOCATION_SLUG)
-        .map((l) => String(l?._id ?? '').trim())
+        .filter(
+          (l) => norm(l?.name) === DEFAULT_LOCATION_SLUG || norm(l?.slug) === DEFAULT_LOCATION_SLUG
+        )
+        .map((l) => String(l?._id ?? "").trim())
         .filter(Boolean)
     );
 
@@ -1119,50 +1177,70 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
     if (!seoData) return {};
 
-    const title = seoData.title || 'Premium Fabric';
-    const desc = seoData.description || 'High-quality fabric for garment manufacturing.';
+    const title = seoData.title || "Premium Fabric";
+    const desc =
+      seoData.description ||
+      aboutJson?.description || // fallback to AboutUs description
+      "High-quality fabric for garment manufacturing.";
     const canonical = canonicalFromSeoSlug(seoData?.slug);
-    const origin = BASE_URL || 'https://example.com';
-    const ogType = seoData.ogType ? ogTypeSafe(seoData.ogType) : seoData.ogVideoUrl ? 'video.other' : 'website';
+    const origin = BASE_URL || "https://example.com";
+    const ogType = seoData.ogType
+      ? ogTypeSafe(seoData.ogType)
+      : seoData.ogVideoUrl
+      ? "video.other"
+      : "website";
 
     return {
       title,
       description: desc,
       keywords:
-        seoData.keywords?.split(',').map((k: string) => k.trim()).filter(Boolean) ||
-        ['fabric', 'textile', 'garment', 'wholesale', 'manufacturer'],
+        seoData.keywords?.split(",").map((k: string) => k.trim()).filter(Boolean) || [
+          "fabric",
+          "textile",
+          "garment",
+          "wholesale",
+          "manufacturer",
+        ],
       metadataBase: new URL(origin),
       applicationName: COMPANY_DB.name || undefined,
       authors: seoData.author_name ? [{ name: seoData.author_name }] : undefined,
       creator: seoData.author_name,
       publisher: COMPANY_DB.name || undefined,
-      generator: 'Next.js',
-      referrer: 'origin-when-cross-origin',
+      generator: "Next.js",
+      referrer: "origin-when-cross-origin",
       robots: parseRobots(seoData.robots),
-      viewport: { width: 'device-width', initialScale: 1 },
-      formatDetection: { email: false, address: false, telephone: seoData.formatDetection === 'telephone=no' ? false : true },
+      viewport: { width: "device-width", initialScale: 1 },
+      formatDetection: {
+        email: false,
+        address: false,
+        telephone: seoData.formatDetection === "telephone=no" ? false : true,
+      },
       verification:
         seoData.googleSiteVerification || seoData.msValidate
           ? {
               google: seoData.googleSiteVerification,
-              other: seoData.msValidate ? { 'msvalidate.01': seoData.msValidate } : undefined,
+              other: seoData.msValidate
+                ? { "msvalidate.01": seoData.msValidate }
+                : undefined,
             }
           : undefined,
-      themeColor: seoData.themeColor || '#ffffff',
+      themeColor: seoData.themeColor || "#ffffff",
       appleWebApp: seoData.mobileWebAppCapable
         ? {
-            capable: seoData.mobileWebAppCapable === 'yes',
-            statusBarStyle: (seoData.appleStatusBarStyle as any) || 'default',
+            capable: seoData.mobileWebAppCapable === "yes",
+            statusBarStyle: (seoData.appleStatusBarStyle as any) || "default",
           }
         : undefined,
       openGraph: {
         url: canonical,
         siteName: COMPANY_DB.name || undefined,
-        locale: seoData.ogLocale || 'en_US',
+        locale: seoData.ogLocale || "en_US",
         title,
         description: desc,
         type: ogType as any,
-        images: seoData.ogImage ? [{ url: seoData.ogImage, width: 1200, height: 630, alt: title }] : [],
+        images: seoData.ogImage
+          ? [{ url: seoData.ogImage, width: 1200, height: 630, alt: title }]
+          : [],
         videos: seoData.ogVideoUrl
           ? [
               {
@@ -1176,64 +1254,86 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
           : [],
       },
       twitter: {
-        card: twitterCardSafe(seoData.twitterCard) || 'summary_large_image',
+        card: twitterCardSafe(seoData.twitterCard) || "summary_large_image",
         site: seoData.twitterSite || undefined,
         title,
         description: desc,
         images: seoData.twitterImage ? [{ url: seoData.twitterImage }] : undefined,
       },
-      alternates: { canonical, languages: hreflangMapFromSeo(canonical, seoData?.hreflang) },
+      alternates: {
+        canonical,
+        languages: hreflangMapFromSeo(canonical, seoData?.hreflang),
+      },
       other: (() => {
         const other: Record<string, string> = {};
         const set = (name: string, value: any) => {
           const v = asString(value);
-          if (v !== undefined && v !== '') other[name] = v;
+          if (v !== undefined && v !== "") other[name] = v;
         };
-        set('content-language', seoData.contentLanguage);
-        set('x-ua-compatible', seoData.xUaCompatible);
-        set('author_name', seoData.author_name);
+        set("content-language", seoData.contentLanguage);
+        set("x-ua-compatible", seoData.xUaCompatible);
+        set("author_name", seoData.author_name);
         return other;
       })(),
     };
   }
 
-  // ---------- SLUG DETAIL ----------
+  /* -------------------------------------------------
+     SLUG DETAIL (unchanged)
+  -------------------------------------------------- */
   if (isAssetSlug(firstSeg)) return {};
   const seo = (await fetchSeoData(firstSeg)) as SeoDocFull | null;
   if (!seo)
-    return { title: 'Page Not Found', description: 'The requested page could not be found.' };
+    return {
+      title: "Page Not Found",
+      description: "The requested page could not be found.",
+    };
 
   const title = seo.title;
   const desc = seo.description;
   const canonical = canonicalFromSeoSlug(seo?.slug);
-  const origin = BASE_URL || (canonical || 'https://example.com').split('/').slice(0, 3).join('/');
-  const ogType = seo.ogType ? ogTypeSafe(seo.ogType) : seo.ogVideoUrl ? 'video.other' : 'website';
-  const ogImageAlt = seo.ogTitle || seo.title || 'Product image';
+  const origin =
+    BASE_URL || (canonical || "https://example.com").split("/").slice(0, 3).join("/");
+  const ogType = seo.ogType
+    ? ogTypeSafe(seo.ogType)
+    : seo.ogVideoUrl
+    ? "video.other"
+    : "website";
+  const ogImageAlt = seo.ogTitle || seo.title || "Product image";
 
   return {
     title,
     description: desc,
-    keywords: seo.keywords?.split(',').map((k) => k.trim()).filter(Boolean),
+    keywords: seo.keywords?.split(",").map((k) => k.trim()).filter(Boolean),
     metadataBase: new URL(origin),
     applicationName: COMPANY_DB.name || undefined,
     authors: seo.author_name ? [{ name: seo.author_name }] : undefined,
     creator: seo.author_name,
     publisher: COMPANY_DB.name || undefined,
-    generator: 'Next.js',
-    referrer: 'origin-when-cross-origin',
+    generator: "Next.js",
+    referrer: "origin-when-cross-origin",
     robots: parseRobots(seo.robots),
-    viewport: { width: 'device-width', initialScale: 1 },
-    formatDetection: { email: false, address: false, telephone: seo.formatDetection === 'telephone=no' ? false : true },
+    viewport: { width: "device-width", initialScale: 1 },
+    formatDetection: {
+      email: false,
+      address: false,
+      telephone: seo.formatDetection === "telephone=no" ? false : true,
+    },
     verification:
       seo.googleSiteVerification || seo.msValidate
         ? {
             google: seo.googleSiteVerification,
-            other: seo.msValidate ? { 'msvalidate.01': seo.msValidate } : undefined,
+            other: seo.msValidate
+              ? { "msvalidate.01": seo.msValidate }
+              : undefined,
           }
         : undefined,
-    themeColor: seo.themeColor || '#ffffff',
+    themeColor: seo.themeColor || "#ffffff",
     appleWebApp: seo.mobileWebAppCapable
-      ? { capable: seo.mobileWebAppCapable === 'yes', statusBarStyle: (seo.appleStatusBarStyle as any) || 'default' }
+      ? {
+          capable: seo.mobileWebAppCapable === "yes",
+          statusBarStyle: (seo.appleStatusBarStyle as any) || "default",
+        }
       : undefined,
     openGraph: {
       url: canonical,
@@ -1242,25 +1342,30 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title: title,
       description: desc,
       type: ogType as any,
-      images: seo.ogImage ? [{ url: seo.ogImage, width: 1200, height: 630, alt: ogImageAlt }] : undefined,
+      images: seo.ogImage
+        ? [{ url: seo.ogImage, width: 1200, height: 630, alt: ogImageAlt }]
+        : undefined,
     },
     twitter: {
-      card: (twitterCardSafe(seo.twitterCard) as any) || 'summary',
+      card: (twitterCardSafe(seo.twitterCard) as any) || "summary",
       site: seo.twitterSite,
       title: seo.twitterTitle || title,
       description: seo.twitterDescription || desc,
       images: seo.twitterImage ? [seo.twitterImage] : undefined,
     },
-    alternates: { canonical, languages: hreflangMapFromSeo(canonical, seo?.hreflang) },
+    alternates: {
+      canonical,
+      languages: hreflangMapFromSeo(canonical, seo?.hreflang),
+    },
     other: (() => {
       const other: Record<string, string> = {};
       const set = (name: string, value: any) => {
         const v = asString(value);
-        if (v !== undefined && v !== '') other[name] = v;
+        if (v !== undefined && v !== "") other[name] = v;
       };
-      set('content-language', seo.contentLanguage);
-      set('x-ua-compatible', seo.xUaCompatible);
-      set('author_name', seo.author_name);
+      set("content-language", seo.contentLanguage);
+      set("x-ua-compatible", seo.xUaCompatible);
+      set("author_name", seo.author_name);
       return other;
     })(),
   };
