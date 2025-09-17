@@ -1681,6 +1681,22 @@ export default async function Page({ params }: Props) {
     COMPANY_DB
   );
 
+  const aboutJson = await fetchWithISR(ABOUTUS_URL, {
+    headers: { "Content-Type": "application/json" },
+    next: { revalidate: 2592000 }, // 30 days
+  }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+
+  const obj = aboutJson?.data?.aboutUs ?? aboutJson?.data ?? aboutJson ?? {};
+  const html =
+    (typeof obj?.descriptionmedium === "string" && obj.descriptionmedium.trim()) ||
+    (typeof obj?.descriptionsmall === "string" && obj.descriptionsmall.trim()) ||
+    (typeof obj?.descriptionlarger === "string" && obj.descriptionlarger.trim()) ||
+    (typeof obj?.description1 === "string" && obj.description1.trim()) ||
+    (typeof obj?.description2 === "string" && obj.description2.trim()) ||
+    (typeof obj?.description3 === "string" && obj.description3.trim()) ||
+    "Demo About Us text";
+
+
   return (
     <>
       <JsonLdInjector {...ld} />
@@ -1698,15 +1714,15 @@ export default async function Page({ params }: Props) {
           catalogProduct={resolved.catalogProduct}
         />
 
-        <OverviewSection
-          heading="Leading B2B Fabric Supplier Worldwide"
-          tagline="ISO 9001 Certified • 500+ Global Partners • Ships to 50+ Countries"
-          p1={resolved.desc1}
-          p2={resolved.desc2}
-          extraContent={<CommitmentText />}
-          image={resolved.overviewImage}
-          imageAlt={resolved.overviewAlt}
-        />
+       <OverviewSection
+      heading="Leading B2B Fabric Supplier Worldwide"
+      tagline="ISO 9001 Certified • 500+ Global Partners • Ships to 50+ Countries"
+      p1={resolved.desc1}
+      p2={resolved.desc2}
+      extraContent={<CommitmentText html={html} />}
+      image={resolved.overviewImage}
+      imageAlt={resolved.overviewAlt}
+    />
 
         <ProductGrid
           subtitle={
