@@ -676,9 +676,12 @@ function SectionHero(props: {
         <div className="flex flex-col lg:grid lg:grid-cols-2 gap-8 items-center">
           {/* Left */}
           <div className="space-y-6 sm:space-y-8 w-full mt-4 sm:mt-6 lg:mt-0">
-            <h1 className="font-bold leading-tight text-[clamp(1.75rem,4vw,3.75rem)] sm:text-4xl lg:text-6xl text-balance break-words">
-              {titleNode}
-            </h1>
+            <h2 className="font-bold leading-tight text-[clamp(1.75rem,4vw,3rem)] lg:text-5xl text-gray-800 tracking-tight">
+             {titleNode}
+            </h2>
+
+
+
 
             {subtitle && (
               <p className="text-base sm:text-xl text-slate-700 max-w-2xl whitespace-pre-wrap break-words">

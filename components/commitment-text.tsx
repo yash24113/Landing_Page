@@ -4,8 +4,16 @@ import { useEffect, useState } from "react";
 
 type Props = {};
 
-/** Public env (must point to your about-us endpoint) */
-const ABOUTUS_URL = process.env.NEXT_PUBLIC_ABOUTUS_URL as string;
+/* ---------------------------------------------
+   Config
+---------------------------------------------- */
+// Base URL from env (no trailing slash)
+const RAW_BASE =
+  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, "") ??
+  "http://localhost:7000/landing";
+
+// Build AboutUs endpoint dynamically
+const ABOUTUS_URL = `${RAW_BASE}/aboutus`;
 
 /** Optional auth headers if your API expects them */
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY ?? "";
@@ -32,11 +40,14 @@ export function CommitmentText(_: Props) {
         // be flexible about shape
         const obj = json?.data?.aboutUs ?? json?.data ?? json;
 
-        // prefer small → medium → larger; also accept legacy description1/2/3
+        // prefer medium → small → large; also accept legacy description1/2/3
         const val =
           obj?.descriptionmedium ??
           obj?.descriptionsmall ??
-           obj?.descriptionlarger ??
+          obj?.descriptionlarger ??
+          obj?.description1 ??
+          obj?.description2 ??
+          obj?.description3 ??
           "Welcome to Amrita! We are passionate about offering reliable solutions that make life smarter and more convenient. With a team driven by creativity and expertise, we focus on quality, customer satisfaction, and long-term trust. At Amrita, our mission is simple—to provide products and services that add real value to your everyday life.";
 
         const cleaned = typeof val === "string" ? val.trim() : "";
@@ -52,7 +63,6 @@ export function CommitmentText(_: Props) {
     };
   }, []);
 
-  // If API gives nothing, render nothing (no hardcoded fallback)
   if (!html) return null;
 
   return (

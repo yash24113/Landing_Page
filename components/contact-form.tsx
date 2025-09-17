@@ -17,7 +17,10 @@ const STORAGE_KEY = "fabricpro_contact_form";
 const RAW_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:7000/landing").replace(/\/+$/, "");
 const DEFAULT_CONTACT_URL = `${RAW_BASE}/contacts`;
 
-// 🔑 use public envs (client-side)
+/** Office info (DB) */
+const OFFICEINFO_URL = RAW_BASE ? `${RAW_BASE}/officeinformation` : "";
+
+// 🔑 use public envs (client-side) for API auth headers only
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY ?? "";
 const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? "";
 const API_KEY_HEADER = process.env.NEXT_API_KEY_HEADER ?? "x-api-key";
@@ -26,14 +29,6 @@ const ADMIN_EMAIL_HEADER = process.env.NEXT_PUBLIC_ADMIN_EMAIL_HEADER ?? "x-admi
 const BASE_AUTH_HEADERS: Record<string, string> = {};
 if (API_KEY) BASE_AUTH_HEADERS[API_KEY_HEADER] = API_KEY;
 if (ADMIN_EMAIL) BASE_AUTH_HEADERS[ADMIN_EMAIL_HEADER] = ADMIN_EMAIL;
-
-// company info (already public)
-const COMPANY_PHONE = process.env.NEXT_PUBLIC_COMPANY_PHONE || "+91 9925155141";
-const COMPANY_EMAIL = process.env.NEXT_PUBLIC_COMPANY_EMAIL || "rajesh.goyal@amritafashions.com";
-const COMPANY_ADDRESS =
-  process.env.NEXT_PUBLIC_COMPANY_ADDRESS ||
-  "404, Safal Prelude, Corporate Rd, Prahlad Nagar, Ahmedabad, Gujarat-380015";
-const COMPANY_HOURS = process.env.NEXT_PUBLIC_COMPANY_HOURS || "Mon–Sat: 9:30 AM – 7:00 PM IST";
 
 function sanitizeE164(value: string) {
   if (!value) return "";
@@ -49,6 +44,19 @@ function buildAuthHeaders(extra?: Record<string, string>) {
     ...(extra || {}),
   };
 }
+
+/* ---------------------------------------------
+   Types
+---------------------------------------------- */
+type OfficeInformation = {
+  companyName?: string;
+  companyPhone1?: string;
+  companyPhone2?: string;
+  companyEmail?: string;
+  companyAddress?: string;
+  whatsappNumber?: string;
+  companyLogoUrl?: string;
+};
 
 /* ---------------------------------------------
    Component
@@ -110,6 +118,34 @@ export function ContactForm({
   // debounce timer for autosave
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isSavingRef = useRef(false);
+
+  // ---- DB company info (instead of env) ----
+  const [office, setOffice] = useState<OfficeInformation | null>(null);
+  const [officeError, setOfficeError] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    async function loadOffice() {
+      if (!OFFICEINFO_URL) return;
+      try {
+        const res = await fetch(OFFICEINFO_URL, { headers: BASE_AUTH_HEADERS });
+        if (!res.ok) throw new Error(`Failed to fetch office info: ${res.status}`);
+        const json = await res.json().catch(() => ({}));
+        const d =
+          json?.data?.officeInformation ??
+          json?.data ??
+          json?.officeInformation ??
+          json;
+        const picked = Array.isArray(d) ? d[0] : d;
+        if (alive) setOffice(picked || null);
+      } catch (e: any) {
+        if (alive) setOfficeError(e?.message || "Error loading office info");
+      }
+    }
+    void loadOffice();
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -340,8 +376,38 @@ export function ContactForm({
     );
   }
 
+  const companyName = office?.companyName?.trim();
+  const companyPhone = (office?.companyPhone1 || office?.whatsappNumber || office?.companyPhone2 || "").trim();
+  const companyEmail = office?.companyEmail?.trim();
+  const companyAddress = office?.companyAddress?.trim();
+  const hours = "Mon–Sat: 9:30 AM – 7:00 PM IST"; // move to DB later if you add a field
+
   return (
     <div className="bg-white rounded-2xl shadow-xl p-8">
+      {/* Optional top helper strip with DB contact info */}
+      {/* {office && (
+        <div className="mb-6 rounded-lg bg-slate-50 border border-slate-200 p-4 text-sm text-slate-700">
+          <div className="font-semibold">{companyName}</div>
+          <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+            {companyPhone && (
+              <a href={`tel:${sanitizeE164(companyPhone)}`} className="hover:underline">
+                📞 {companyPhone}
+              </a>
+            )}
+            {companyEmail && (
+              <a href={`mailto:${companyEmail}`} className="hover:underline">
+                ✉️ {companyEmail}
+              </a>
+            )}
+            {companyAddress && <span>🏢 {companyAddress}</span>}
+            {hours && <span>🕘 {hours}</span>}
+          </div>
+        </div>
+      )}
+      {officeError && (
+        <p className="mb-4 text-xs text-red-500">Failed to load company info: {officeError}</p>
+      )} */}
+
       {/* Auto-save indicator */}
       <div className="mb-6" role="status" aria-live="polite">
         <div className="flex items-center justify-between text-sm">
@@ -369,8 +435,9 @@ export function ContactForm({
           {[1, 2, 3].map((step) => (
             <div key={step} className="flex items-center">
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors ${currentStep >= step ? "bg-blue-600 text-white" : "bg-slate-200 text-slate-600"
-                  }`}
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors ${
+                  currentStep >= step ? "bg-blue-600 text-white" : "bg-slate-200 text-slate-600"
+                }`}
               >
                 {step}
               </div>
@@ -450,7 +517,6 @@ export function ContactForm({
                 autoComplete="tel"
                 inputMode="tel"
               />
-
             </div>
           </div>
         )}
@@ -577,7 +643,6 @@ export function ContactForm({
 
         {/* Actions */}
         <div className="mt-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          {/* Primary on top (mobile), Secondary below; both full-width on mobile */}
           {currentStep < 3 ? (
             <button
               type="button"
@@ -600,7 +665,6 @@ export function ContactForm({
             >
               {isSubmitting ? (
                 <>
-                  {/* spinner must be phrasing content inside <button>, so use <span>, not <div> */}
                   <span
                     className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2 align-[-0.125em]"
                     aria-hidden="true"

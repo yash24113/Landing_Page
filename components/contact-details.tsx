@@ -89,7 +89,7 @@ export function ContactDetails({ className = "" }: { className?: string }) {
     office.companyPhone1 || office.whatsappNumber || office.companyPhone2 || "";
   const email = office.companyEmail ?? "";
   const address = office.companyAddress ?? "";
-  const hours = "Mon–Sat: 9:30 AM – 7:00 PM IST"; // you can also move this into DB if needed
+  const hours = "Mon–Sat: 10:30 AM – 7:30 PM IST"; // you can also move this into DB if needed
 
   const features = [
     "ISO Certified Quality Standards",

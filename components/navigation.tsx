@@ -25,12 +25,90 @@ function useMediaQuery(query: string) {
   return matches;
 }
 
+/* -----------------------------------------------
+   Helpers: phone / bidi cleanup
+------------------------------------------------ */
+const stripBidi = (s: string) => s.replace(/[\u200e\u200f\u202a-\u202e]/g, "").trim();
+const sanitizeForTel = (s: string) => {
+  const t = stripBidi(s).replace(/"/g, "");
+  const plus = t.trim().startsWith("+") ? "+" : "";
+  const digits = t.replace(/[^\d]/g, "");
+  return `${plus}${digits}`;
+};
+const sanitizeForWhatsApp = (s: string) => stripBidi(s).replace(/[^0-9]/g, "");
+
+/* -----------------------------------------------
+   ENV + Endpoint build (no trailing slash)
+------------------------------------------------ */
+const RAW_BASE =
+  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, "") ??
+  "http://localhost:7000/landing";
+const OFFICE_INFO_URL = `${RAW_BASE}/officeinformation`;
+
+/** Optional auth headers if your API expects them */
+const API_KEY = process.env.NEXT_PUBLIC_API_KEY ?? "";
+const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? "";
+const API_KEY_HEADER = process.env.NEXT_PUBLIC_API_KEY_HEADER ?? "x-api-key";
+const ADMIN_EMAIL_HEADER = process.env.NEXT_PUBLIC_ADMIN_EMAIL_HEADER ?? "x-admin-email";
+
+const authHeaders: Record<string, string> = {};
+if (API_KEY) authHeaders[API_KEY_HEADER] = API_KEY;
+if (ADMIN_EMAIL) authHeaders[ADMIN_EMAIL_HEADER] = ADMIN_EMAIL;
+
 export function Navigation() {
   const [open, setOpen] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
   const isDesktop = useMediaQuery("(min-width: 768px)"); // Tailwind md breakpoint
 
+  // State from API (with env fallbacks)
+  const [companyName, setCompanyName] = React.useState(
+    process.env.NEXT_PUBLIC_COMPANY_NAME || "Company Name"
+  );
+  const [rawPhone, setRawPhone] = React.useState(
+    process.env.NEXT_PUBLIC_COMPANY_PHONE || "+91 9925155141"
+  );
+  const [rawWa, setRawWa] = React.useState(
+    process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || (process.env.NEXT_PUBLIC_COMPANY_PHONE || "+91 9925155141")
+  );
+
   React.useEffect(() => setMounted(true), []);
+
+  // Fetch office information (companyName, phone, WhatsApp)
+  React.useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const res = await fetch(OFFICE_INFO_URL, {
+          headers: authHeaders,
+          cache: "no-store",
+        });
+        if (!res.ok) throw new Error(`Office info fetch failed: ${res.status}`);
+
+        const json = await res.json();
+        // expects { data: [ { companyName, companyPhone1, whatsappNumber, ... } ], total: 1 }
+        const first = Array.isArray(json?.data) ? json.data[0] : undefined;
+        if (!first) return;
+
+        const name = String(first.companyName ?? "").trim();
+        const phone = String(first.companyPhone1 ?? first.companyPhone2 ?? "").trim();
+        const wa = String(first.whatsappNumber ?? phone ?? "").trim();
+
+        if (cancelled) return;
+
+        if (name) setCompanyName(name);
+        if (phone) setRawPhone(phone);
+        if (wa) setRawWa(wa);
+      } catch (err) {
+        // silently fall back to env values
+        console.error("Office info fetch error:", err);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // 1) Auto-close the mobile menu when we cross to desktop
   React.useEffect(() => {
@@ -58,23 +136,10 @@ export function Navigation() {
   const close = () => setOpen(false);
 
   /* -----------------------------------------------
-     ENV → UI (name / call / WhatsApp)
+     Build tel/WA hrefs from fetched (or env) values
   ------------------------------------------------ */
-  const COMPANY_NAME = process.env.NEXT_PUBLIC_COMPANY_NAME || "Company Name";
-  const RAW_PHONE = process.env.NEXT_PUBLIC_COMPANY_PHONE || "+91 9925155141";
-  const RAW_WA = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || RAW_PHONE;
-
-  const stripBidi = (s: string) => s.replace(/[\u200e\u200f\u202a-\u202e]/g, "").trim();
-  const sanitizeForTel = (s: string) => {
-    const t = stripBidi(s);
-    const plus = t.startsWith("+") ? "+" : "";
-    const digits = t.replace(/[^\d]/g, "");
-    return `${plus}${digits}`;
-  };
-  const sanitizeForWhatsApp = (s: string) => stripBidi(s).replace(/[^\d]/g, "");
-
-  const telHref = `tel:${sanitizeForTel(RAW_PHONE)}`;
-  const waHref = `https://wa.me/${sanitizeForWhatsApp(RAW_WA)}?text=${encodeURIComponent(
+  const telHref = `tel:${sanitizeForTel(rawPhone)}`;
+  const waHref = `https://wa.me/${sanitizeForWhatsApp(rawWa)}?text=${encodeURIComponent(
     "Hi! I'm interested in your fabrics and need some assistance."
   )}`;
 
@@ -137,7 +202,7 @@ export function Navigation() {
         {/* Header */}
         <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-slate-200">
           <div className="flex items-center justify-between px-5 py-4">
-            <span className="text-lg font-semibold text-slate-900">{COMPANY_NAME}</span>
+            <span className="text-lg font-semibold text-slate-900">{companyName}</span>
             <button
               aria-label="Close menu"
               className="p-2 rounded-lg hover:bg-slate-100 transition"
@@ -266,7 +331,7 @@ export function Navigation() {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
               <Link href="/" className="text-2xl font-bold text-slate-900">
-                {COMPANY_NAME}
+                {companyName}
               </Link>
             </div>
 
@@ -297,7 +362,7 @@ export function Navigation() {
         </div>
       </nav>
 
-      {/* 4) Only render the mobile sheet on mobile */}
+      {/* Render the mobile sheet only on mobile */}
       {mounted && open && !isDesktop ? createPortal(overlay, document.body) : null}
 
       <style jsx>{`
