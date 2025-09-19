@@ -16,7 +16,7 @@ const nextConfig = {
           // ✅ Tell caches (Vercel, Cloudflare, browser) that response may vary
           { key: "Vary", value: "DPR, Width, Viewport-Width" },
 
-          // ✅ Performance hints
+          // ✅ Performance hintss
           { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
         ],
       },
