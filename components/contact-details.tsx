@@ -1,6 +1,12 @@
-"use client";
+// components/contact-details.tsx
+// ✅ Server Component with ISR (90 days). No "use client" at the top.
 
-import React, { useEffect, useState } from "react";
+import React from "react";
+
+/* ---------------------------------------------
+   ISR settings (90 days)
+---------------------------------------------- */
+export const revalidate = 60 * 60 * 24 * 90; // 90 days
 
 /* ---------------------------------------------
    API URL + headers
@@ -40,46 +46,58 @@ function sanitizeE164(value: string) {
 }
 
 /* ---------------------------------------------
-   Component
+   Data fetcher (ISR-enabled)
 ---------------------------------------------- */
-export function ContactDetails({ className = "" }: { className?: string }) {
-  const [office, setOffice] = useState<OfficeInformation | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+async function getOfficeInfo(): Promise<OfficeInformation | null> {
+  if (!OFFICEINFO_URL) return null;
 
-  useEffect(() => {
-    let alive = true;
-    async function load() {
-      try {
-        setLoading(true);
-        const res = await fetch(OFFICEINFO_URL, { headers: authHeaders });
-        if (!res.ok) throw new Error(`Failed to fetch office info: ${res.status}`);
-        const json = await res.json();
-        const d =
-          json?.data?.officeInformation ??
-          json?.data ??
-          json?.officeInformation ??
-          json;
-        const picked = Array.isArray(d) ? d[0] : d;
-        if (alive) setOffice(picked || null);
-      } catch (e: any) {
-        if (alive) setError(e?.message || "Error loading office info");
-      } finally {
-        if (alive) setLoading(false);
-      }
-    }
-    if (OFFICEINFO_URL) load();
-    return () => {
-      alive = false;
-    };
-  }, []);
+  // ✅ This fetch participates in ISR due to the `next.revalidate` option
+  const res = await fetch(OFFICEINFO_URL, {
+    headers: authHeaders,
+    // 90d revalidation at the request level (works even if this file's export is not read)
+    next: { revalidate: 60 * 60 * 24 * 90 },
+  });
 
-  if (loading) {
-    return <p className="text-slate-400 text-sm">Loading contact details…</p>;
+  if (!res.ok) {
+    // You can log for observability if needed
+    // console.error("Failed to fetch office info:", res.status, await res.text());
+    throw new Error(`Failed to fetch office info: ${res.status}`);
   }
-  if (error) {
-    return <p className="text-red-400 text-sm">Error: {error}</p>;
+
+  const json = await res.json();
+  const d =
+    json?.data?.officeInformation ??
+    json?.data ??
+    json?.officeInformation ??
+    json;
+
+  const picked = Array.isArray(d) ? d[0] : d;
+  return (picked as OfficeInformation) || null;
+}
+
+/* ---------------------------------------------
+   Component (Server)
+---------------------------------------------- */
+export async function ContactDetails({ className = "" }: { className?: string }) {
+  if (!OFFICEINFO_URL) {
+    return (
+      <p className="text-slate-400 text-sm">
+        No API base configured for office information.
+      </p>
+    );
   }
+
+  let office: OfficeInformation | null = null;
+  try {
+    office = await getOfficeInfo();
+  } catch (e: any) {
+    return (
+      <p className="text-red-400 text-sm">
+        Error: {e?.message || "Error loading office info"}
+      </p>
+    );
+  }
+
   if (!office) {
     return <p className="text-slate-400 text-sm">No office information available.</p>;
   }
@@ -89,7 +107,7 @@ export function ContactDetails({ className = "" }: { className?: string }) {
     office.companyPhone1 || office.whatsappNumber || office.companyPhone2 || "";
   const email = office.companyEmail ?? "";
   const address = office.companyAddress ?? "";
-  const hours = "Mon–Sat: 10:30 AM – 7:30 PM IST"; // you can also move this into DB if needed
+  const hours = "Mon–Sat: 10:30 AM – 7:30 PM IST"; // move to DB if needed
 
   const features = [
     "ISO Certified Quality Standards",
