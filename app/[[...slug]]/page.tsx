@@ -920,19 +920,17 @@ function SectionHero(props: {
           "
         >
           {/* keep the image INSIDE the box without cropping */}
-        <Image
+          <Image
   src={heroImage}
   alt={heroAlt}
   title={heroAlt}
-  width={1200}
-  height={800}
-  className="object-contain object-center w-full h-auto"
-  sizes="(max-width: 640px) 95vw,
-         (max-width: 1024px) 50vw,
-         720px"
+  fill
   priority
   fetchPriority="high"
+  className="object-contain object-center"
+  sizes="(max-width: 640px) 95vw, (max-width: 1024px) 50vw, 720px"
 />
+
 
 
 
