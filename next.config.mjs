@@ -4,17 +4,34 @@ const nextConfig = {
     return [{ source: "/chat", destination: "http://127.0.0.1:5000/chat" }];
   },
 
+  async headers() {
+    return [
+      {
+        // Apply to all routes
+        source: "/:path*",
+        headers: [
+          // ✅ Client Hints: browser sends DPR, Width, Viewport-Width
+          { key: "Accept-CH", value: "DPR, Width, Viewport-Width" },
+
+          // ✅ Tell caches (Vercel, Cloudflare, browser) that response may vary
+          { key: "Vary", value: "DPR, Width, Viewport-Width" },
+
+          // ✅ Performance hints
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+        ],
+      },
+    ];
+  },
+
   images: {
     // ✅ enable Next.js image optimization + srcset generation
-    // (remove the old `unoptimized: true`)
     remotePatterns: [
       { protocol: "https", hostname: "res.cloudinary.com", pathname: "/**" },
-      { protocol: "https", hostname: "i.ibb.co", pathname: "/**" },            // optional: keep if you use it
-      { protocol: "https", hostname: "lh3.googleusercontent.com", pathname: "/**" }, // optional
-      { protocol: "http", hostname: "localhost", pathname: "/**" },            // optional (dev)
+      { protocol: "https", hostname: "i.ibb.co", pathname: "/**" },
+      { protocol: "https", hostname: "lh3.googleusercontent.com", pathname: "/**" },
+      { protocol: "http", hostname: "localhost", pathname: "/**" }, // dev only
     ],
     formats: ["image/avif", "image/webp"],
-    // Controls widths emitted in srcset
     deviceSizes: [320, 420, 640, 750, 828, 1080, 1200, 1600, 1920, 2048],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
