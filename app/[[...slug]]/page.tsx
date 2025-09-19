@@ -15,7 +15,7 @@ import { CatalogButton } from '@/components/catalog-button';
 import { fetchSeoData } from '@/lib/seo'; // and fetchProductData (dynamic import below)
 import { ContactDetails } from '@/components/contact-details';
 import { CommitmentText } from '@/components/commitment-text';
-import { Footer } from '@/components/footer';
+import  Footer  from '@/components/footer';
 import { StickyContactButton } from '@/components/sticky-contact-button';
 
 import { fetchWithISR } from '@/lib/fetchWithISR';
@@ -920,15 +920,21 @@ function SectionHero(props: {
           "
         >
           {/* keep the image INSIDE the box without cropping */}
-          <Image
-            key={heroImage}
-            src={heroImage}
-            alt={heroAlt}
-            fill
-            priority
-            className="object-contain object-center"
-            sizes="(max-width: 640px) 95vw, (max-width: 1024px) 50vw, 720px"
-          />
+        <Image
+  src={heroImage}
+  alt={heroAlt}
+  title={heroAlt}
+  width={1200}
+  height={800}
+  className="object-contain object-center w-full h-auto"
+  sizes="(max-width: 640px) 95vw,
+         (max-width: 1024px) 50vw,
+         720px"
+  priority
+  fetchPriority="high"
+/>
+
+
 
           {/* soft inner vignette for depth (optional) */}
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/[0.03]" />
@@ -989,15 +995,18 @@ function OverviewSection(props: {
           </div>
 
           <div className="relative rounded-2xl shadow-lg overflow-hidden bg-white aspect-[4/3] sm:aspect-[5/4] lg:aspect-[3/2] w-full">
-            <Image
-              key={image}
-              src={image}
-              alt={imageAlt}
-              fill
-              loading="lazy"
-              className="object-contain object-center"
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 600px"
-            />
+         <Image
+  key={image}
+  src={image}
+  alt={imageAlt}
+  title={imageAlt}   // ✅ adds SEO-friendly title attribute
+  fill
+  loading="lazy"
+  fetchPriority="auto"  // ✅ lets browser decide (keeps above-the-fold fast)
+  className="object-contain object-center"
+  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 600px"
+/>
+
           </div>
         </div>
       </div>
@@ -1043,14 +1052,17 @@ function ProductGrid(props: {
                 <div className="relative flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-lg border border-slate-100 hover:shadow-xl hover:border-blue-200 transition-all duration-200">
                   {/* Image */}
                   <div className="relative w-full aspect-[4/3] bg-white">
-                    <Image
-                      src={img}
-                      alt={p.name || 'Fabric'}
-                      fill
-                      className="object-contain object-center"
-                      loading="lazy"
-                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                    />
+                   <Image
+  src={img}
+  alt={p.name || "Fabric"}
+  title={p.name || "Fabric"}    // ✅ SEO-friendly title (matches alt/product name)
+  fill
+  loading="lazy"
+  fetchPriority="auto"          // ✅ lets browser decide; good for below-the-fold
+  className="object-contain object-center"
+  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+/>
+
                   </div>
 
                   {/* Content */}
