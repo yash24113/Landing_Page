@@ -23,7 +23,7 @@ const authHeaders: Record<string, string> = {
 if (API_KEY) authHeaders[API_KEY_HEADER] = API_KEY;
 if (ADMIN_EMAIL) authHeaders[ADMIN_EMAIL_HEADER] = ADMIN_EMAIL;
 
-/** Safely pick the about-us object from many possible response shapes */
+/** Safely pick the about-us object from many possible response shape */
 function pickAboutObj(json: any): any {
   // Common nests
   const root =
