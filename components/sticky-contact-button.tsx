@@ -2,20 +2,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ContactForm } from "@/components/contact-form";
+import {ContactForm } from "@/components/contact-form";      // ✅ default import
 import { X } from "lucide-react";
-import { ContactDetails } from "./contact-details";
+import {ContactDetails } from "./contact-details";          // ✅ default import
 
 type Props = {
   phone?: string;
   email?: string;
   address?: string;
   hours?: string;
-  mapsUrl?: string;          // optional: custom Google Maps URL
-  buttonLabel?: string;      // tooltip/aria label for the FAB
-  title?: string;            // modal title
-  subtitle?: string;         // modal subtitle
-  side?: "left" | "right";   // where to place the FAB; default: left
+  mapsUrl?: string;
+  buttonLabel?: string;
+  title?: string;
+  subtitle?: string;
+  side?: "left" | "right";
 };
 
 export function StickyContactButton({
@@ -35,26 +35,19 @@ export function StickyContactButton({
   // Pull from props first, then envs.
   const COMPANY_PHONE = phone || process.env.NEXT_PUBLIC_COMPANY_PHONE || "";
   const COMPANY_EMAIL = email || process.env.NEXT_PUBLIC_COMPANY_EMAIL || "";
-  const COMPANY_ADDRESS =
-    address || process.env.NEXT_PUBLIC_COMPANY_ADDRESS || "";
+  const COMPANY_ADDRESS = address || process.env.NEXT_PUBLIC_COMPANY_ADDRESS || "";
   const COMPANY_HOURS = hours || process.env.NEXT_PUBLIC_COMPANY_HOURS || "";
 
-  const telHref = COMPANY_PHONE
-    ? `tel:${COMPANY_PHONE.replace(/[^\d+]/g, "")}`
-    : undefined;
+  const telHref = COMPANY_PHONE ? `tel:${COMPANY_PHONE.replace(/[^\d+]/g, "")}` : undefined;
   const mailHref = COMPANY_EMAIL ? `mailto:${COMPANY_EMAIL}` : undefined;
   const mapsHref =
     mapsUrl ||
     (COMPANY_ADDRESS
-      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-          COMPANY_ADDRESS
-        )}`
+      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(COMPANY_ADDRESS)}`
       : undefined);
 
-  // formatted address
-  const addressDisplay = COMPANY_ADDRESS
-    ? COMPANY_ADDRESS.replace(/,\s*/g, ",\n")
-    : "";
+  // formatted address (not directly rendered here, but kept for future)
+  const addressDisplay = COMPANY_ADDRESS ? COMPANY_ADDRESS.replace(/,\s*/g, ",\n") : "";
 
   // Close on Esc + lock scroll
   useEffect(() => {
@@ -73,6 +66,10 @@ export function StickyContactButton({
     side === "right"
       ? "right-[max(env(safe-area-inset-right),16px)]"
       : "left-[max(env(safe-area-inset-left),16px)]";
+
+  // 🚨 Defensive guards (avoid React 418 if imports are wrong)
+  const ContactFormSafe = (ContactForm as any) || null;
+  const ContactDetailsSafe = (ContactDetails as any) || null;
 
   return (
     <>
@@ -125,7 +122,7 @@ export function StickyContactButton({
         >
           <span className="sr-only">{buttonLabel}</span>
 
-          {/* ripple (span instead of div) */}
+          {/* ripple */}
           <span
             className="absolute inset-0 rounded-full bg-white opacity-0 group-hover:opacity-20 group-hover:scale-150 transition-all duration-300"
             aria-hidden="true"
@@ -135,7 +132,6 @@ export function StickyContactButton({
           <span className="text-2xl leading-none relative z-10">✉</span>
         </button>
 
-        {/* reduce motion */}
         <style jsx>{`
           @media (prefers-reduced-motion: reduce) {
             .group:hover {
@@ -147,17 +143,9 @@ export function StickyContactButton({
 
       {/* Modal */}
       {open && (
-        <div
-          className="fixed inset-0 z-[200] flex items-center justify-center"
-          role="dialog"
-          aria-modal="true"
-        >
+        <div className="fixed inset-0 z-[200] flex items-center justify-center" role="dialog" aria-modal="true">
           {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-            onClick={() => setOpen(false)}
-            aria-hidden="true"
-          />
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setOpen(false)} aria-hidden="true" />
 
           {/* Content */}
           <div className="relative bg-white rounded-2xl shadow-2xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden">
@@ -165,9 +153,7 @@ export function StickyContactButton({
             <div className="flex items-center justify-between p-6 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-white">
               <div>
                 <h2 className="text-2xl font-bold text-slate-900">{title}</h2>
-                {subtitle ? (
-                  <p className="text-slate-600 mt-1">{subtitle}</p>
-                ) : null}
+                {subtitle ? <p className="text-slate-600 mt-1">{subtitle}</p> : null}
               </div>
               <button
                 type="button"
@@ -184,9 +170,22 @@ export function StickyContactButton({
               <div className="p-6 bg-slate-900">
                 <div className="grid lg:grid-cols-2 gap-8">
                   <div>
-                    <ContactForm onSuccess={() => setOpen(false)} />
+                    {ContactFormSafe ? (
+                      <ContactFormSafe onSuccess={() => setOpen(false)} />
+                    ) : (
+                      <p className="text-red-200">
+                        ContactForm is not available. Check the export in <code>components/contact-form</code>.
+                      </p>
+                    )}
                   </div>
-                  <ContactDetails className="text-black" />
+
+                  {ContactDetailsSafe ? (
+                    <ContactDetailsSafe className="text-black" />
+                  ) : (
+                    <p className="text-red-200">
+                      ContactDetails is not available. Check the export in <code>components/contact-details</code>.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
