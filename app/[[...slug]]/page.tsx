@@ -748,183 +748,196 @@ function SectionHero(props: {
   };
 
   return (
-    <section id="hero" className="hero relative bg-white text-slate-900 overflow-hidden pt-4 pb-8 sm:pt-8">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-        <div className="flex flex-col lg:grid lg:grid-cols-2 gap-8 items-center">
-          {/* Left */}
-          <div className="space-y-6 sm:space-y-8 w-full mt-4 sm:mt-6 lg:mt-0">
-            <h2 className="font-bold leading-tight text-[clamp(1.75rem,4vw,3rem)] lg:text-4xl text-gray-800 tracking-tight">
-              {titleNode}
-            </h2>
+   <section
+  id="hero"
+  className="hero relative bg-white text-slate-900 overflow-hidden pt-4 pb-8 sm:pt-8"
+>
+  <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+    <div className="flex flex-col lg:grid lg:grid-cols-2 gap-10 lg:gap-12 items-center">
+      {/* Left */}
+      <div className="space-y-6 sm:space-y-8 w-full mt-4 sm:mt-6 lg:mt-0">
+        <h1 className="font-bold leading-tight text-[clamp(1.75rem,4vw,3rem)] lg:text-4xl text-gray-800 tracking-tight">
+          {titleNode}
+        </h1>
 
-            {subtitle && (
-              <p className="text-base sm:text-xl text-slate-700 max-w-2xl whitespace-pre-wrap break-words">
-                {subtitle}
-              </p>
-            )}
+        {subtitle && (
+          <p className="text-base sm:text-xl text-slate-700 max-w-2xl whitespace-pre-wrap break-words">
+            {subtitle}
+          </p>
+        )}
 
-            {(catalogProduct || rating !== undefined || reviews !== undefined) && (
-              <div className="bg-slate-100 rounded-lg p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
-                {asDisplayText(catalogProduct?.content) && (
-                  <div>
-                    <span className="font-medium text-slate-700">Content:</span>
-                    <span className="ml-2 text-slate-900 break-words">
-                      {asDisplayText(catalogProduct?.content)}
-                    </span>
-                  </div>
-                )}
-                {(catalogProduct?.gsm !== undefined || catalogProduct?.oz !== undefined) && (
-                  <div>
-                    <span className="font-medium text-slate-700">Weight:</span>
-                    <span className="ml-2 text-slate-900 break-words">
-                      {asDisplayText(catalogProduct?.gsm)}
-                      {catalogProduct?.gsm !== undefined ? ' gsm' : ''}
-                      {catalogProduct?.oz !== undefined ? ` / ${formatOzOneDecimal(catalogProduct?.oz)} oz` : ''}
-                    </span>
-                  </div>
-                )}
-                {(catalogProduct?.cm !== undefined || catalogProduct?.inch !== undefined) && (
-                  <div>
-                    <span className="font-medium text-slate-700">Width:</span>
-                    <span className="ml-2 text-slate-900 break-words">
-                      {asDisplayText(catalogProduct?.cm)}
-                      {catalogProduct?.cm !== undefined ? ' cm' : ''}
-                      {catalogProduct?.inch !== undefined ? ` / ${formatInchRounded(catalogProduct?.inch)} inch` : ''}
-                    </span>
-                  </div>
-                )}
-                {asDisplayText(catalogProduct?.subfinish) && (
-                  <div>
-                    <span className="font-medium text-slate-700">Finish:</span>
-                    <span className="ml-2 text-slate-900 break-words">
-                      {asDisplayText(catalogProduct?.subfinish)}
-                    </span>
-                  </div>
-                )}
-                {asDisplayText(catalogProduct?.design) && (
-                  <div>
-                    <span className="font-medium text-slate-700">Design:</span>
-                    <span className="ml-2 text-slate-900 break-words">
-                      {asDisplayText(catalogProduct?.design)}
-                    </span>
-                  </div>
-                )}
-                {asDisplayText(catalogProduct?.motif) && (
-                  <div>
-                    <span className="font-medium text-slate-700">Motif:</span>
-                    <span className="ml-2 text-slate-900 break-words">
-                      {asDisplayText(catalogProduct?.motif)}
-                    </span>
-                  </div>
-                )}
-                {asDisplayText(catalogProduct?.substructure) && (
-                  <div>
-                    <span className="font-medium text-slate-700">Structure:</span>
-                    <span className="ml-2 text-slate-900 break-words">
-                      {asDisplayText(catalogProduct?.substructure)}
-                    </span>
-                  </div>
-                )}
-                {asDisplayText((catalogProduct as any)?.subsuitable ?? catalogProduct?.subSuitableFor) && (
-                  <div>
-                    <span className="font-medium text-slate-700">Suitable For:</span>
-                    <span className="ml-2 text-slate-900 break-words">
-                      {asDisplayText((catalogProduct as any)?.subsuitable ?? catalogProduct?.subSuitableFor)}
-                    </span>
-                  </div>
-                )}
-                {catalogProduct?.quantity !== undefined && (
-                  <div>
-                    <span className="font-medium text-slate-700">MOQ:</span>
-                    <span className="ml-2 text-slate-900 break-words">
-                      {asDisplayText((catalogProduct as any)?.quantity)} {asDisplayText((catalogProduct as any)?.um)}
-                    </span>
-                  </div>
-                )}
-                {asDisplayText((catalogProduct as any)?.color ?? catalogProduct?.colors) && (
-                  <div>
-                    <span className="font-medium text-slate-700">Colors:</span>
-                    <span className="ml-2 text-slate-900 break-words">
-                      {asDisplayText((catalogProduct as any)?.color ?? catalogProduct?.colors)}
-                    </span>
-                  </div>
-                )}
-                {asDisplayText((catalogProduct as any)?.leadtime) && (
-                  <div>
-                    <span className="font-medium text-slate-700">Lead time:</span>
-                    <span className="ml-2 text-slate-900 break-words">
-                      {asDisplayText((catalogProduct as any)?.leadtime)} days
-                    </span>
-                  </div>
-                )}
-                {rating !== undefined && (
-                  <div className="flex items-center">
-                    <span className="font-medium text-slate-700">Rating:</span>
-                    <span className="ml-2">
-                      <StarRating value={rating as any} />
-                    </span>
-                  </div>
-                )}
-                {reviews !== undefined && (
-                  <div>
-                    <span className="font-medium text-slate-700">Reviews:</span>
-                    <span className="ml-2 text-slate-900">
-                      {reviews as any}
-                    </span>
-                  </div>
-                )}
+        {(catalogProduct || rating !== undefined || reviews !== undefined) && (
+          <div className="bg-slate-100 rounded-lg p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+            {asDisplayText(catalogProduct?.content) && (
+              <div>
+                <span className="font-medium text-slate-700">Content:</span>
+                <span className="ml-2 text-slate-900 break-words">
+                  {asDisplayText(catalogProduct?.content)}
+                </span>
               </div>
             )}
-
-            {/* CTAs */}
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-              <a href="#contact" className="px-6 sm:px-8 py-3 sm:py-4 btn-primary">
-                Get Quote Now
-              </a>
-              {phone && (
-                <a href={`tel:${sanitizeE164(phone)}`} className="px-6 sm:px-8 py-3 sm:py-4 btn-secondary">
-                  📞 Call Now
-                </a>
-              )}
-              {catalogProduct && <CatalogButton product={catalogProduct} />}
-            </div>
-
-            <div className="flex flex-wrap gap-3 sm:gap-4 text-sm text-slate-700 mt-2">
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-emerald-400 rounded-full" />
-                <span>ISO Certified</span>
+            {(catalogProduct?.gsm !== undefined || catalogProduct?.oz !== undefined) && (
+              <div>
+                <span className="font-medium text-slate-700">Weight:</span>
+                <span className="ml-2 text-slate-900 break-words">
+                  {asDisplayText(catalogProduct?.gsm)}
+                  {catalogProduct?.gsm !== undefined ? " gsm" : ""}
+                  {catalogProduct?.oz !== undefined
+                    ? ` / ${formatOzOneDecimal(catalogProduct?.oz)} oz`
+                    : ""}
+                </span>
               </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-emerald-400 rounded-full" />
-                <span>Global Shipping</span>
+            )}
+            {(catalogProduct?.cm !== undefined || catalogProduct?.inch !== undefined) && (
+              <div>
+                <span className="font-medium text-slate-700">Width:</span>
+                <span className="ml-2 text-slate-900 break-words">
+                  {asDisplayText(catalogProduct?.cm)}
+                  {catalogProduct?.cm !== undefined ? " cm" : ""}
+                  {catalogProduct?.inch !== undefined
+                    ? ` / ${formatInchRounded(catalogProduct?.inch)} inch`
+                    : ""}
+                </span>
               </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-emerald-400 rounded-full" />
-                <span>24/7 Support</span>
+            )}
+            {asDisplayText(catalogProduct?.subfinish) && (
+              <div>
+                <span className="font-medium text-slate-700">Finish:</span>
+                <span className="ml-2 text-slate-900 break-words">
+                  {asDisplayText(catalogProduct?.subfinish)}
+                </span>
               </div>
-            </div>
+            )}
+            {asDisplayText(catalogProduct?.design) && (
+              <div>
+                <span className="font-medium text-slate-700">Design:</span>
+                <span className="ml-2 text-slate-900 break-words">
+                  {asDisplayText(catalogProduct?.design)}
+                </span>
+              </div>
+            )}
+            {asDisplayText(catalogProduct?.motif) && (
+              <div>
+                <span className="font-medium text-slate-700">Motif:</span>
+                <span className="ml-2 text-slate-900 break-words">
+                  {asDisplayText(catalogProduct?.motif)}
+                </span>
+              </div>
+            )}
+            {asDisplayText(catalogProduct?.substructure) && (
+              <div>
+                <span className="font-medium text-slate-700">Structure:</span>
+                <span className="ml-2 text-slate-900 break-words">
+                  {asDisplayText(catalogProduct?.substructure)}
+                </span>
+              </div>
+            )}
+            {asDisplayText((catalogProduct as any)?.subsuitable ?? catalogProduct?.subSuitableFor) && (
+              <div>
+                <span className="font-medium text-slate-700">Suitable For:</span>
+                <span className="ml-2 text-slate-900 break-words">
+                  {asDisplayText((catalogProduct as any)?.subsuitable ?? catalogProduct?.subSuitableFor)}
+                </span>
+              </div>
+            )}
+            {catalogProduct?.quantity !== undefined && (
+              <div>
+                <span className="font-medium text-slate-700">MOQ:</span>
+                <span className="ml-2 text-slate-900 break-words">
+                  {asDisplayText((catalogProduct as any)?.quantity)}{" "}
+                  {asDisplayText((catalogProduct as any)?.um)}
+                </span>
+              </div>
+            )}
+            {asDisplayText((catalogProduct as any)?.color ?? catalogProduct?.colors) && (
+              <div>
+                <span className="font-medium text-slate-700">Colors:</span>
+                <span className="ml-2 text-slate-900 break-words">
+                  {asDisplayText((catalogProduct as any)?.color ?? catalogProduct?.colors)}
+                </span>
+              </div>
+            )}
+            {asDisplayText((catalogProduct as any)?.leadtime) && (
+              <div>
+                <span className="font-medium text-slate-700">Lead time:</span>
+                <span className="ml-2 text-slate-900 break-words">
+                  {asDisplayText((catalogProduct as any)?.leadtime)} days
+                </span>
+              </div>
+            )}
+            {rating !== undefined && (
+              <div className="flex items-center">
+                <span className="font-medium text-slate-700">Rating:</span>
+                <span className="ml-2">
+                  <StarRating value={rating as any} />
+                </span>
+              </div>
+            )}
+            {reviews !== undefined && (
+              <div>
+                <span className="font-medium text-slate-700">Reviews:</span>
+                <span className="ml-2 text-slate-900">{reviews as any}</span>
+              </div>
+            )}
           </div>
+        )}
 
-          {/* Right (Image) */}
-          <div className="relative w-full px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10 my-12">
-            <div
-              className="relative z-10 w-full rounded-2xl overflow-hidden shadow-2xl bg-white aspect-[16/10] sm:aspect-[5/4] lg:aspect-[16/9]
-               transform perspective-1000 rotate-x-3 rotate-y-6 hover:rotate-x-0 hover:rotate-y-0 transition-transform duration-700"
-            >
-              <Image
-                key={heroImage}
-                src={heroImage}
-                alt={heroAlt}
-                fill
-                priority
-                className="object-contain object-center"
-                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 800px"
-              />
-            </div>
+        {/* CTAs */}
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+          <a href="#contact" className="px-6 sm:px-8 py-3 sm:py-4 btn-primary">Get Quote Now</a>
+          {phone && (
+            <a href={`tel:${sanitizeE164(phone)}`} className="px-6 sm:px-8 py-3 sm:py-4 btn-secondary">
+              📞 Call Now
+            </a>
+          )}
+          {catalogProduct && <CatalogButton product={catalogProduct} />}
+        </div>
+
+        <div className="flex flex-wrap gap-3 sm:gap-4 text-sm text-slate-700 mt-2">
+          <div className="flex items-center space-x-2">
+            <div className="w-2 h-2 bg-emerald-400 rounded-full" />
+            <span>ISO Certified</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-2 h-2 bg-emerald-400 rounded-full" />
+            <span>Global Shipping</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-2 h-2 bg-emerald-400 rounded-full" />
+            <span>24/7 Support</span>
           </div>
         </div>
       </div>
-    </section>
+
+      {/* Right (Image) */}
+      <div className="w-full lg:pl-4">
+        <div
+          className="
+            relative mx-auto w-full max-w-[720px]
+            h-[260px] sm:h-[360px] lg:h-[460px]
+            rounded-2xl overflow-hidden bg-white shadow-2xl ring-1 ring-black/5
+            flex items-center justify-center
+          "
+        >
+          {/* keep the image INSIDE the box without cropping */}
+          <Image
+            key={heroImage}
+            src={heroImage}
+            alt={heroAlt}
+            fill
+            priority
+            className="object-contain object-center"
+            sizes="(max-width: 640px) 95vw, (max-width: 1024px) 50vw, 720px"
+          />
+
+          {/* soft inner vignette for depth (optional) */}
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/[0.03]" />
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
   );
 }
 
